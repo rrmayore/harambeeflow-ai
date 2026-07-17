@@ -1,0 +1,153 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A registered user of HarambeeFlow",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Fundraiser": {
+      "title": "Fundraiser",
+      "description": "A live fundraiser drive created on the client side",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fundraiserName": { "type": "string" },
+        "targetAmount": { "type": "number" },
+        "description": { "type": "string" },
+        "sectorCategory": { "type": "string" },
+        "mpesaShortcode": { "type": "string" },
+        "accountReference": { "type": "string" },
+        "treasurerPhone": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string" }
+      },
+      "required": ["fundraiserName", "targetAmount", "createdBy", "createdAt"]
+    },
+    "Donation": {
+      "title": "Donation",
+      "description": "A contribution/donation to a fundraiser",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fundraiserId": { "type": "string" },
+        "amount": { "type": "number" },
+        "senderName": { "type": "string" },
+        "senderPhone": { "type": "string" },
+        "transactionCode": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "category": { "type": "string" },
+        "notes": { "type": "string" },
+        "hasDuplicates": { "type": "boolean" },
+        "firstName": { "type": "string" },
+        "middleName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "receiptNumber": { "type": "string" },
+        "billReference": { "type": "string" },
+        "transactionTime": { "type": "string", "format": "date-time" },
+        "campaignId": { "type": "string" },
+        "donorId": { "type": "string" }
+      },
+      "required": ["fundraiserId", "amount", "senderName", "transactionCode", "donorId"]
+    },
+    "Donor": {
+      "title": "Donor",
+      "description": "A persistent M-PESA donor profile recognized across campaigns",
+      "type": "object",
+      "properties": {
+        "firstName": { "type": "string" },
+        "middleName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "fullName": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "firstContribution": { "type": "string", "format": "date-time" },
+        "lastContribution": { "type": "string", "format": "date-time" },
+        "totalContributions": { "type": "number" },
+        "totalAmount": { "type": "number" }
+      },
+      "required": ["firstName", "lastName", "fullName", "phoneNumber", "firstContribution", "lastContribution", "totalContributions", "totalAmount"]
+    },
+    "WhatsAppMessage": {
+      "title": "WhatsAppMessage",
+      "description": "A simulated message posted in a group feed",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "groupName": { "type": "string" },
+        "message": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "isSystem": { "type": "boolean" }
+      },
+      "required": ["id", "groupName", "message", "timestamp", "isSystem"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "A notification alert shown in the system control panel",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "campaignId": { "type": "string" },
+        "type": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "read": { "type": "boolean" },
+        "dismissed": { "type": "boolean" }
+      },
+      "required": ["id", "campaignId", "type", "title", "message", "timestamp", "read", "dismissed"]
+    },
+    "ActivityLog": {
+      "title": "ActivityLog",
+      "description": "An audit log trace representing committee actions in a campaign",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "campaignId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "user": { "type": "string" },
+        "action": { "type": "string" },
+        "campaignName": { "type": "string" },
+        "device": { "type": "string" }
+      },
+      "required": ["id", "campaignId", "timestamp", "user", "action", "campaignName", "device"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Registered user accounts"
+    },
+    "/fundraisers/{fundraiserId}": {
+      "schema": "Fundraiser",
+      "description": "The fundraisers collection"
+    },
+    "/donations/{donationId}": {
+      "schema": "Donation",
+      "description": "Log of fundraiser donations (real and simulated)"
+    },
+    "/whatsappMessages/{messageId}": {
+      "schema": "WhatsAppMessage",
+      "description": "Simulated group history feed"
+    },
+    "/donors/{phoneNumber}": {
+      "schema": "Donor",
+      "description": "Recognized persistent donor profiles indexable by phone number"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "System or campaign notifications"
+    },
+    "/activityLogs/{logId}": {
+      "schema": "ActivityLog",
+      "description": "Audit trail activity logs"
+    }
+  }
+}
