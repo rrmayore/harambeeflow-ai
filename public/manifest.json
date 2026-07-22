@@ -1,0 +1,22 @@
+{
+  "name": "HarambeeFlow AI",
+  "short_name": "HarambeeFlow",
+  "description": "Never Track M-PESA Contributions Manually Again - AI-powered community solutions for Kenya.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#10b981",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "https://img.icons8.com/color/192/000000/crowdfunding.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://img.icons8.com/color/512/000000/crowdfunding.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

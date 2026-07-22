@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HarambeeFlow - AI-powered community solutions for Kenya</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#10b981">
+    <link rel="apple-touch-icon" href="https://img.icons8.com/color/192/000000/crowdfunding.png">
+    <script>
+      (function() {
+        try {
+          var _rawFetch = window.fetch;
+          if (_rawFetch) {
+            var _activeFetch = _rawFetch;
+            var descriptor = {
+              configurable: true,
+              enumerable: true,
+              get: function() { return _activeFetch; },
+              set: function(val) { _activeFetch = val; }
+            };
+            Object.defineProperty(window, 'fetch', descriptor);
+            if (typeof globalThis !== 'undefined') {
+              Object.defineProperty(globalThis, 'fetch', descriptor);
+            }
+          }
+        } catch (e) {
+          console.warn("Fetch override failed, continuing normally.", e);
+        }
+      })();
+    </script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen relative overflow-x-hidden selection:bg-emerald-500/20 selection:text-emerald-400">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>

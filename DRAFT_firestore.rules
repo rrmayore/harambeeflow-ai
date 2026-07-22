@@ -1,0 +1,94 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // User accounts collection
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == userId;
+    }
+    
+    // Fundraisers collection
+    match /fundraisers/{fundraiserId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn();
+    }
+    
+    // Donations collection
+    match /donations/{donationId} {
+      allow read: if true;
+      allow write: if true; // Webhooks & manual triggers are handled client/server-side
+    }
+    
+    // WhatsApp simulated group history messages
+    match /whatsappMessages/{messageId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Donors collection
+    match /donors/{phoneNumber} {
+      allow read: if true;
+      allow write: if true; // Updatable during STK Callback Simulation & manual matching
+    }
+
+    // Rate limit logs
+    match /rate_limit_logs/{logId} {
+      allow read, write: if true;
+    }
+
+    // Financial ledger
+    match /financial_ledger/{ledgerId} {
+      allow read, write: if true;
+    }
+
+    // Mpesa pending payments
+    match /mpesa_pending_payments/{paymentId} {
+      allow read, write: if true;
+    }
+
+    // Mpesa events
+    match /mpesa_events/{eventId} {
+      allow read, write: if true;
+    }
+
+    // Idempotency keys
+    match /idempotency_keys/{keyId} {
+      allow read, write: if true;
+    }
+
+    // Dead letter queue
+    match /dead_letter_queue/{queueId} {
+      allow read, write: if true;
+    }
+
+    // Activity logs
+    match /activityLogs/{logId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    // Notifications
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    // Pledges collection
+    match /pledges/{pledgeId} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "hosting": {
+    "site": "harambeeflow",
+    "public": "dist",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "run": {
+          "serviceId": "harambeeflow-ai",
+          "region": "europe-west2"
+        }
+      }
+    ]
+  }
+}

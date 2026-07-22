@@ -1,0 +1,8 @@
+{
+  "name": "HarambeeFlow AI",
+  "description": "A smart fundraising assistant that automatically captures M-PESA contributions and updates WhatsApp groups in real-time, eliminating manual tracking by treasurers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

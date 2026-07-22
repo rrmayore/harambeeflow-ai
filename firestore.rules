@@ -1,0 +1,175 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // User accounts collection
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if isOwner(userId);
+    }
+
+    // Custom user profiles collection
+    match /userProfiles/{userId} {
+      allow read: if true;
+      allow write: if isOwner(userId);
+    }
+
+    // Organizations collection
+    match /organizations/{organizationId} {
+      allow read: if true;
+      allow create, update: if isSignedIn();
+      allow delete: if false; // Deny full organization drops
+      
+      match /members/{memberId} {
+        allow read: if true;
+        allow write: if isSignedIn();
+      }
+      match /roles/{roleId} {
+        allow read: if true;
+        allow write: if isSignedIn();
+      }
+      match /auditLogs/{logId} {
+        allow read: if true;
+        allow write: if isSignedIn();
+      }
+      match /activity/{activityId} {
+        allow read: if true;
+        allow write: if isSignedIn();
+      }
+      match /notifications/{notifId} {
+        allow read: if true;
+        allow write: if isSignedIn();
+      }
+    }
+
+    // Payment accounts collection
+    match /paymentAccounts/{accountId} {
+      allow read: if true;
+      allow create, update: if isSignedIn();
+      allow delete: if false;
+    }
+    
+    // Fundraisers collection
+    match /fundraisers/{fundraiserId} {
+      allow read: if true;
+      allow create, update: if isSignedIn();
+      allow delete: if false; // Deny destruction of campaigns
+    }
+    
+    // Donations collection
+    match /donations/{donationId} {
+      allow read: if true;
+      allow write: if true; // Webhooks & manual triggers are handled client/server-side
+    }
+    
+    // WhatsApp simulated group history messages
+    match /whatsappMessages/{messageId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Donors collection
+    match /donors/{phoneNumber} {
+      allow read: if true;
+      allow write: if true; // Updatable during STK Callback Simulation & manual matching
+    }
+
+    // Rate limit logs
+    match /rate_limit_logs/{logId} {
+      allow read, write: if true;
+    }
+
+    // Financial ledger
+    match /financial_ledger/{ledgerId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // Mpesa pending payments
+    match /mpesa_pending_payments/{paymentId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Mpesa events
+    match /mpesa_events/{eventId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Idempotency keys
+    match /idempotency_keys/{keyId} {
+      allow read, write: if true;
+    }
+
+    // Dead letter queue
+    match /dead_letter_queue/{queueId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Activity logs
+    match /activityLogs/{logId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // Notifications
+    match /notifications/{notificationId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Pledges collection
+    match /pledges/{pledgeId} {
+      allow read: if true;
+      allow write: if true; // Public contributors can submit pledges
+    }
+
+    // Campaign lifecycle center collections
+    match /campaignTasks/{taskId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+    match /campaignTimeline/{eventId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+    match /campaignAssets/{assetId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+    match /campaignCalendar/{eventId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+    match /campaignArchive/{recordId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // Analytics collections (Section 13 & 11)
+    match /analyticsEvents/{eventId} {
+      allow read: if isSignedIn();
+      allow write: if true; // Allowed so registration/auth events can log before full session is active
+    }
+    match /analyticsStats/{statsId} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}
