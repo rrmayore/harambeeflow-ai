@@ -507,6 +507,9 @@ async function updateFundraiserAmountInFirestore(proj: any, lastContributionObj?
       const progressPct = Math.min(100, Math.round((currentAmt / targetAmt) * 100));
       const nowIso = new Date().toISOString();
 
+      const projConts = contributions.filter(c => c.projectId === proj.id || c.campaignId === proj.id || c.fundraiserId === proj.id);
+      const count = projConts.length;
+
       await setDoc(doc(db, "fundraisers", proj.id), {
         id: proj.id,
         fundraiserName: proj.name || "",
@@ -514,6 +517,7 @@ async function updateFundraiserAmountInFirestore(proj: any, lastContributionObj?
         targetAmount: targetAmt,
         currentAmount: currentAmt,
         totalRaised: currentAmt,
+        contributionCount: count,
         remainingAmount: remainingAmt,
         progressPercentage: progressPct,
         description: proj.description || "",
@@ -749,7 +753,7 @@ app.post("/realtime-donations", async (req, res) => {
       proj.currentAmount += Number(amount);
       if (useFirebase && db) {
         try {
-          await updateFundraiserAmountInFirestore(proj);
+          await updateFundraiserAmountInFirestore(proj, newCont);
         } catch (err) {
           console.error("Failed to update firestore fundraiser total:", err);
         }
@@ -833,6 +837,8 @@ app.post("/api/contributions", async (req, res) => {
   const newContribution = {
     id: `cnt-${contributions.length + 1}`,
     projectId,
+    campaignId: projectId,
+    fundraiserId: projectId,
     amount: Number(amount),
     senderName,
     senderPhone: senderPhone || "",
@@ -873,7 +879,7 @@ app.post("/api/contributions", async (req, res) => {
       try {
         await setDoc(doc(db, "donations", newContribution.id), newContribution);
         if (proj) {
-          await updateFundraiserAmountInFirestore(proj);
+          await updateFundraiserAmountInFirestore(proj, newContribution);
         }
         if (waMsg) {
           await setDoc(doc(db, "whatsappMessages", waMsg.id), waMsg);
@@ -1057,6 +1063,8 @@ async function handleMpesaWebhook(req: any, res: any) {
       const newContribution = {
         id: `cnt-${Date.now()}`,
         projectId: targetProj.id,
+        campaignId: targetProj.id,
+        fundraiserId: targetProj.id,
         amount: Number(amount),
         senderName: finalSenderName,
         senderPhone: String(targetPhone),
@@ -1077,7 +1085,6 @@ async function handleMpesaWebhook(req: any, res: any) {
         receiptNumber: code,
         billReference: targetProj.accountReference || "",
         transactionTime: new Date().toISOString(),
-        campaignId: targetProj.id,
         donorId: String(targetPhone)
       };
 
@@ -1111,7 +1118,7 @@ async function handleMpesaWebhook(req: any, res: any) {
       if (useFirebase && db) {
         try {
           await setDoc(doc(db, "donations", newContribution.id), newContribution);
-          await updateFundraiserAmountInFirestore(targetProj);
+          await updateFundraiserAmountInFirestore(targetProj, newContribution);
           await setDoc(doc(db, "whatsappMessages", waMsg.id), waMsg);
 
           // Update or create donor profile in Firestore
@@ -2030,7 +2037,7 @@ async function startServer() {
         try {
           await setDoc(doc(db, "donations", contribution.id), contribution);
           if (proj) {
-            await updateFundraiserAmountInFirestore(proj);
+            await updateFundraiserAmountInFirestore(proj, contribution);
           }
           await setDoc(doc(db, "whatsappMessages", whatsappMsg.id), whatsappMsg);
 

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { 
-  ArrowRight, Cpu, Check, HelpCircle, MessageSquare, Phone, Mail, Shield, 
+  ArrowRight, Check, HelpCircle, MessageSquare, Phone, Mail, Shield, 
   CheckCircle2, Info, Landmark, Layers, Sparkles, Send, X, AlertTriangle 
 } from "lucide-react";
 import { motion } from "motion/react";
@@ -17,7 +17,6 @@ type MarketingTab = "home" | "how-it-works" | "pricing" | "trust" | "faq" | "con
 export default function LandingPageView({ onEnterApp, onEnterDemo }: LandingPageViewProps) {
   const [showTour, setShowTour] = useState(false);
   const [activeTab, setActiveTab] = useState<MarketingTab>("home");
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Contact Form Simulated State
   const [contactName, setContactName] = useState("");
@@ -47,122 +46,6 @@ export default function LandingPageView({ onEnterApp, onEnterDemo }: LandingPage
       {/* Background ambient radial gradients */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[700px] bg-emerald-500/5 rounded-full blur-[140px] pointer-events-none" />
       <div className="absolute bottom-20 right-10 w-[400px] h-[400px] bg-blue-500/5 rounded-full blur-[100px] pointer-events-none" />
-
-      {/* Modern Marketing Header Navbar */}
-      <header className="w-full border-b border-slate-900 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50 px-6 py-4 shrink-0" id="marketing-header">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          
-          {/* Logo Brand */}
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => { setActiveTab("home"); setMobileMenuOpen(false); }}>
-            <div className="p-2 bg-gradient-to-br from-green-500 to-green-600 rounded-xl text-white shadow-md shadow-emerald-500/10">
-              <Cpu className="w-5 h-5 animate-pulse" />
-            </div>
-            <div>
-              <span className="font-sans font-black tracking-tight text-base text-white block leading-none">
-                HarambeeFlow <span className="text-emerald-400 font-mono text-[9px] font-bold bg-emerald-950/40 border border-emerald-800/30 px-1.5 py-0.5 rounded ml-1">AI</span>
-              </span>
-            </div>
-          </div>
-
-          {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-6 text-xs font-bold text-slate-400 tracking-wider uppercase">
-            {[
-              { id: "home", label: "Home" },
-              { id: "how-it-works", label: "How It Works" },
-              { id: "pricing", label: "Pricing" },
-              { id: "trust", label: "Trust & Security" },
-              { id: "faq", label: "FAQ" },
-              { id: "contact", label: "Contact" }
-            ].map((link) => (
-              <button
-                key={link.id}
-                onClick={() => setActiveTab(link.id as MarketingTab)}
-                className={`hover:text-emerald-400 transition cursor-pointer font-sans ${
-                  activeTab === link.id ? "text-emerald-400 border-b-2 border-emerald-500/80 pb-1" : ""
-                }`}
-              >
-                {link.label}
-              </button>
-            ))}
-          </nav>
-
-          {/* Action CTAs */}
-          <div className="hidden md:flex items-center gap-4">
-            {onEnterDemo && (
-              <button 
-                onClick={onEnterDemo}
-                className="text-xs font-extrabold text-slate-400 hover:text-slate-200 transition cursor-pointer"
-              >
-                Sandbox Demo
-              </button>
-            )}
-            <button
-              onClick={onEnterApp}
-              className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs rounded-xl shadow-md shadow-emerald-500/5 transition cursor-pointer active:scale-95"
-            >
-              Start Free
-            </button>
-          </div>
-
-          {/* Mobile Menu Toggle */}
-          <button 
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 text-slate-400 hover:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/20 rounded-lg cursor-pointer"
-          >
-            {mobileMenuOpen ? <span className="text-lg font-black font-mono">✕</span> : <span className="text-lg font-black font-mono">☰</span>}
-          </button>
-
-        </div>
-
-        {/* Mobile Navigation Dropdown */}
-        {mobileMenuOpen && (
-          <div className="md:hidden mt-4 border-t border-slate-900 pt-4 pb-2 space-y-3 animate-scale-up">
-            {[
-              { id: "home", label: "Home" },
-              { id: "how-it-works", label: "How It Works" },
-              { id: "pricing", label: "Pricing" },
-              { id: "trust", label: "Trust & Security" },
-              { id: "faq", label: "FAQ" },
-              { id: "contact", label: "Contact" }
-            ].map((link) => (
-              <button
-                key={link.id}
-                onClick={() => {
-                  setActiveTab(link.id as MarketingTab);
-                  setMobileMenuOpen(false);
-                }}
-                className={`w-full text-left py-2 px-3 text-xs font-black tracking-wider uppercase rounded-lg transition ${
-                  activeTab === link.id ? "bg-slate-900 text-emerald-400" : "text-slate-400 hover:bg-slate-900/40 hover:text-slate-200"
-                }`}
-              >
-                {link.label}
-              </button>
-            ))}
-            <div className="flex flex-col gap-2 pt-3 px-3 border-t border-slate-900">
-              {onEnterDemo && (
-                <button
-                  onClick={() => {
-                    onEnterDemo();
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full text-center py-2.5 bg-slate-900 border border-slate-800 rounded-lg text-slate-300 text-xs font-bold"
-                >
-                  Enter Sandbox Demo
-                </button>
-              )}
-              <button
-                onClick={() => {
-                  onEnterApp();
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full text-center py-2.5 bg-emerald-500 text-slate-950 rounded-lg text-xs font-black"
-              >
-                Join Waitlist / Start Free
-              </button>
-            </div>
-          </div>
-        )}
-      </header>
 
       {/* Main Marketing Content Container */}
       <div className="flex-1 w-full flex flex-col justify-start relative">
