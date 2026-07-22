@@ -2,7 +2,8 @@ import React from "react";
 import { 
   LayoutDashboard, Smartphone, Bot, Cpu, FileText, Sparkles, HelpCircle, Download,
   Home, Gift, Landmark, MessageSquare, Shield, ShieldAlert, Scale, Settings, Terminal, Briefcase,
-  Globe, Flame, Trophy, Archive, Users, Plus, HeartHandshake, Share2, Coins, TrendingUp, Target
+  Globe, Flame, Trophy, Archive, Users, Plus, HeartHandshake, Share2, Coins, TrendingUp, Target,
+  CreditCard
 } from "lucide-react";
 
 interface SidebarProps {
@@ -84,6 +85,7 @@ export default function Sidebar({
     { id: "report", label: "Reports", icon: FileText, desc: "Reconciled ledger audit sheets & print-ready PDF briefs" },
     { id: "insights", label: "Insights", icon: TrendingUp, desc: "AI intelligence, donation trends & goal forecasting" },
     { id: "settings", label: "Settings", icon: Settings, desc: "Reset sandbox parameters, load sample campaigns & configs" },
+    { id: "billing", label: "Billing & Subscription", icon: CreditCard, desc: "Manage plans, usage limits, invoices & M-PESA" },
   ];
 
   const systemItems = [
@@ -133,6 +135,7 @@ export default function Sidebar({
     { id: "load-sample", label: "Load Sample Campaign", icon: Sparkles, desc: "Seed Nairobi Medical Fund sandbox campaign", action: onLoadSampleCampaign || (() => {}) },
     { id: "help", label: "Help Center & Tour", icon: HelpCircle, desc: "Safaricom sandbox guide & setup walkthrough", action: onShowHelp || (() => {}) },
     { id: "settings", label: "Settings", icon: Settings, desc: "Configure database & user accounts", action: () => setActiveTab("settings") },
+    { id: "billing", label: "Billing & Subscription", icon: CreditCard, desc: "Manage plans, usage limits & M-PESA payment", action: () => setActiveTab("billing") },
   ];
 
   return (

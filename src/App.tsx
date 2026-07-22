@@ -27,6 +27,7 @@ import SuperAdminConsole from "./components/SuperAdminConsole";
 import ComplianceReadiness from "./components/ComplianceReadiness";
 import CampaignLogo from "./components/CampaignLogo";
 import CampaignBrandingSettings from "./components/CampaignBrandingSettings";
+import BillingSubscriptionView from "./components/BillingSubscriptionView";
 
 // Import simplified UX refactored components (V2 Refactor)
 import WelcomeView from "./components/WelcomeView";
@@ -49,7 +50,7 @@ import CommunicationsAutomationCenter from "./components/CommunicationsAutomatio
 import PlatformIntelligenceDashboard from "./components/PlatformIntelligenceDashboard";
 import { EventBus } from "./utils/eventBus";
 import { Project, Contribution, WhatsAppMessage } from "./types";
-import { Sparkles, Menu, X, Plus, Calendar, Coins, Users, Smartphone, CheckCircle2, Download, ExternalLink, Wifi, Battery, LayoutDashboard, Landmark, Megaphone, FileText, Settings, HeartHandshake, Share2, Eye, TrendingUp, Layers, Cpu, Briefcase } from "lucide-react";
+import { Sparkles, Menu, X, Plus, Calendar, Coins, Users, Smartphone, CheckCircle2, Download, ExternalLink, Wifi, Battery, LayoutDashboard, Landmark, Megaphone, FileText, Settings, HeartHandshake, Share2, Eye, TrendingUp, Layers, Cpu, Briefcase, CreditCard } from "lucide-react";
 import { onAuthStateChanged, signOut, User as FirebaseUser, GoogleAuthProvider, linkWithCredential, signInWithPopup } from "firebase/auth";
 import { 
   collection, 
@@ -173,7 +174,13 @@ export default function App() {
   const [activeProject, setActiveProject] = useState<Project | null>(null);
 
   const handleSetActiveTab = (tab: string) => {
-    if (tab === "public-pages" || tab === "public") {
+    if (tab === "billing") {
+      setActiveTab("billing");
+      setSettingsSubTab("billing");
+    } else if (tab === "settings") {
+      setActiveTab("settings");
+      setSettingsSubTab("general");
+    } else if (tab === "public-pages" || tab === "public") {
       const targetProj = activeProject || projects[0];
       if (targetProj) {
         window.location.hash = `#/f/${targetProj.id}`;
@@ -227,6 +234,7 @@ export default function App() {
   const [draftProject, setDraftProject] = useState<any>(null);
   const [launchChecklistOpen, setLaunchChecklistOpen] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
+  const [settingsSubTab, setSettingsSubTab] = useState<"general" | "billing">("general");
   const [settingsFeedback, setSettingsFeedback] = useState("");
   const [showResetDemoModal, setShowResetDemoModal] = useState(false);
   const [resetFeedbackMessage, setResetFeedbackMessage] = useState("");
@@ -2154,6 +2162,7 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
                             { id: "collect", label: "Contributions", icon: HeartHandshake },
                             { id: "share", label: "Share Campaign", icon: Share2 },
                             { id: "settings", label: "Settings", icon: Settings },
+                            { id: "billing", label: "Billing & Subscription 💳", icon: CreditCard },
                           ].map((item) => {
                             const Icon = item.icon;
                             const isActive = activeTab === item.id;
@@ -2330,7 +2339,18 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
                       />
                     )}
 
-                    {activeTab === "settings" && activeProject && (() => {
+                    {(activeTab === "billing" || (activeTab === "settings" && settingsSubTab === "billing")) && (
+                      <BillingSubscriptionView 
+                        onBackToSettings={() => {
+                          setActiveTab("settings");
+                          setSettingsSubTab("general");
+                        }}
+                        currentUser={currentUser}
+                        activeProject={activeProject}
+                      />
+                    )}
+
+                    {activeTab === "settings" && settingsSubTab === "general" && activeProject && (() => {
                       const campaignContributions = contributions.filter(
                         c => c.projectId === activeProject.id || c.campaignId === activeProject.id
                       );
@@ -2350,9 +2370,38 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
                           <div className="max-w-5xl mx-auto space-y-8">
                             
                             {/* Page Header */}
-                            <div className="border-b border-slate-800 pb-4">
-                              <h2 className="text-xl font-black text-white" id="settings-page-header-title">Settings</h2>
-                              <p className="text-xs text-slate-400 mt-1">Manage your campaign, account, and application preferences.</p>
+                            <div className="border-b border-slate-800 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                              <div>
+                                <h2 className="text-xl font-black text-white" id="settings-page-header-title">Settings</h2>
+                                <p className="text-xs text-slate-400 mt-1">Manage your campaign, account, and application preferences.</p>
+                              </div>
+
+                              <div className="flex items-center gap-2 p-1 bg-slate-900 border border-slate-800 rounded-2xl shrink-0">
+                                <button
+                                  onClick={() => setSettingsSubTab("general")}
+                                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2 ${
+                                    settingsSubTab === "general"
+                                      ? "bg-emerald-500 text-slate-950 shadow"
+                                      : "text-slate-400 hover:text-slate-200"
+                                  }`}
+                                  id="settings-tab-btn-general"
+                                >
+                                  <Settings className="w-3.5 h-3.5" />
+                                  General
+                                </button>
+                                <button
+                                  onClick={() => setSettingsSubTab("billing")}
+                                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2 ${
+                                    settingsSubTab === "billing"
+                                      ? "bg-emerald-500 text-slate-950 shadow"
+                                      : "text-slate-400 hover:text-slate-200"
+                                  }`}
+                                  id="settings-tab-btn-billing"
+                                >
+                                  <CreditCard className="w-3.5 h-3.5" />
+                                  Billing & Subscription
+                                </button>
+                              </div>
                             </div>
 
                             {/* Feedback Toast */}
