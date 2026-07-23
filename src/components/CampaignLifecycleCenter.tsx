@@ -630,7 +630,7 @@ export default function CampaignLifecycleCenter({
           }
         }
         setAiResult(textResult);
-        triggerToast("Gemini draft successfully finalized!");
+        triggerToast("AI draft successfully finalized!");
       } else {
         throw new Error(data.error || "Generation error");
       }
@@ -739,7 +739,7 @@ export default function CampaignLifecycleCenter({
             Campaign Lifecycle & Command
           </h1>
           <p className="text-xs text-slate-400 mt-1 max-w-2xl leading-relaxed">
-            Formulate, mobilize, schedule meetings, upload marketing flyers, leverage Gemini AI copywriting, and permanently seal transaction ledgers.
+            Formulate, mobilize, schedule meetings, upload marketing flyers, leverage HarambeeFlow AI copywriting, and permanently seal transaction ledgers.
           </p>
         </div>
 
@@ -1554,10 +1554,10 @@ export default function CampaignLifecycleCenter({
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-800 pb-4">
             <div>
               <h3 className="text-sm font-mono font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                <Bot className="w-5 h-5 text-indigo-400 animate-pulse" /> Gemini AI Copywriter Desk
+                <Bot className="w-5 h-5 text-indigo-400 animate-pulse" /> AI Copywriter Desk
               </h3>
               <p className="text-xs text-slate-500 mt-1">
-                Let Gemini draft tailored committee circulars, WhatsApp updates or givers gratitude cards based on live campaign progress.
+                Let HarambeeFlow AI draft tailored committee circulars, WhatsApp updates or givers gratitude cards based on live campaign progress.
               </p>
             </div>
 
@@ -1609,12 +1609,12 @@ export default function CampaignLifecycleCenter({
                 {aiGenerating ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin text-white" />
-                    <span>Engaging Gemini Core AI...</span>
+                    <span>Engaging HarambeeFlow AI...</span>
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4 animate-spin text-white" />
-                    <span>Draft Copywriting with Gemini</span>
+                    <span>Draft Copywriting with AI</span>
                   </>
                 )}
               </button>
@@ -1623,7 +1623,7 @@ export default function CampaignLifecycleCenter({
             {/* Output Draft Panel */}
             <div className="bg-slate-950 border border-slate-850 rounded-2xl p-5 flex flex-col justify-between h-80">
               <div className="overflow-y-auto">
-                <span className="text-[8.5px] font-mono font-bold text-slate-500 uppercase block mb-2">Verified Gemini AI Draft:</span>
+                <span className="text-[8.5px] font-mono font-bold text-slate-500 uppercase block mb-2">Verified AI Draft:</span>
                 
                 {aiResult ? (
                   <p className="text-xs text-slate-200 leading-relaxed font-mono whitespace-pre-wrap">
@@ -1637,7 +1637,7 @@ export default function CampaignLifecycleCenter({
               {aiResult && (
                 <div className="mt-4 pt-3 border-t border-slate-900 flex justify-end gap-3 font-mono">
                   <button
-                    onClick={() => handleCopy(aiResult, "Gemini Draft")}
+                    onClick={() => handleCopy(aiResult, "AI Draft")}
                     className="px-3 py-1.5 border border-slate-800 hover:border-slate-700 bg-slate-900 hover:bg-slate-850 text-slate-300 hover:text-white text-[10px] rounded-lg transition flex items-center gap-1.5 cursor-pointer"
                   >
                     <Copy className="w-3.5 h-3.5" /> Copy Draft

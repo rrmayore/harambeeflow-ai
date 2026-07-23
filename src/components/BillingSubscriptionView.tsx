@@ -31,7 +31,7 @@ export default function BillingSubscriptionView({
     name: activeProject?.organizationName || "Nairobi Medical & Welfare Fund",
     type: "Welfare Group", // Church, School, Welfare Group, NGO, Business
     owner: currentUser?.displayName || currentUser?.email || "Rev. Joseph Mwangi",
-    email: currentUser?.email || "billing@nairobiwelfare.org",
+    email: currentUser?.email || "billing@harambeeflow.org",
     phone: currentUser?.phoneNumber || "0712345678",
     country: "Kenya",
     currency: "KES",
@@ -771,7 +771,7 @@ export default function BillingSubscriptionView({
             <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
               <div className="bg-amber-500 h-full rounded-full" style={{ width: "42.5%" }} />
             </div>
-            <span className="text-[10px] text-slate-500 block">Gemini prompts & M-PESA STK callbacks</span>
+            <span className="text-[10px] text-slate-500 block">AI prompts & M-PESA STK callbacks</span>
           </div>
 
         </div>

@@ -41,7 +41,7 @@ export default function DonorDashboard({ contributions, projects }: DonorDashboa
     setPhone(activeDonorPhone);
     setName(activeDonorName);
     const firstName = activeDonorName.split(" ")[0].toLowerCase();
-    setEmail(`${firstName}.donor@harambeeflow.or.ke`);
+    setEmail(`${firstName}.donor@harambeeflow.org`);
   }, [activeDonorPhone, activeDonorName]);
 
   // Filter donor's contributions dynamically

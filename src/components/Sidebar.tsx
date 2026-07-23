@@ -101,7 +101,12 @@ export default function Sidebar({
     { id: "developer", label: "Developer Blueprint", icon: FileText, desc: "Flutter, Daraja, Node & Firebase code assets" },
   ];
 
-  const renderSection = (title: string, items: typeof userItems) => (
+  const campaignActionItems = [
+    { id: "create", label: "Create Campaign", icon: Plus, desc: "Launch new campaigns in under 60 seconds", action: onCreateCampaign || (() => {}) },
+    { id: "load-sample", label: "Load Sample Campaign", icon: Sparkles, desc: "Seed Nairobi Medical Fund sandbox campaign", action: onLoadSampleCampaign || (() => {}) },
+  ];
+
+  const renderSection = (title: string, items: Array<{ id: string; label: string; icon: any; desc: string; action?: () => void }>) => (
     <div className="space-y-1.5 pt-3">
       <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-3 mb-1.5 font-mono">{title}</p>
       {items.map((item) => {
@@ -110,7 +115,13 @@ export default function Sidebar({
         return (
           <button
             key={item.id}
-            onClick={() => setActiveTab(item.id)}
+            onClick={() => {
+              if (item.action) {
+                item.action();
+              } else {
+                setActiveTab(item.id);
+              }
+            }}
             className={`w-full flex items-start gap-3 px-3.5 py-2.5 rounded-xl transition duration-150 text-left border cursor-pointer ${
               isActive
                 ? "bg-slate-800 text-emerald-400 border-slate-700 font-semibold shadow-xs"
@@ -144,15 +155,19 @@ export default function Sidebar({
       {/* Brand Header */}
       <div className="p-5 border-b border-slate-800 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg text-white">
-            <Cpu className="w-5.5 h-5.5 animate-pulse" />
+          <div className="p-2.5 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-xl shadow-lg shadow-emerald-950/50 text-slate-950 font-black font-mono text-sm shrink-0">
+            HF
           </div>
-          <div>
-            <h1 className="font-sans font-black tracking-tight text-base text-white leading-none">
+          <div className="flex flex-col leading-tight text-left">
+            <h1 className="font-sans font-black tracking-tight text-lg text-white">
               HarambeeFlow
             </h1>
-            <p className="text-[10px] text-slate-400 font-mono mt-1 mb-1.5">Ecosystem Control Center</p>
-            {renderSyncStatusBadge(syncStatus)}
+            <span className="text-xs font-mono font-medium text-emerald-400 tracking-wide mt-0.5">
+              AI Treasurer
+            </span>
+            <div className="mt-1.5">
+              {renderSyncStatusBadge(syncStatus)}
+            </div>
           </div>
         </div>
 
@@ -193,153 +208,46 @@ export default function Sidebar({
       {/* Categories Content scrollable */}
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         {!hasCampaign ? (
-          <div className="space-y-1.5 pt-3">
-            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-3 mb-1.5 font-mono">Setup & Onboarding</p>
-            {setupItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
+          <>
+            {renderSection("Setup & Onboarding", setupItems)}
+            {isMobile && (
+              <div className="space-y-1.5 pt-4 border-t border-slate-800 mt-3">
+                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-3 mb-1.5 font-mono">Secondary Pages</p>
                 <button
-                  key={item.id}
-                  onClick={item.action}
-                  className={`w-full flex items-start gap-3 px-3.5 py-2.5 rounded-xl transition duration-150 text-left border cursor-pointer ${
-                    isActive
-                      ? "bg-slate-800 text-emerald-400 border-slate-700 font-semibold shadow-xs"
-                      : "text-slate-400 hover:bg-slate-850 hover:text-slate-200 border-transparent"
-                  }`}
+                  onClick={() => { if (onShowHelp) onShowHelp(); }}
+                  className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-300 hover:bg-slate-850 hover:text-slate-100 text-left cursor-pointer"
                 >
-                  <Icon className={`w-4.5 h-4.5 shrink-0 ${isActive ? "text-emerald-400" : "text-slate-400"}`} />
-                  <div className="flex-1 min-w-0">
-                    <span className="text-[12.5px] leading-none block font-medium">{item.label}</span>
-                    <span className="text-[10px] text-slate-500 mt-1 block truncate leading-tight">{item.desc}</span>
-                  </div>
+                  <HelpCircle className="w-4.5 h-4.5 text-indigo-400 shrink-0" />
+                  <span className="text-[12.5px] font-medium">Help Center & Tour</span>
                 </button>
-              );
-            })}
-          </div>
-        ) : isMobile ? (
-          <div className="space-y-4 pt-3 px-1">
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-3 font-mono">Secondary Pages</p>
-            
-            <div className="space-y-1.5">
-              {/* Help Center */}
-              <button
-                onClick={() => {
-                  if (onShowHelp) onShowHelp();
-                }}
-                className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl transition duration-150 text-left border border-transparent text-slate-300 hover:bg-slate-850 hover:text-slate-100 cursor-pointer min-h-[44px]"
-              >
-                <HelpCircle className="w-5 h-5 shrink-0 text-indigo-400" />
-                <div className="flex-1 min-w-0">
-                  <span className="text-[13.5px] font-medium">Help Center & Tour</span>
-                </div>
-              </button>
-
-              {/* Developer Center */}
-              <button
-                onClick={() => {
-                  setIsDeveloperMode(!isDeveloperMode);
-                  if (!isDeveloperMode) {
-                    setActiveTab("simulator");
-                  } else {
-                    setActiveTab("dashboard");
-                  }
-                }}
-                className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl transition duration-150 text-left border cursor-pointer min-h-[44px] ${
-                  isDeveloperMode 
-                    ? "bg-amber-950/20 border-amber-800/30 text-amber-300"
-                    : "border-transparent text-slate-300 hover:bg-slate-850 hover:text-slate-100"
-                }`}
-              >
-                <Terminal className="w-5 h-5 shrink-0 text-amber-400" />
-                <div className="flex-1 min-w-0">
-                  <span className="text-[13.5px] font-medium">Developer Center</span>
-                  <span className="text-[10px] text-slate-500 block">
-                    {isDeveloperMode ? "Developer Mode is Active" : "Tap to enable Developer Console"}
-                  </span>
-                </div>
-              </button>
-
-              {/* About HarambeeFlow */}
-              <div className="space-y-1">
                 <button
                   onClick={() => setShowAbout(!showAbout)}
-                  className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl transition duration-150 text-left border cursor-pointer min-h-[44px] ${
-                    showAbout ? "bg-slate-850 text-emerald-400 border-slate-700" : "border-transparent text-slate-300 hover:bg-slate-850 hover:text-slate-100"
-                  }`}
+                  className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-300 hover:bg-slate-850 hover:text-slate-100 text-left cursor-pointer"
                 >
-                  <Cpu className="w-5 h-5 shrink-0 text-emerald-400" />
-                  <div className="flex-1 min-w-0">
-                    <span className="text-[13.5px] font-medium">About HarambeeFlow</span>
-                  </div>
+                  <Cpu className="w-4.5 h-4.5 text-emerald-400 shrink-0" />
+                  <span className="text-[12.5px] font-medium">About HarambeeFlow</span>
                 </button>
                 {showAbout && (
-                  <div className="mx-3.5 p-3.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-slate-400 space-y-1.5 leading-relaxed font-sans">
-                    <strong className="text-white block">HarambeeFlow AI v6</strong>
-                    Kenya's smart fundraising and community treasurer ecosystem. Automatically reconciling M-PESA paybill callbacks, simulating local transactions, and keeping community WhatsApp channels synchronized securely via double-entry accounting ledgers.
+                  <div className="mx-3.5 p-3 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-slate-400 font-sans leading-relaxed">
+                    <strong className="text-white block mb-1">HarambeeFlow AI v6</strong>
+                    Kenya's smart fundraising and community treasurer ecosystem.
                   </div>
                 )}
-              </div>
-
-              {/* Privacy Policy */}
-              <button
-                onClick={() => setActiveTab("compliance")}
-                className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl transition duration-150 text-left border border-transparent text-slate-300 hover:bg-slate-850 hover:text-slate-100 cursor-pointer min-h-[44px]"
-              >
-                <Scale className="w-5 h-5 shrink-0 text-teal-400" />
-                <div className="flex-1 min-w-0">
-                  <span className="text-[13.5px] font-medium">Privacy Policy</span>
-                </div>
-              </button>
-
-              {/* Terms of Service */}
-              <button
-                onClick={() => setActiveTab("compliance")}
-                className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl transition duration-150 text-left border border-transparent text-slate-300 hover:bg-slate-850 hover:text-slate-100 cursor-pointer min-h-[44px]"
-              >
-                <FileText className="w-5 h-5 shrink-0 text-rose-400" />
-                <div className="flex-1 min-w-0">
-                  <span className="text-[13.5px] font-medium">Terms of Service</span>
-                </div>
-              </button>
-
-              {/* Support */}
-              <div className="space-y-1">
-                <button
-                  onClick={() => setShowSupport(!showSupport)}
-                  className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl transition duration-150 text-left border cursor-pointer min-h-[44px] ${
-                    showSupport ? "bg-slate-850 text-blue-400 border-slate-700" : "border-transparent text-slate-300 hover:bg-slate-850 hover:text-slate-100"
-                  }`}
-                >
-                  <MessageSquare className="w-5 h-5 shrink-0 text-blue-400" />
-                  <div className="flex-1 min-w-0">
-                    <span className="text-[13.5px] font-medium">Support Help Desk</span>
-                  </div>
-                </button>
-                {showSupport && (
-                  <div className="mx-3.5 p-3.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-slate-400 space-y-1.5 leading-relaxed font-sans">
-                    <strong className="text-white block">Safaricom Dev Support</strong>
-                    For API credentials, sandboxes, and integration manual queries, contact <span className="text-emerald-400 underline">support@harambeeflow.co.ke</span> or visit the Safaricom Developer Portal.
-                  </div>
+                {onLogout && (
+                  <button
+                    onClick={onLogout}
+                    className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-rose-400 hover:bg-rose-950/20 text-left cursor-pointer"
+                  >
+                    <ShieldAlert className="w-4.5 h-4.5 text-rose-500 shrink-0" />
+                    <span className="text-[12.5px] font-semibold">Sign Out / Logout</span>
+                  </button>
                 )}
               </div>
-
-              {/* Logout */}
-              {onLogout && (
-                <button
-                  onClick={onLogout}
-                  className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl transition duration-150 text-left border border-transparent text-rose-400 hover:bg-rose-950/20 cursor-pointer min-h-[44px]"
-                >
-                  <ShieldAlert className="w-5 h-5 shrink-0 text-rose-500" />
-                  <div className="flex-1 min-w-0">
-                    <span className="text-[13.5px] font-semibold">Sign Out / Logout</span>
-                  </div>
-                </button>
-              )}
-            </div>
-          </div>
+            )}
+          </>
         ) : (
           <>
+            {renderSection("Campaign Actions", campaignActionItems)}
             {renderSection("Public Portal", publicItems)}
             {renderSection("Participant Desks", userItems)}
             {isDeveloperMode && (
@@ -347,6 +255,95 @@ export default function Sidebar({
                 {renderSection("System & Compliance", systemItems)}
                 {renderSection("Sandboxes & Blueprints", sandboxItems)}
               </>
+            )}
+            {isMobile && (
+              <div className="space-y-1.5 pt-4 border-t border-slate-800 mt-3">
+                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-3 mb-1.5 font-mono">Secondary Pages</p>
+                
+                <button
+                  onClick={() => { if (onShowHelp) onShowHelp(); }}
+                  className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-300 hover:bg-slate-850 hover:text-slate-100 text-left cursor-pointer"
+                >
+                  <HelpCircle className="w-4.5 h-4.5 text-indigo-400 shrink-0" />
+                  <span className="text-[12.5px] font-medium">Help Center & Tour</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setIsDeveloperMode(!isDeveloperMode);
+                    if (!isDeveloperMode) {
+                      setActiveTab("simulator");
+                    } else {
+                      setActiveTab("dashboard");
+                    }
+                  }}
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left cursor-pointer ${
+                    isDeveloperMode ? "bg-amber-950/20 text-amber-300 border border-amber-800/30" : "text-slate-300 hover:bg-slate-850 hover:text-slate-100"
+                  }`}
+                >
+                  <Terminal className="w-4.5 h-4.5 text-amber-400 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[12.5px] font-medium">Developer Center</span>
+                    <span className="text-[10px] text-slate-500 block truncate">
+                      {isDeveloperMode ? "Active" : "Tap to enable"}
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => setShowAbout(!showAbout)}
+                  className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-300 hover:bg-slate-850 hover:text-slate-100 text-left cursor-pointer"
+                >
+                  <Cpu className="w-4.5 h-4.5 text-emerald-400 shrink-0" />
+                  <span className="text-[12.5px] font-medium">About HarambeeFlow</span>
+                </button>
+                {showAbout && (
+                  <div className="mx-3.5 p-3 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-slate-400 font-sans leading-relaxed">
+                    <strong className="text-white block mb-1">HarambeeFlow AI v6</strong>
+                    Kenya's smart fundraising and community treasurer ecosystem.
+                  </div>
+                )}
+
+                <button
+                  onClick={() => setActiveTab("compliance")}
+                  className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-300 hover:bg-slate-850 hover:text-slate-100 text-left cursor-pointer"
+                >
+                  <Scale className="w-4.5 h-4.5 text-teal-400 shrink-0" />
+                  <span className="text-[12.5px] font-medium">Privacy Policy</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab("compliance")}
+                  className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-300 hover:bg-slate-850 hover:text-slate-100 text-left cursor-pointer"
+                >
+                  <FileText className="w-4.5 h-4.5 text-rose-400 shrink-0" />
+                  <span className="text-[12.5px] font-medium">Terms of Service</span>
+                </button>
+
+                <button
+                  onClick={() => setShowSupport(!showSupport)}
+                  className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-300 hover:bg-slate-850 hover:text-slate-100 text-left cursor-pointer"
+                >
+                  <MessageSquare className="w-4.5 h-4.5 text-blue-400 shrink-0" />
+                  <span className="text-[12.5px] font-medium">Support Help Desk</span>
+                </button>
+                {showSupport && (
+                  <div className="mx-3.5 p-3 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-slate-400 font-sans leading-relaxed">
+                    <strong className="text-white block mb-1">Safaricom Dev Support</strong>
+                    Contact <span className="text-emerald-400 underline">support@harambeeflow.org</span> or visit Safaricom Developer Portal.
+                  </div>
+                )}
+
+                {onLogout && (
+                  <button
+                    onClick={onLogout}
+                    className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-rose-400 hover:bg-rose-950/20 text-left cursor-pointer"
+                  >
+                    <ShieldAlert className="w-4.5 h-4.5 text-rose-500 shrink-0" />
+                    <span className="text-[12.5px] font-semibold">Sign Out / Logout</span>
+                  </button>
+                )}
+              </div>
             )}
           </>
         )}
@@ -359,11 +356,11 @@ export default function Sidebar({
             <Sparkles className="w-3.5 h-3.5" />
           </div>
           <div>
-            <h4 className="text-[11px] font-bold text-slate-200">Gemini Active</h4>
+            <h4 className="text-[11px] font-bold text-slate-200">AI Engine Ready</h4>
             <p className="text-[10px] text-slate-400 mt-0.5 leading-normal">
               {geminiActive 
-                ? "Secure server-side API connection ready." 
-                : "Active sandbox. Secrets ready."}
+                ? "HarambeeFlow AI assistant active." 
+                : "HarambeeFlow AI offline mode."}
             </p>
           </div>
         </div>

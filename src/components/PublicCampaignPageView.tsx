@@ -825,14 +825,9 @@ export default function PublicCampaignPageView({
             <div className="w-9 h-9 bg-gradient-to-tr from-emerald-600 to-teal-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-950/40">
               <span className="text-slate-950 font-black text-sm font-mono">HF</span>
             </div>
-            <div>
-              <span className="text-xs font-mono font-extrabold text-emerald-400 tracking-wider flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                PUBLIC DARAJA LEDGER
-              </span>
-              <h2 className="text-sm font-black text-white tracking-tight leading-none mt-0.5">
-                HarambeeFlow Portal V2
-              </h2>
+            <div className="flex flex-col leading-tight text-left">
+              <span className="text-sm font-sans font-black tracking-tight text-white">HarambeeFlow</span>
+              <span className="text-[10px] font-mono font-medium text-emerald-400 tracking-wide">AI Treasurer</span>
             </div>
           </div>
 
@@ -2116,7 +2111,7 @@ export default function PublicCampaignPageView({
                 </p>
                 <div className="pt-4 border-t border-slate-800 mt-4 text-xs">
                   <span className="text-slate-500 block">SUPPORT CONTACT</span>
-                  <span className="font-bold text-slate-300 block mt-0.5">compliance@harambeeflow.ai</span>
+                  <span className="font-bold text-slate-300 block mt-0.5">support@harambeeflow.org</span>
                 </div>
               </div>
             </div>
@@ -2164,11 +2159,14 @@ export default function PublicCampaignPageView({
           
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="space-y-3 text-left">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 bg-gradient-to-tr from-emerald-600 to-teal-500 rounded-lg flex items-center justify-center text-[10px] font-black text-slate-950">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 bg-gradient-to-tr from-emerald-600 to-teal-500 rounded-lg flex items-center justify-center text-xs font-black text-slate-950">
                   HF
                 </div>
-                <span className="font-bold text-white font-mono text-sm tracking-wider">HarambeeFlow AI</span>
+                <div className="flex flex-col leading-tight text-left">
+                  <span className="font-sans font-black text-white text-sm tracking-tight">HarambeeFlow</span>
+                  <span className="font-mono font-medium text-emerald-400 text-[10px] tracking-wide">AI Treasurer</span>
+                </div>
               </div>
               <p className="text-[11px] text-slate-500 leading-relaxed font-sans">
                 A world-class community cooperative fundraising software leveraging the Safaricom Daraja SDK for live audits, legal protection, and extreme financial visibility.
@@ -2213,12 +2211,15 @@ export default function PublicCampaignPageView({
             <div>
               <span>Powered by </span>
               <strong className="text-slate-400">HarambeeFlow AI</strong>
-              <span> | Verified by HarambeeFlow Audit Service</span>
+              <span> | Official Website: </span>
+              <a href="https://harambeeflow.org" target="_blank" rel="noopener noreferrer" className="text-emerald-400 font-mono hover:underline">
+                harambeeflow.org
+              </a>
             </div>
             <div className="flex gap-4">
               <span className="hover:text-slate-400 transition cursor-pointer">Privacy Policy</span>
               <span className="hover:text-slate-400 transition cursor-pointer">Terms of Service</span>
-              <span>© 2026 HarambeeFlow AI. All rights reserved.</span>
+              <span>© 2026 HarambeeFlow. All Rights Reserved.</span>
             </div>
           </div>
 

@@ -126,7 +126,7 @@ export default function SupporterRelationshipCenter({
         const latest = donorContribs[donorContribs.length - 1];
         const firstName = latest?.firstName || latest?.senderName?.split(" ")[0] || "Supporter";
         const lastName = latest?.lastName || latest?.senderName?.split(" ")[1] || "Friend";
-        const email = `${firstName.toLowerCase()}@harambeeflow.com`;
+        const email = `${firstName.toLowerCase()}@harambeeflow.org`;
         
         // Tags
         const tags = ["Supporter"];

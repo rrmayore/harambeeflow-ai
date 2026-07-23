@@ -97,7 +97,7 @@ export default function CampaignActivationWizard({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-slate-950 p-6 text-slate-100 min-h-full flex items-center justify-center font-sans">
+    <div className="fixed inset-0 z-50 bg-slate-950 p-4 sm:p-6 text-slate-100 overflow-y-auto w-full h-full flex items-center justify-center font-sans">
       <div className="max-w-3xl w-full bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden p-6 sm:p-8 space-y-8 animate-scale-up my-8 relative">
         
         {/* Background glow effect */}

@@ -34,7 +34,7 @@ export async function trackAuthEvent(
       eventType,
       provider,
       userId,
-      email: email || "unknown@harambeeflow.com",
+      email: email || "noreply@harambeeflow.org",
       timestamp: new Date().toISOString(),
       ...(onboardingDuration !== undefined && { onboardingDuration })
     };

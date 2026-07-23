@@ -549,7 +549,7 @@ export default function DocumentVaultView({
       setNewDocTags("");
       setIsUploading(false);
       
-      setSuccessMsg(`Document uploaded successfully! Gemini classified it as '${newD.category}' [${newD.classification}].`);
+      setSuccessMsg(`Document uploaded successfully! HarambeeFlow AI classified it as '${newD.category}' [${newD.classification}].`);
       setTimeout(() => setSuccessMsg(""), 4000);
     } catch (error) {
       console.error(error);
@@ -655,7 +655,7 @@ export default function DocumentVaultView({
           ...prev,
           {
             sender: "ai",
-            text: "Sorry, there was an issue communicating with the server-side Gemini model. Falling back to local offline indexer: I have successfully verified the integrity of all documents in the archive. Checksums match perfectly."
+            text: "Sorry, there was an issue communicating with the server-side AI model. Falling back to local offline indexer: I have successfully verified the integrity of all documents in the archive. Checksums match perfectly."
           }
         ]);
       }, 1000);
@@ -682,7 +682,7 @@ export default function DocumentVaultView({
     if (files && files.length > 0) {
       const firstFile = files[0];
       setNewDocName(firstFile.name.split(".")[0]);
-      setSuccessMsg(`Detected file: ${firstFile.name}. Click submit to process with Gemini AI!`);
+      setSuccessMsg(`Detected file: ${firstFile.name}. Click submit to process with HarambeeFlow AI!`);
       setTimeout(() => setSuccessMsg(""), 4000);
     }
   };
@@ -1041,7 +1041,7 @@ export default function DocumentVaultView({
               <div>
                 <h3 className="text-sm font-extrabold text-slate-950 tracking-tight">Upload Committee Records</h3>
                 <p className="text-xs text-slate-500 mt-1 leading-normal">
-                  Add agreements, budgets, statements, or compliance documents. Gemini AI will automatically index and classify.
+                  Add agreements, budgets, statements, or compliance documents. HarambeeFlow AI will automatically index and classify.
                 </p>
               </div>
 
@@ -1132,7 +1132,7 @@ export default function DocumentVaultView({
                   {isUploading ? (
                     <>
                       <div className="w-4.5 h-4.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Gemini Auto-indexing...
+                      AI Auto-indexing...
                     </>
                   ) : (
                     <>
@@ -1609,7 +1609,7 @@ export default function DocumentVaultView({
                 {assistantLoading && (
                   <div className="bg-slate-50 text-slate-500 border border-slate-150 p-4 rounded-2xl text-xs flex items-center gap-3 w-max">
                     <div className="w-4.5 h-4.5 border-2 border-slate-300 border-t-indigo-600 rounded-full animate-spin" />
-                    <span>Gemini scanning archive indexes...</span>
+                    <span>AI scanning archive indexes...</span>
                   </div>
                 )}
               </div>

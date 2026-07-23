@@ -30,7 +30,7 @@ const mapAuthErrorToFriendlyMessage = (err: any): string => {
     case "auth/popup-closed-by-user":
       return "The Google authentication popup was closed before logging in. Please click 'Continue with Google' again.";
     case "auth/user-disabled":
-      return "This account has been deactivated by security administrators. Please reach out to support@harambeeflow.ai for assistance.";
+      return "This account has been deactivated by security administrators. Please reach out to support@harambeeflow.org for assistance.";
     case "auth/too-many-requests":
       return "Too many failed attempts. Access is temporarily locked. You may reset your password or try again in a few minutes.";
     case "auth/wrong-password":
@@ -447,9 +447,14 @@ export default function AuthScreen({ onSuccess }: AuthScreenProps) {
           <div className="inline-flex p-3 bg-gradient-to-br from-emerald-500 to-green-600 rounded-2xl shadow-lg text-white mb-2">
             <Coins className="w-7 h-7" />
           </div>
-          <h2 className="text-2xl font-black tracking-tight text-white">
-            Harambee<span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-sky-400">Flow</span> AI
-          </h2>
+          <div className="flex flex-col items-center justify-center leading-tight">
+            <h2 className="text-3xl font-sans font-black tracking-tight text-white">
+              HarambeeFlow
+            </h2>
+            <span className="text-sm font-mono font-medium text-emerald-400 tracking-wide mt-1">
+              AI Treasurer
+            </span>
+          </div>
           <p className="text-[11px] uppercase tracking-widest text-slate-400 font-mono font-bold">
             {isRegister ? "Create secure account" : "Authorized fintech desk login"}
           </p>
@@ -591,7 +596,7 @@ export default function AuthScreen({ onSuccess }: AuthScreenProps) {
                   <input
                     type="email"
                     required
-                    placeholder="e.g. treasurer@harambeeflow.or.ke"
+                    placeholder="e.g. info@harambeeflow.org"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-800 text-slate-200 placeholder-slate-600 text-xs rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition font-mono"

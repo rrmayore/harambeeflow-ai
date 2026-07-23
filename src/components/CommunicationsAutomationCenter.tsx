@@ -584,7 +584,7 @@ export default function CommunicationsAutomationCenter({
       }
     } catch (err) {
       console.error(err);
-      triggerToast("Error contacting Gemini AI core service.");
+      triggerToast("Error contacting HarambeeFlow AI service.");
     } finally {
       setLoading(false);
     }
@@ -1431,7 +1431,7 @@ export default function CommunicationsAutomationCenter({
               <div className="lg:col-span-4 bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-xl p-5 space-y-4">
                 <div className="flex items-center gap-2 text-emerald-400">
                   <Bot className="w-5 h-5 animate-pulse" />
-                  <span className="text-xs font-bold uppercase tracking-wider">Gemini AI Message Personalizer</span>
+                  <span className="text-xs font-bold uppercase tracking-wider">HarambeeFlow AI Message Personalizer</span>
                 </div>
                 <p className="text-[11px] text-slate-400 leading-relaxed">
                   Generate hyper-personalized community templates in various tones, audiences and Kenyan dialects instantly.
@@ -1507,7 +1507,7 @@ export default function CommunicationsAutomationCenter({
                     className="w-full py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
                   >
                     <Sparkles className="w-4 h-4 shrink-0" />
-                    <span>{loading ? "Personalizing with Gemini..." : "Generate AI Template"}</span>
+                    <span>{loading ? "Personalizing with AI..." : "Generate AI Template"}</span>
                   </button>
 
                   <AnimatePresence>
@@ -1950,7 +1950,7 @@ export default function CommunicationsAutomationCenter({
                   <div className="space-y-4">
                     <div className="flex items-center gap-2 text-emerald-400">
                       <Sparkles className="w-5 h-5 animate-pulse" />
-                      <span className="text-xs font-bold uppercase tracking-widest">Gemini Communication Analysis</span>
+                      <span className="text-xs font-bold uppercase tracking-widest">HarambeeFlow AI Communication Analysis</span>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

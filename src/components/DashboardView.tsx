@@ -1397,7 +1397,7 @@ TX88283749,2026-06-24,3500,CHAMA INVESTMENT CORP,254755123456`;
                 <div>
                   <label className="text-xs font-mono font-bold text-slate-500 uppercase block mb-1">AI Setup / Internal Translation Notes:</label>
                   <textarea 
-                    placeholder="Add custom notes to prompt the Gemini processor."
+                    placeholder="Add custom notes to prompt the HarambeeFlow AI processor."
                     value={formNotes}
                     onChange={(e) => setFormNotes(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 text-xs rounded-xl px-3 py-2.5 h-16 resize-none focus:outline-none focus:ring-2 focus:ring-green-500/20 text-slate-700"

@@ -1338,7 +1338,7 @@ export default function InsightsView({
                 {aiReport ? (
                   <div className="p-5 bg-slate-900 border border-slate-800 rounded-3xl shadow-xl space-y-3.5">
                     <h3 className="text-xs font-black text-white uppercase tracking-wider font-mono border-b border-slate-800 pb-2">
-                      🧠 Gemini Intelligence Predictive Summary
+                      🧠 HarambeeFlow AI Predictive Summary
                     </h3>
                     <div className="space-y-4 text-xs font-sans text-slate-300 leading-relaxed">
                       <div>
@@ -1357,7 +1357,7 @@ export default function InsightsView({
                   </div>
                 ) : (
                   <div className="p-5 bg-slate-900 border border-slate-800 rounded-3xl text-center text-xs text-slate-400 italic">
-                    Loading Gemini AI Campaign Predictions... Click "Refresh Insights" to compile.
+                    Loading HarambeeFlow AI Campaign Predictions... Click "Refresh Insights" to compile.
                   </div>
                 )}
 

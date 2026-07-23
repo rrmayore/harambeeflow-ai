@@ -341,7 +341,7 @@ export default function LandingPageView({ onEnterApp, onEnterDemo }: LandingPage
                 <div className="space-y-4">
                   <div className="flex items-center gap-3 text-xs text-slate-300">
                     <Mail className="w-4 h-4 text-emerald-400" />
-                    <span>rmayore@gmail.com</span>
+                    <span>info@harambeeflow.org</span>
                   </div>
                   <div className="flex items-center gap-3 text-xs text-slate-300">
                     <Phone className="w-4 h-4 text-emerald-400" />
@@ -376,7 +376,7 @@ export default function LandingPageView({ onEnterApp, onEnterDemo }: LandingPage
                         required
                         value={contactEmail}
                         onChange={(e) => setContactEmail(e.target.value)}
-                        placeholder="e.g. rmayore@gmail.com"
+                        placeholder="e.g. info@harambeeflow.org"
                         className="w-full bg-slate-950 border border-slate-850 rounded-xl px-4 py-3 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                       />
                     </div>
@@ -418,9 +418,10 @@ export default function LandingPageView({ onEnterApp, onEnterDemo }: LandingPage
       {/* Modern Marketing Footer */}
       <footer className="w-full bg-slate-950 border-t border-slate-900 px-6 py-8 mt-auto shrink-0 z-10" id="marketing-footer">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4 text-center sm:text-left">
-          <div className="space-y-1">
-            <p className="text-xs font-black text-white">HarambeeFlow AI Ecosystem</p>
-            <p className="text-[10px] text-slate-500">Non-custodial Lipa Na M-PESA organization and records automation.</p>
+          <div className="flex flex-col leading-tight text-left">
+            <p className="text-sm font-black text-white tracking-tight">HarambeeFlow</p>
+            <p className="text-xs font-mono font-medium text-emerald-400 tracking-wide mt-0.5">AI Treasurer</p>
+            <p className="text-[10px] text-slate-500 mt-1">Non-custodial Lipa Na M-PESA organization and records automation.</p>
           </div>
           <div className="flex gap-4 text-slate-500 text-[11px] font-bold">
             <button onClick={() => setActiveTab("trust")} className="hover:text-slate-300">Trust & Security Policy</button>
@@ -429,9 +430,14 @@ export default function LandingPageView({ onEnterApp, onEnterDemo }: LandingPage
             <span>•</span>
             <button onClick={() => setActiveTab("contact")} className="hover:text-slate-300">Contact Desk</button>
           </div>
-          <p className="text-[10px] text-slate-600 font-mono">
-            &copy; 2026 HarambeeFlow. All rights reserved.
-          </p>
+          <div className="text-right">
+            <p className="text-[10px] text-slate-500 font-mono">
+              &copy; 2026 HarambeeFlow. All rights reserved.
+            </p>
+            <a href="https://harambeeflow.org" target="_blank" rel="noopener noreferrer" className="text-[10px] text-emerald-400 font-mono hover:underline block">
+              https://harambeeflow.org
+            </a>
+          </div>
         </div>
       </footer>
 

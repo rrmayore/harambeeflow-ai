@@ -52,11 +52,14 @@ export default function WelcomeView({
         </div>
 
         {/* Headline and Subtitle */}
-        <div className="space-y-4">
-          <h1 className="text-4xl sm:text-5xl font-sans font-black tracking-tight text-white leading-tight">
-            Welcome to <span className="bg-gradient-to-r from-emerald-400 to-green-500 bg-clip-text text-transparent">HarambeeFlow</span>
+        <div className="flex flex-col items-center justify-center leading-tight space-y-1">
+          <h1 className="text-4xl sm:text-5xl font-sans font-black tracking-tight text-white">
+            HarambeeFlow
           </h1>
-          <p className="text-sm sm:text-base text-slate-400 max-w-md mx-auto leading-relaxed">
+          <span className="text-xl sm:text-2xl font-mono font-medium text-emerald-400 tracking-wide mt-1">
+            AI Treasurer
+          </span>
+          <p className="text-sm sm:text-base text-slate-400 max-w-md mx-auto leading-relaxed pt-3">
             Create your first fundraising campaign in less than two minutes. Let's create your first fundraising campaign.
           </p>
         </div>
@@ -124,8 +127,12 @@ export default function WelcomeView({
         </div>
 
         {/* Passive Status Footer */}
-        <p className="text-[11px] text-slate-500 font-mono">
-          © 2026 HarambeeFlow. Securely integrated with M-PESA Daraja.
+        <p className="text-[11px] text-slate-500 font-mono flex items-center justify-center gap-2">
+          <span>© 2026 HarambeeFlow. All Rights Reserved.</span>
+          <span>•</span>
+          <a href="https://harambeeflow.org" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">
+            https://harambeeflow.org
+          </a>
         </p>
       </div>
 

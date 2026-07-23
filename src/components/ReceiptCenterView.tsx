@@ -49,7 +49,7 @@ export default function ReceiptCenterView({
   };
 
   const handleShare = (code: string) => {
-    const dummyUrl = `https://harambeeflow.com/receipt/HF-2026-${code}`;
+    const dummyUrl = `https://harambeeflow.org/receipt/HF-2026-${code}`;
     navigator.clipboard.writeText(dummyUrl);
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);

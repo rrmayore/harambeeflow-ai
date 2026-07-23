@@ -30,6 +30,7 @@ import CampaignBrandingSettings from "./components/CampaignBrandingSettings";
 import BillingSubscriptionView from "./components/BillingSubscriptionView";
 import ContactSupportModal from "./components/ContactSupportModal";
 import FaqModal from "./components/FaqModal";
+import { BackToTopButton } from "./components/BackToTopButton";
 
 // Import simplified UX refactored components (V2 Refactor)
 import WelcomeView from "./components/WelcomeView";
@@ -57,6 +58,7 @@ import { onAuthStateChanged, signOut, User as FirebaseUser, GoogleAuthProvider, 
 import { 
   collection, 
   getDocs, 
+  getDoc,
   addDoc, 
   doc,
   setDoc,
@@ -192,7 +194,23 @@ export default function App() {
     } else {
       setActiveTab(tab);
     }
+
+    // Smooth scroll the active tab viewport to top
+    setTimeout(() => {
+      const viewport = document.getElementById("main-tab-viewport");
+      if (viewport) {
+        viewport.scrollTo({ top: 0, behavior: "smooth" });
+      }
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }, 50);
   };
+
+  useEffect(() => {
+    const activeNavBtn = document.querySelector('[data-quick-nav-active="true"]');
+    if (activeNavBtn) {
+      activeNavBtn.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     const handleRouting = () => {
@@ -332,14 +350,35 @@ export default function App() {
     }
   }, [activeTab]);
 
+  // Central handler to trigger campaign creation onboarding wizard
+  const handleCreateCampaign = () => {
+    setSidebarOpen(false);
+    setWizardOpen(true);
+  };
+
   // Optional "Load Sample Campaign" seed trigger
   const handleLoadSampleCampaign = async () => {
-    if (!currentUser) return;
     setLoading(true);
     
-    // Seed Nairobi Medical Fund
-    const sampleId = `sample-${Date.now()}`;
-    const sampleProj = {
+    // Check if sample campaign "Nairobi Medical Fund" already exists in local projects state
+    const existingSample = projects.find(p => 
+      p.id === "sample-nairobi-med" || 
+      p.name?.toLowerCase().includes("nairobi medical") || 
+      p.accountReference === "NAIROBIMED"
+    );
+
+    if (existingSample) {
+      console.log("[SAMPLE CAMPAIGN] Found existing sample campaign, loading directly:", existingSample.id);
+      setActiveProject(existingSample);
+      setActiveTab("dashboard");
+      setWizardOpen(false);
+      setSidebarOpen(false);
+      setLoading(false);
+      return;
+    }
+
+    const sampleId = "sample-nairobi-med";
+    const sampleProjData = {
       id: sampleId,
       fundraiserName: "Nairobi Medical Fund",
       targetAmount: 500000,
@@ -350,7 +389,7 @@ export default function App() {
       accountReference: "NAIROBIMED",
       treasurerPhone: "254712345678",
       whatsappGroupName: "Nairobi Medical Harambee",
-      createdBy: currentUser.uid,
+      createdBy: currentUser?.uid || "demo-user-123",
       createdAt: new Date().toISOString(),
       status: "Active",
       themeColor: "Emerald",
@@ -359,80 +398,123 @@ export default function App() {
       organizer: "Richard Mayore"
     };
 
+    const donation1 = {
+      id: "sample-donation-1",
+      campaignId: sampleId,
+      projectId: sampleId,
+      amount: 25000,
+      senderName: "Pastor John Gichuru",
+      senderPhone: "254711111111",
+      transactionCode: "QRL83K9D4J",
+      timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
+      category: "Committee Member",
+      rawMessage: "QRL83K9D4J Confirmed. KES 25,000.00 received from Pastor John Gichuru on 24/6/26 at 5:12 PM.",
+      cleanedName: "Pastor John Gichuru",
+      hasDuplicates: false,
+      notes: "First committee pledge installment",
+      status: "completed"
+    };
+
+    const donation2 = {
+      id: "sample-donation-2",
+      campaignId: sampleId,
+      projectId: sampleId,
+      amount: 150000,
+      senderName: "Hon. Jane Anyango",
+      senderPhone: "254722222222",
+      transactionCode: "SL987FG6H5",
+      timestamp: new Date(Date.now() - 3600000 * 5).toISOString(),
+      category: "Sponsor",
+      rawMessage: "SL987FG6H5 Confirmed. KES 150,000.00 received from Hon. Jane Anyango.",
+      cleanedName: "Hon. Jane Anyango",
+      hasDuplicates: false,
+      notes: "Matching donation promise",
+      status: "completed"
+    };
+
+    const donation3 = {
+      id: "sample-donation-3",
+      campaignId: sampleId,
+      projectId: sampleId,
+      amount: 10000,
+      senderName: "David Omwamba",
+      senderPhone: "254733333333",
+      transactionCode: "TX333MM44K",
+      timestamp: new Date(Date.now() - 3600000 * 24).toISOString(),
+      category: "Well-wisher",
+      rawMessage: "TX333MM44K Confirmed. KES 10,000.00 received from David Omwamba.",
+      cleanedName: "David Omwamba",
+      hasDuplicates: false,
+      notes: "Family support contribution",
+      status: "completed"
+    };
+
     try {
-      // 1. Write the fundraiser
-      await setDoc(doc(db, "fundraisers", sampleId), sampleProj);
-      
-      // 2. Write 3 sample donations
-      const donation1 = {
-        id: "sample-donation-1",
-        campaignId: sampleId,
-        amount: 25000,
-        senderName: "Pastor John Gichuru",
-        senderPhone: "254711111111",
-        transactionCode: "QRL83K9D4J",
-        timestamp: new Date(Date.now() - 3600000 * 2).toISOString(), // 2 hrs ago
-        category: "Committee Member",
-        rawMessage: "QRL83K9D4J Confirmed. KES 25,000.00 received from Pastor John Gichuru on 24/6/26 at 5:12 PM.",
-        cleanedName: "Pastor John Gichuru",
-        hasDuplicates: false,
-        notes: "First committee pledge installment",
-        status: "completed"
-      };
+      if (db) {
+        // Check if doc exists in Firestore first
+        const snap = await getDoc(doc(db, "fundraisers", sampleId));
+        if (snap.exists()) {
+          const data = snap.data();
+          const mappedProj = mapFundraiserToProject(data);
+          setProjects(prev => {
+            const exists = prev.some(p => p.id === mappedProj.id);
+            return exists ? prev : [mappedProj, ...prev];
+          });
+          setActiveProject(mappedProj);
+          setActiveTab("dashboard");
+          setWizardOpen(false);
+          setSidebarOpen(false);
+          setLoading(false);
+          return;
+        }
 
-      const donation2 = {
-        id: "sample-donation-2",
-        campaignId: sampleId,
-        amount: 150000,
-        senderName: "Hon. Jane Anyango",
-        senderPhone: "254722222222",
-        transactionCode: "SL987FG6H5",
-        timestamp: new Date(Date.now() - 3600000 * 5).toISOString(), // 5 hrs ago
-        category: "Sponsor",
-        rawMessage: "SL987FG6H5 Confirmed. KES 150,000.00 received from Hon. Jane Anyango.",
-        cleanedName: "Hon. Jane Anyango",
-        hasDuplicates: false,
-        notes: "Matching donation promise",
-        status: "completed"
-      };
+        // Write the fundraiser & sample donations
+        await setDoc(doc(db, "fundraisers", sampleId), sampleProjData);
+        await setDoc(doc(db, "donations", donation1.id), donation1);
+        await setDoc(doc(db, "donations", donation2.id), donation2);
+        await setDoc(doc(db, "donations", donation3.id), donation3);
 
-      const donation3 = {
-        id: "sample-donation-3",
-        campaignId: sampleId,
-        amount: 10000,
-        senderName: "David Omwamba",
-        senderPhone: "254733333333",
-        transactionCode: "TX333MM44K",
-        timestamp: new Date(Date.now() - 3600000 * 24).toISOString(), // 24 hrs ago
-        category: "Well-wisher",
-        rawMessage: "TX333MM44K Confirmed. KES 10,000.00 received from David Omwamba.",
-        cleanedName: "David Omwamba",
-        hasDuplicates: false,
-        notes: "Family support contribution",
-        status: "completed"
-      };
+        const welcomeMsgId = `msg-welcome-sample-${Date.now()}`;
+        await setDoc(doc(db, "whatsappMessages", welcomeMsgId), {
+          id: welcomeMsgId,
+          groupName: "Nairobi Medical Harambee",
+          message: `📢 Welcome to the "Nairobi Medical Fund" Harambee Group! Automated M-PESA paybill reconciliation (Paybill: 609211, Account: NAIROBIMED) is now LIVE. Status updates and contributor receipts will be posted here in real-time.`,
+          timestamp: new Date().toISOString(),
+          isSystem: true
+        });
+      }
 
-      await setDoc(doc(db, "donations", donation1.id), donation1);
-      await setDoc(doc(db, "donations", donation2.id), donation2);
-      await setDoc(doc(db, "donations", donation3.id), donation3);
+      // Update local state
+      const mappedProj = mapFundraiserToProject(sampleProjData);
+      const mappedD1 = mapDonationToContribution(donation1);
+      const mappedD2 = mapDonationToContribution(donation2);
+      const mappedD3 = mapDonationToContribution(donation3);
 
-      // 3. Write a welcome message to WhatsApp Messages
-      const welcomeMsgId = `msg-welcome-sample-${Date.now()}`;
-      await setDoc(doc(db, "whatsappMessages", welcomeMsgId), {
-        id: welcomeMsgId,
-        groupName: "Nairobi Medical Harambee",
-        message: `📢 Welcome to the "Nairobi Medical Fund" Harambee Group! Automated M-PESA paybill reconciliation (Paybill: 609211, Account: NAIROBIMED) is now LIVE. Status updates and contributor receipts will be posted here in real-time.`,
-        timestamp: new Date().toISOString(),
-        isSystem: true
+      setProjects(prev => {
+        const exists = prev.some(p => p.id === mappedProj.id);
+        return exists ? prev : [mappedProj, ...prev];
       });
-
-      // Update state
-      const mappedProj = mapFundraiserToProject(sampleProj);
-      setProjects([mappedProj]);
+      setContributions(prev => {
+        const existingIds = new Set(prev.map(c => c.id));
+        const newDons = [mappedD1, mappedD2, mappedD3].filter(d => !existingIds.has(d.id));
+        return [...newDons, ...prev];
+      });
       setActiveProject(mappedProj);
       setActiveTab("dashboard");
+      setWizardOpen(false);
+      setSidebarOpen(false);
     } catch (err) {
       console.error("Error seeding sample campaign:", err);
+      // Local state fallback
+      const mappedProj = mapFundraiserToProject(sampleProjData);
+      setProjects(prev => {
+        const exists = prev.some(p => p.id === mappedProj.id);
+        return exists ? prev : [mappedProj, ...prev];
+      });
+      setActiveProject(mappedProj);
+      setActiveTab("dashboard");
+      setWizardOpen(false);
+      setSidebarOpen(false);
     } finally {
       setLoading(false);
     }
@@ -1097,7 +1179,7 @@ export default function App() {
     setIsDemoMode(true);
     setCurrentUser({
       uid: "demo-user-123",
-      email: "demo-treasurer@harambeeflow.com",
+      email: "info@harambeeflow.org",
       displayName: "Demo Treasurer",
       emailVerified: true
     } as any);
@@ -1901,10 +1983,13 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
         <div className="absolute top-[15%] left-[15%] w-[40%] h-[40%] bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-[15%] right-[15%] w-[40%] h-[40%] bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute top-6 left-6 flex items-center gap-2.5">
-          <div className="p-1.5 text-xs bg-emerald-500 rounded-lg font-mono font-black text-slate-950 shadow-lg shadow-emerald-500/20">
+          <div className="p-2 text-xs bg-emerald-500 rounded-xl font-mono font-black text-slate-950 shadow-lg shadow-emerald-500/20">
             HF
           </div>
-          <span className="text-sm font-black text-white tracking-tight">HarambeeFlow AI</span>
+          <div className="flex flex-col leading-tight text-left">
+            <span className="text-base font-sans font-black tracking-tight text-white">HarambeeFlow</span>
+            <span className="text-xs font-mono font-medium text-emerald-400 tracking-wide mt-0.5">AI Treasurer</span>
+          </div>
         </div>
         <div className="p-8 text-center space-y-6 relative z-10">
           <div className="relative w-16 h-16 mx-auto">
@@ -1960,7 +2045,7 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
         setIsDeveloperMode={setIsDeveloperMode}
         syncStatus={syncStatus}
         hasCampaign={projects.length > 0}
-        onCreateCampaign={() => setWizardOpen(true)}
+        onCreateCampaign={handleCreateCampaign}
         onLoadSampleCampaign={handleLoadSampleCampaign}
         onShowHelp={() => setTourOpen(true)}
       />
@@ -1969,21 +2054,31 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
       <div className={`flex flex-col flex-1 ${
         projects.length === 0 && wizardOpen ? "min-h-screen" : "h-screen overflow-hidden"
       }`}>
-        <header className="bg-slate-900 border-b border-slate-800 p-4 shrink-0 flex items-center justify-between md:hidden">
-          <div className="flex items-center gap-2 text-white">
-            <div className="w-7 h-7 bg-green-600 rounded-lg flex items-center justify-center text-xs font-black">
+        <header className="bg-slate-900 border-b border-slate-800 px-4 py-3 shrink-0 flex items-center justify-between md:hidden sticky top-0 z-30 shadow-md">
+          <div 
+            className="flex items-center gap-2.5 text-white cursor-pointer active:opacity-80 transition-opacity"
+            onClick={() => handleSetActiveTab("dashboard")}
+          >
+            <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-xl flex items-center justify-center text-xs font-black text-slate-950 shadow-md shadow-emerald-500/20 shrink-0">
               HF
             </div>
-            <span className="text-sm font-sans font-bold">HarambeeFlow AI</span>
+            <div className="flex flex-col leading-tight text-left">
+              <span className="text-base font-sans font-black tracking-tight text-white">HarambeeFlow</span>
+              <span className="text-xs font-mono font-medium text-emerald-400 tracking-wide mt-0.5">
+                AI Treasurer
+              </span>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {renderSyncStatusBadge(syncStatus)}
             <button 
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="text-slate-200 p-1 bg-slate-800 rounded-lg"
+              className="text-slate-200 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-750 border border-slate-700/60 rounded-xl transition-all duration-150 active:scale-95 flex items-center gap-1.5 cursor-pointer min-h-[38px]"
+              aria-label="Open menu"
             >
-              <Menu className="w-5 h-5" />
+              <Menu className="w-4.5 h-4.5 text-emerald-400" />
+              <span className="text-xs font-bold text-slate-200">Menu</span>
             </button>
           </div>
         </header>
@@ -1998,8 +2093,14 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
                   <X className="w-5 h-5 text-slate-300" />
                 </button>
               </div>
-              <div className="px-6 pb-6 border-b border-slate-800">
-                <h3 className="font-sans font-bold">HarambeeFlow AI Drawer</h3>
+              <div className="px-6 pb-5 border-b border-slate-800 flex items-center gap-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-xl flex items-center justify-center text-xs font-black text-slate-950 shadow-md">
+                  HF
+                </div>
+                <div className="flex flex-col leading-tight text-left">
+                  <span className="text-base font-sans font-black tracking-tight text-white">HarambeeFlow</span>
+                  <span className="text-xs font-mono font-medium text-emerald-400 tracking-wide mt-0.5">AI Treasurer</span>
+                </div>
               </div>
               <Sidebar 
                 activeTab={activeTab} 
@@ -2017,7 +2118,7 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
                 setIsDeveloperMode={setIsDeveloperMode}
                 syncStatus={syncStatus}
                 hasCampaign={projects.length > 0}
-                onCreateCampaign={() => setWizardOpen(true)}
+                onCreateCampaign={handleCreateCampaign}
                 onLoadSampleCampaign={handleLoadSampleCampaign}
                 onShowHelp={() => setTourOpen(true)}
               />
@@ -2069,70 +2170,69 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
                       setActiveTab("dashboard");
                     }}
                   />
+                ) : wizardOpen ? (
+                  <OrganizerOnboardingWizard 
+                    currentUser={currentUser}
+                    isDemoMode={isDemoMode}
+                    onAddProject={handleAddNewProject}
+                    onClose={() => setWizardOpen(false)}
+                    onComplete={async (campaignId) => {
+                      setWizardOpen(false);
+                      
+                      if (campaignId) {
+                        const createdProj = projects.find(p => p.id === campaignId);
+                        if (createdProj) {
+                          setActiveProject(createdProj);
+                          setDraftProject(createdProj);
+                        }
+                      }
+                      
+                      // Begin beautiful synchronization steps
+                      setSyncPhase("creating");
+                      await new Promise(r => setTimeout(r, 600));
+                      
+                      setSyncPhase("saving");
+                      await new Promise(r => setTimeout(r, 800));
+                      
+                      setSyncPhase("replicating");
+                      // Wait until the real-time snap database snapshot includes the project
+                      let found = false;
+                      for (let i = 0; i < 30; i++) {
+                        const matching = projects.find(p => p.id === campaignId);
+                        if (matching) {
+                          found = true;
+                          setActiveProject(matching);
+                          setDraftProject(matching);
+                          break;
+                        }
+                        await new Promise(r => setTimeout(r, 100));
+                      }
+                      
+                      setSyncPhase("coaching");
+                      await new Promise(r => setTimeout(r, 800));
+                      
+                      setSyncPhase("ready");
+                      await new Promise(r => setTimeout(r, 600));
+                      
+                      // Transition to Activation Wizard
+                      setSyncPhase("idle");
+                      setLaunchChecklistOpen(true);
+                      setActiveTab("dashboard");
+                    }}
+                  />
                 ) : projects.length === 0 ? (
-                  wizardOpen ? (
-                    <OrganizerOnboardingWizard 
-                      currentUser={currentUser}
-                      isDemoMode={isDemoMode}
-                      onAddProject={handleAddNewProject}
-                      onComplete={async (campaignId) => {
-                        setWizardOpen(false);
-                        
-                        if (campaignId) {
-                          const createdProj = projects.find(p => p.id === campaignId);
-                          if (createdProj) {
-                            setActiveProject(createdProj);
-                            setDraftProject(createdProj);
-                          }
-                        }
-                        
-                        // Begin beautiful synchronization steps (Phase 2 & 9)
-                        setSyncPhase("creating");
-                        await new Promise(r => setTimeout(r, 600));
-                        
-                        setSyncPhase("saving");
-                        await new Promise(r => setTimeout(r, 800));
-                        
-                        setSyncPhase("replicating");
-                        // Wait until the real-time snap database snapshot includes the project
-                        let found = false;
-                        for (let i = 0; i < 30; i++) {
-                          const matching = projects.find(p => p.id === campaignId);
-                          if (matching) {
-                            found = true;
-                            setActiveProject(matching);
-                            setDraftProject(matching);
-                            break;
-                          }
-                          await new Promise(r => setTimeout(r, 100));
-                        }
-                        
-                        setSyncPhase("coaching");
-                        await new Promise(r => setTimeout(r, 800));
-                        
-                        setSyncPhase("ready");
-                        await new Promise(r => setTimeout(r, 600));
-                        
-                        // Transition to Activation Wizard
-                        setSyncPhase("idle");
-                        setLaunchChecklistOpen(true);
-                        setActiveTab("dashboard");
-                      }}
-                    />
-                  ) : (
-                    <WelcomeView 
-                      onCreateCampaign={() => setWizardOpen(true)}
-                      onLoadSampleCampaign={handleLoadSampleCampaign}
-                      isLoading={loading}
-                      onStartTour={() => setTourOpen(true)}
-                    />
-                  )
+                  <WelcomeView 
+                    onCreateCampaign={handleCreateCampaign}
+                    onLoadSampleCampaign={handleLoadSampleCampaign}
+                    isLoading={loading}
+                    onStartTour={() => setTourOpen(true)}
+                  />
                 ) : (
                   // Else if campaigns exist, render our streamlined tabs
                   <>
                     {/* V6 Quick Navigation Bar */}
                     <nav 
-                      className="bg-slate-900 border-b border-slate-800 shrink-0 z-10 sticky top-0" 
+                      className="bg-slate-900/95 backdrop-blur-md border-b border-slate-800 shrink-0 z-20 sticky top-0 shadow-sm" 
                       role="navigation" 
                       aria-label="Campaign Quick Navigation"
                     >
@@ -2145,8 +2245,8 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
                           scrollbar-width: none;
                         }
                       `}} />
-                      <div className="max-w-7xl mx-auto px-4">
-                        <div className="flex overflow-x-auto scrollbar-none items-center gap-1.5 py-1 md:py-2 -mb-px">
+                      <div className="max-w-7xl mx-auto px-3 sm:px-4">
+                        <div className="flex overflow-x-auto scrollbar-none items-center gap-1.5 py-1.5 md:py-2 -mb-px">
                           {[
                             { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
                             { id: "campaigns", label: "Campaigns", icon: Layers },
@@ -2164,16 +2264,16 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
                             { id: "billing", label: "Billing & Subscription 💳", icon: CreditCard },
                           ].map((item) => {
                             const Icon = item.icon;
-                            const isActive = activeTab === item.id;
+                            const isActive = activeTab === item.id || (item.id === "settings" && activeTab === "billing");
                             return (
                               <button
                                 key={item.id}
                                 onClick={() => handleSetActiveTab(item.id)}
                                 data-quick-nav-active={isActive ? "true" : "false"}
-                                className={`flex items-center gap-2.5 px-4 py-2.5 md:py-3 text-[12.5px] font-medium border-b-2 transition-all duration-200 ease-in-out whitespace-nowrap min-h-[44px] cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-emerald-500 rounded-t-lg ${
+                                className={`flex items-center gap-2 px-3.5 py-2 md:py-2.5 text-xs font-medium border-b-2 transition-all duration-200 ease-in-out whitespace-nowrap min-h-[42px] cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-emerald-500 rounded-t-lg ${
                                   isActive
-                                    ? "text-white border-emerald-500 font-bold"
-                                    : "text-slate-400 border-transparent hover:text-slate-200"
+                                    ? "text-white border-emerald-500 font-bold bg-slate-800/40"
+                                    : "text-slate-400 border-transparent hover:text-slate-200 hover:bg-slate-800/20"
                                 }`}
                                 aria-current={isActive ? "page" : undefined}
                               >
@@ -2185,6 +2285,9 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
                         </div>
                       </div>
                     </nav>
+
+                    {/* Scrollable Viewport Container for Active Tab */}
+                    <div id="main-tab-viewport" className="flex-1 overflow-y-auto pb-24 md:pb-6 relative w-full h-full">
                     {activeTab === "dashboard" && (!activeProject ? (
                       <div className="flex-1 bg-slate-950 flex flex-col items-center justify-center p-6 text-center text-slate-100 min-h-screen">
                         <div className="space-y-4 max-w-sm animate-fade-in">
@@ -3176,6 +3279,48 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
                         }}
                       />
                     )}
+                    </div>
+
+                    {/* Mobile Bottom Navigation Bar */}
+                    {projects.length > 0 && activeTab !== "landing" && activeTab !== "trust" && !wizardOpen && !launchChecklistOpen && (
+                      <nav 
+                        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 px-3 py-1.5 flex items-center justify-around shadow-2xl pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+                        aria-label="Mobile Bottom Navigation"
+                      >
+                        {[
+                          { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+                          { id: "campaigns", label: "Campaigns", icon: Layers },
+                          { id: "supporters", label: "Supporters", icon: Users },
+                          { id: "report", label: "Reports", icon: FileText },
+                          { id: "settings", label: "Settings", icon: Settings },
+                        ].map((item) => {
+                          const Icon = item.icon;
+                          const isActive = activeTab === item.id || (item.id === "settings" && activeTab === "billing");
+                          return (
+                            <button
+                              key={item.id}
+                              onClick={() => handleSetActiveTab(item.id)}
+                              className={`flex flex-col items-center justify-center min-w-[56px] py-1 px-2 rounded-xl transition-all duration-200 cursor-pointer ${
+                                isActive
+                                  ? "text-emerald-400 font-bold bg-slate-800/90 border border-emerald-500/20 shadow-inner"
+                                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
+                              }`}
+                              aria-current={isActive ? "page" : undefined}
+                            >
+                              <div className="relative">
+                                <Icon className={`w-5 h-5 transition-transform duration-200 ${isActive ? "scale-110 text-emerald-400" : "text-slate-400"}`} />
+                                {isActive && (
+                                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                                )}
+                              </div>
+                              <span className={`text-[10px] mt-0.5 tracking-tight leading-tight ${isActive ? "font-bold text-white" : "font-medium text-slate-400"}`}>
+                                {item.label}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </nav>
+                    )}
                   </>
                 )}
               </>
@@ -3183,8 +3328,12 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
 
             {/* Quick footer bar with "Setup New Fundraiser" launcher button */}
             <footer className="bg-white border-t border-slate-200 px-6 py-3 shrink-0 flex flex-wrap items-center justify-between text-xs text-slate-500">
-              <div>
-                © 2026 HarambeeFlow AI System. Formatted for Safaricom Daraja M-PESA.
+              <div className="flex items-center gap-2">
+                <span>© 2026 HarambeeFlow. All Rights Reserved.</span>
+                <span>•</span>
+                <a href="https://harambeeflow.org" target="_blank" rel="noopener noreferrer" className="text-emerald-600 font-mono hover:underline font-semibold">
+                  https://harambeeflow.org
+                </a>
               </div>
               <button 
                 onClick={() => setShowAddProject(true)}
@@ -3550,6 +3699,9 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
         isOpen={faqModalOpen}
         onClose={() => setFaqModalOpen(false)}
       />
+
+      {/* Global Smart Back To Top Floating Button */}
+      <BackToTopButton />
     </div>
     </PWAFrameWrapper>
   );

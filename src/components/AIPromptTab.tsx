@@ -76,7 +76,7 @@ Format your output inside of a JSON string with a single key "narrative" holding
     <div className="flex-1 overflow-y-auto bg-[#F8FAFC] text-slate-800 p-6 md:p-8 animate-fade-in">
       <div className="mb-8 p-0.5">
         <span className="text-xs font-mono font-bold tracking-widest text-[#10B981] uppercase">Cognitive Processing Centre</span>
-        <h2 className="text-2xl md:text-3xl font-sans font-extrabold tracking-tight text-slate-900 mt-1">Google AI Prompt Core & Sandbox</h2>
+        <h2 className="text-2xl md:text-3xl font-sans font-extrabold tracking-tight text-slate-900 mt-1">HarambeeFlow AI Core & Provider Sandbox</h2>
         <p className="text-sm text-slate-500 mt-2 leading-relaxed max-w-2xl">
           HarambeeFlow AI leverages Google Gemini models server-side to format incoming data, classify segments, and generate high-morale group reports automatically.
         </p>

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { 
   Sparkles, CheckCircle2, Coins, ArrowRight, ArrowLeft, 
   Settings, MessageSquare, Users, ShieldCheck, Landmark, 
-  Smartphone, FileText, Check, Plus, Trash2, Loader2, Play, AlertTriangle,
+  Smartphone, FileText, Check, Plus, Trash2, Loader2, Play, AlertTriangle, X,
   Camera, Upload, Image as ImageIcon, HeartPulse, Flame, GraduationCap, Gift, Tent, Globe,
   Building, CheckSquare, Share2, Copy, Lock, ShieldAlert, CheckSquare as CheckSquareIcon, ExternalLink
 } from "lucide-react";
@@ -16,6 +16,7 @@ interface OrganizerOnboardingWizardProps {
   isDemoMode: boolean;
   onAddProject: (newProj: any) => Promise<any>;
   onComplete: (campaignId?: string) => void;
+  onClose?: () => void;
 }
 
 const COUNTIES = [
@@ -48,7 +49,8 @@ export default function OrganizerOnboardingWizard({
   currentUser,
   isDemoMode,
   onAddProject,
-  onComplete
+  onComplete,
+  onClose
 }: OrganizerOnboardingWizardProps) {
   const [step, setStep] = useState(() => {
     const savedStep = localStorage.getItem(`onboarding_step_${currentUser?.uid || "guest"}`);
@@ -342,133 +344,143 @@ export default function OrganizerOnboardingWizard({
   const [launchedCampaignId, setLaunchedCampaignId] = useState<string>("");
 
   const handleLaunch = async () => {
+    if (loading) return;
     setLoading(true);
     setErrorMsg("");
 
+    const timeoutDuration = 15000;
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error("Launch operation timed out. Please try again.")), timeoutDuration);
+    });
+
     try {
-      const orgId = `org-${Date.now()}`;
-      const payAccountId = `payacc-${Date.now()}`;
-      const userId = currentUser?.uid || "demo-user-123";
+      const launchLogic = (async () => {
+        const orgId = `org-${Date.now()}`;
+        const payAccountId = `payacc-${Date.now()}`;
+        const userId = currentUser?.uid || "demo-user-123";
 
-      // 1. Save Organization details to Firestore (or state if demo)
-      const orgPayload = {
-        id: orgId,
-        name: form.orgName.trim(),
-        type: form.orgType,
-        logo: form.orgLogo,
-        description: form.orgDescription.trim(),
-        county: form.orgCounty,
-        contactPhone: form.orgPhone.trim(),
-        contactEmail: form.orgEmail.trim(),
-        website: form.orgWebsite.trim(),
-        createdBy: userId,
-        createdAt: new Date().toISOString()
-      };
-
-      // 2. Save Payment Account details
-      const paymentAccountPayload = {
-        id: payAccountId,
-        organizationId: orgId,
-        tillNumber: form.tillNumber.trim(),
-        paybillNumber: form.paybillNumber.trim(),
-        accountName: form.accountName || form.orgName.trim(),
-        businessName: validationResult?.businessName || form.orgName.trim(),
-        accountReferenceFormat: form.accountReferenceFormat,
-        createdBy: userId,
-        createdAt: new Date().toISOString()
-      };
-
-      // 3. Save Custom User Profile
-      const userProfilePayload = {
-        id: userId,
-        email: currentUser?.email || "demo@harambeeflow.com",
-        displayName: currentUser?.displayName || form.orgName.trim(),
-        onboarded: true,
-        onboardedAt: new Date().toISOString(),
-        organizationId: orgId,
-        createdAt: new Date().toISOString()
-      };
-
-      if (!isDemoMode && db) {
-        const runWithTimeout = async (promise: Promise<any>, timeoutMs = 2500) => {
-          return Promise.race([
-            promise,
-            new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), timeoutMs))
-          ]);
+        // 1. Save Organization details to Firestore (or state if demo)
+        const orgPayload = {
+          id: orgId,
+          name: form.orgName.trim(),
+          type: form.orgType,
+          logo: form.orgLogo,
+          description: form.orgDescription.trim(),
+          county: form.orgCounty,
+          contactPhone: form.orgPhone.trim(),
+          contactEmail: form.orgEmail.trim(),
+          website: form.orgWebsite.trim(),
+          createdBy: userId,
+          createdAt: new Date().toISOString()
         };
 
-        try {
-          await runWithTimeout(setDoc(doc(db, "organizations", orgId), orgPayload));
-          await runWithTimeout(setDoc(doc(db, "paymentAccounts", payAccountId), paymentAccountPayload));
-          await runWithTimeout(setDoc(doc(db, "userProfiles", userId), userProfilePayload));
-        } catch (error) {
-          console.warn("Firestore onboarding writes timed out or failed. Falling back to local storage and continuing...", error);
+        // 2. Save Payment Account details
+        const paymentAccountPayload = {
+          id: payAccountId,
+          organizationId: orgId,
+          tillNumber: form.tillNumber.trim(),
+          paybillNumber: form.paybillNumber.trim(),
+          accountName: form.accountName || form.orgName.trim(),
+          businessName: validationResult?.businessName || form.orgName.trim(),
+          accountReferenceFormat: form.accountReferenceFormat,
+          createdBy: userId,
+          createdAt: new Date().toISOString()
+        };
+
+        // 3. Save Custom User Profile
+        const userProfilePayload = {
+          id: userId,
+          email: currentUser?.email || "info@harambeeflow.org",
+          displayName: currentUser?.displayName || form.orgName.trim(),
+          onboarded: true,
+          onboardedAt: new Date().toISOString(),
+          organizationId: orgId,
+          createdAt: new Date().toISOString()
+        };
+
+        if (!isDemoMode && db) {
+          const runWithTimeout = async (promise: Promise<any>, timeoutMs = 2500) => {
+            return Promise.race([
+              promise,
+              new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), timeoutMs))
+            ]);
+          };
+
+          try {
+            await runWithTimeout(setDoc(doc(db, "organizations", orgId), orgPayload));
+            await runWithTimeout(setDoc(doc(db, "paymentAccounts", payAccountId), paymentAccountPayload));
+            await runWithTimeout(setDoc(doc(db, "userProfiles", userId), userProfilePayload));
+          } catch (error) {
+            console.warn("Firestore onboarding writes timed out or failed. Falling back to local storage and continuing...", error);
+          }
+          
+          // Always persist locally as a secondary local cache fallback
+          localStorage.setItem(`demo_org_${userId}`, JSON.stringify(orgPayload));
+          localStorage.setItem(`demo_pay_${userId}`, JSON.stringify(paymentAccountPayload));
+          localStorage.setItem(`demo_profile_${userId}`, JSON.stringify(userProfilePayload));
+        } else {
+          // Persist demo state locally
+          localStorage.setItem(`demo_org_${userId}`, JSON.stringify(orgPayload));
+          localStorage.setItem(`demo_pay_${userId}`, JSON.stringify(paymentAccountPayload));
+          localStorage.setItem(`demo_profile_${userId}`, JSON.stringify(userProfilePayload));
         }
+
+        // 4. Create first fundraiser campaign via the app's standard fundraiser engine
+        const fundraiserPayload = {
+          name: form.fundraiserTitle.trim(),
+          targetAmount: Number(form.fundraiserGoal),
+          description: form.fundraiserDesc.trim(),
+          category: form.fundraiserCategory,
+          paybillNumber: form.paybillNumber.trim() || form.tillNumber.trim(),
+          accountReference: form.fundraiserSlug.toUpperCase().replace(/[^A-Z0-9]/g, ""),
+          treasurerPhone: form.orgPhone.trim(),
+          whatsappGroupName: `${form.fundraiserTitle.trim()} Group`,
+          trackingMethod: "live_daraja",
+          healthScore: 100,
+          organizer: form.orgName.trim(),
+          themeColor: "Blue",
+          motto: getBrandingForCategory(form.fundraiserCategory).motto,
+          campaignImage: form.fundraiserCoverImage,
+          campaignLogo: form.orgLogo,
+          campaignCategory: form.fundraiserCategory,
+          slug: form.fundraiserSlug,
+          organizationId: orgId,
+          paymentAccountId: payAccountId,
+          endDate: form.fundraiserEndDate
+        };
+
+        const result = await onAddProject(fundraiserPayload);
         
-        // Always persist locally as a secondary local cache fallback
-        localStorage.setItem(`demo_org_${userId}`, JSON.stringify(orgPayload));
-        localStorage.setItem(`demo_pay_${userId}`, JSON.stringify(paymentAccountPayload));
-        localStorage.setItem(`demo_profile_${userId}`, JSON.stringify(userProfilePayload));
-      } else {
-        // Persist demo state locally
-        localStorage.setItem(`demo_org_${userId}`, JSON.stringify(orgPayload));
-        localStorage.setItem(`demo_pay_${userId}`, JSON.stringify(paymentAccountPayload));
-        localStorage.setItem(`demo_profile_${userId}`, JSON.stringify(userProfilePayload));
-      }
+        if (result && result.id) {
+          setLaunchedCampaignId(result.id);
+        }
 
-      // 4. Create first fundraiser campaign via the app's standard fundraiser engine
-      const fundraiserPayload = {
-        name: form.fundraiserTitle.trim(),
-        targetAmount: Number(form.fundraiserGoal),
-        description: form.fundraiserDesc.trim(),
-        category: form.fundraiserCategory,
-        paybillNumber: form.paybillNumber.trim() || form.tillNumber.trim(),
-        accountReference: form.fundraiserSlug.toUpperCase().replace(/[^A-Z0-9]/g, ""),
-        treasurerPhone: form.orgPhone.trim(),
-        whatsappGroupName: `${form.fundraiserTitle.trim()} Group`,
-        trackingMethod: "live_daraja",
-        healthScore: 100,
-        organizer: form.orgName.trim(),
-        themeColor: "Blue",
-        motto: getBrandingForCategory(form.fundraiserCategory).motto,
-        campaignImage: form.fundraiserCoverImage,
-        campaignLogo: form.orgLogo,
-        campaignCategory: form.fundraiserCategory,
-        slug: form.fundraiserSlug,
-        organizationId: orgId,
-        paymentAccountId: payAccountId,
-        endDate: form.fundraiserEndDate
-      };
+        setSuccess(true);
+        // Clean up onboarding localStorage cache upon success
+        localStorage.removeItem(`onboarding_form_${currentUser?.uid || "guest"}`);
+        localStorage.removeItem(`onboarding_step_${currentUser?.uid || "guest"}`);
 
-      const result = await onAddProject(fundraiserPayload);
-      
-      if (result && result.id) {
-        setLaunchedCampaignId(result.id);
-      }
+        // Track onboarding complete event
+        const startTimeStr = localStorage.getItem(`onboarding_start_time_${currentUser?.uid}`);
+        let durationSec = 134; // default baseline
+        if (startTimeStr) {
+          const diffMs = Date.now() - parseInt(startTimeStr, 10);
+          durationSec = Math.max(10, Math.round(diffMs / 1000));
+        }
+        import("../lib/analytics").then((m) => {
+          m.trackAuthEvent("onboarding_complete", "email", currentUser?.uid || "guest", currentUser?.email || "", durationSec);
+        });
 
-      setSuccess(true);
-      // Clean up onboarding localStorage cache upon success
-      localStorage.removeItem(`onboarding_form_${currentUser?.uid || "guest"}`);
-      localStorage.removeItem(`onboarding_step_${currentUser?.uid || "guest"}`);
+        // Auto-trigger the completion and redirection pipeline immediately
+        const campaignId = result && result.id ? result.id : launchedCampaignId;
+        if (campaignId) {
+          onComplete(campaignId);
+        } else {
+          onComplete();
+        }
+      })();
 
-      // Track onboarding complete event
-      const startTimeStr = localStorage.getItem(`onboarding_start_time_${currentUser?.uid}`);
-      let durationSec = 134; // default baseline
-      if (startTimeStr) {
-        const diffMs = Date.now() - parseInt(startTimeStr, 10);
-        durationSec = Math.max(10, Math.round(diffMs / 1000));
-      }
-      import("../lib/analytics").then((m) => {
-        m.trackAuthEvent("onboarding_complete", "email", currentUser?.uid || "guest", currentUser?.email || "", durationSec);
-      });
-
-      // Auto-trigger the completion and redirection pipeline immediately
-      const campaignId = result && result.id ? result.id : launchedCampaignId;
-      if (campaignId) {
-        onComplete(campaignId);
-      } else {
-        onComplete();
-      }
+      await Promise.race([launchLogic, timeoutPromise]);
     } catch (err: any) {
       console.error("Failed to complete full onboarding launch:", err);
       setErrorMsg(err.message || "Something went wrong while launching your organization and campaign.");
@@ -490,22 +502,31 @@ export default function OrganizerOnboardingWizard({
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-between overflow-y-auto" id="onboarding-wizard-container">
+    <div className="fixed inset-0 z-50 bg-slate-50 flex flex-col justify-between overflow-y-auto w-full h-full" id="onboarding-wizard-container">
       {/* Dynamic Header */}
       <header className="bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between sticky top-0 z-40">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold shadow-xs">
+          <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center text-white font-black text-xs shadow-xs">
             HF
           </div>
-          <div>
-            <h1 className="text-sm font-sans font-black tracking-tight text-slate-900">HarambeeFlow AI</h1>
-            <p className="text-[10px] text-indigo-600 font-mono font-medium">New Organizer Onboarding Console</p>
+          <div className="flex flex-col leading-tight text-left">
+            <h1 className="text-base font-sans font-black tracking-tight text-slate-900">HarambeeFlow</h1>
+            <span className="text-xs text-emerald-600 font-mono font-medium tracking-wide">AI Treasurer</span>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[11px] text-slate-400 font-mono font-bold bg-slate-100 px-2.5 py-1 rounded-full">
             {getEstimatedTime()}
           </span>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition flex items-center gap-1 cursor-pointer border border-slate-200"
+            >
+              <X className="w-3.5 h-3.5 text-slate-500" />
+              Exit Wizard
+            </button>
+          )}
         </div>
       </header>
 
@@ -620,9 +641,14 @@ export default function OrganizerOnboardingWizard({
                         <Sparkles className="w-3.5 h-3.5 animate-pulse" />
                         Fintech Innovation
                       </div>
-                      <h2 className="text-2xl md:text-3xl font-sans font-black tracking-tight text-slate-900 leading-tight">
-                        Welcome to HarambeeFlow AI
-                      </h2>
+                      <div className="flex flex-col items-center justify-center leading-tight">
+                        <h2 className="text-3xl md:text-4xl font-sans font-black tracking-tight text-slate-900">
+                          HarambeeFlow
+                        </h2>
+                        <span className="text-lg md:text-xl font-mono font-medium text-emerald-600 tracking-wide mt-1">
+                          AI Treasurer
+                        </span>
+                      </div>
                       <p className="text-sm text-slate-500 max-w-2xl leading-relaxed">
                         HarambeeFlow is an intelligent reconciliation ledger designed specifically for Kenyan community chamas, faith organizations, medical appeals, and schools. We help you connect existing Till/Paybill numbers and track public contributions transparently in real-time.
                       </p>
@@ -1251,7 +1277,7 @@ export default function OrganizerOnboardingWizard({
                           <p className="text-[10px] font-mono font-bold text-slate-400 uppercase leading-none">Public Page link preview</p>
                           <div className="flex items-center gap-1 bg-white p-2 rounded-lg border border-slate-100 text-[10px] font-mono truncate text-indigo-600">
                             <Globe className="w-3.5 h-3.5 text-slate-400" />
-                            <span>harambeeflow.com/f/{form.fundraiserSlug || "..."}</span>
+                            <span>harambeeflow.org/f/{form.fundraiserSlug || "..."}</span>
                           </div>
                         </div>
                       </div>
@@ -1371,9 +1397,10 @@ export default function OrganizerOnboardingWizard({
 
                         <div className="pt-4 flex justify-center">
                           <button
+                            type="button"
                             onClick={handleLaunch}
                             disabled={loading}
-                            className="px-8 py-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl shadow-lg transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                            className="px-8 py-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl shadow-lg transition flex items-center gap-2 cursor-pointer disabled:opacity-50 min-h-[48px]"
                           >
                             {loading ? (
                               <>
@@ -1382,7 +1409,7 @@ export default function OrganizerOnboardingWizard({
                               </>
                             ) : (
                               <>
-                                <Sparkles className="w-5 h-5 text-yellow-300 animate-spin" />
+                                <Sparkles className="w-5 h-5 text-yellow-300" />
                                 Launch HarambeeFlow Dashboard
                               </>
                             )}
@@ -1455,17 +1482,17 @@ export default function OrganizerOnboardingWizard({
                       type="button"
                       onClick={handleLaunch}
                       disabled={loading}
-                      className="min-h-[48px] px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white focus:outline-none focus:ring-4 focus:ring-emerald-200 text-xs font-black rounded-xl shadow-md transition flex items-center gap-2 cursor-pointer shrink-0 w-full sm:w-auto justify-center"
+                      className="min-h-[48px] px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white focus:outline-none focus:ring-4 focus:ring-emerald-200 text-xs font-black rounded-xl shadow-md transition flex items-center gap-2 cursor-pointer shrink-0 w-full sm:w-auto justify-center disabled:opacity-50"
                     >
                       {loading ? (
                         <>
                           <Loader2 className="w-4 h-4 animate-spin" />
-                          Launching...
+                          Setting up Secure Environment...
                         </>
                       ) : (
                         <>
                           <Sparkles className="w-4 h-4 text-yellow-300" />
-                          Launch Platform
+                          Launch HarambeeFlow Dashboard
                         </>
                       )}
                     </button>
@@ -1481,7 +1508,7 @@ export default function OrganizerOnboardingWizard({
       {/* Footer */}
       <footer className="bg-white border-t border-slate-100 px-6 py-4 text-center hidden md:block">
         <p className="text-[10px] text-slate-400 font-mono">
-          © {new Date().getFullYear()} HarambeeFlow AI. All connections protected by end-to-end HTTPS & CBK Fintech security framework rules.
+          © 2026 HarambeeFlow. All Rights Reserved. • <a href="https://harambeeflow.org" target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:underline">https://harambeeflow.org</a>
         </p>
       </footer>
     </div>
