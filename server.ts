@@ -536,7 +536,7 @@ async function updateFundraiserAmountInFirestore(proj: any, lastContributionObj?
         } : {})
       }, { merge: true });
 
-      console.log(`[CONTRIBUTION PIPELINE] [${new Date().toLocaleTimeString()}] Campaign Totals Updated in Firestore for ${proj.id}: New Total = KES ${currentAmt}`);
+      console.log(`[PUBLIC DONATION PIPELINE] [${new Date().toLocaleTimeString()}] Campaign Totals Updated: fundraisers/${proj.id} (New Total: KES ${currentAmt})`);
     } catch (err) {
       console.error("Failed to update fundraiser currentAmount in Firestore:", err);
     }

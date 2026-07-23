@@ -28,6 +28,8 @@ import ComplianceReadiness from "./components/ComplianceReadiness";
 import CampaignLogo from "./components/CampaignLogo";
 import CampaignBrandingSettings from "./components/CampaignBrandingSettings";
 import BillingSubscriptionView from "./components/BillingSubscriptionView";
+import ContactSupportModal from "./components/ContactSupportModal";
+import FaqModal from "./components/FaqModal";
 
 // Import simplified UX refactored components (V2 Refactor)
 import WelcomeView from "./components/WelcomeView";
@@ -234,6 +236,8 @@ export default function App() {
   const [draftProject, setDraftProject] = useState<any>(null);
   const [launchChecklistOpen, setLaunchChecklistOpen] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
+  const [supportModalOpen, setSupportModalOpen] = useState(false);
+  const [faqModalOpen, setFaqModalOpen] = useState(false);
   const [settingsSubTab, setSettingsSubTab] = useState<"general" | "billing">("general");
   const [settingsFeedback, setSettingsFeedback] = useState("");
   const [showResetDemoModal, setShowResetDemoModal] = useState(false);
@@ -1441,12 +1445,7 @@ export default function App() {
       }
     }
 
-    console.log(`[CONTRIBUTION PIPELINE] [${new Date().toLocaleTimeString()}] Contribution Received:`, {
-      transactionCode: donationId,
-      amount: amountNum,
-      senderName: cntPayload.senderName,
-      projectId: targetProjectId
-    });
+    console.log(`[PUBLIC DONATION PIPELINE] [${new Date().toLocaleTimeString()}] Donation Submitted: KES ${amountNum} from ${cntPayload.senderName} for campaign ${targetProjectId}`);
 
     // Atomic transaction for Firestore
     if (db) {
@@ -1488,8 +1487,8 @@ export default function App() {
             progressPercentage
           }, { merge: true });
 
-          console.log(`[CONTRIBUTION PIPELINE] [${new Date().toLocaleTimeString()}] Firestore Document Created: donations/${donationId}`);
-          console.log(`[CONTRIBUTION PIPELINE] [${new Date().toLocaleTimeString()}] Campaign Totals Updated atomically: New Amount = KES ${newAmount}`);
+          console.log(`[PUBLIC DONATION PIPELINE] [${new Date().toLocaleTimeString()}] Firestore Contribution Created: donations/${donationId}`);
+          console.log(`[PUBLIC DONATION PIPELINE] [${new Date().toLocaleTimeString()}] Campaign Totals Updated: fundraisers/${targetProjectId} (New Total: KES ${newAmount})`);
         });
       } catch (txErr) {
         console.warn("Firestore transaction fallback to direct setDoc:", txErr);
@@ -3041,20 +3040,14 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
                                   Replay Tutorial
                                 </button>
                                 <button 
-                                  onClick={() => {
-                                    setSettingsFeedback("Community support ticket created. A support specialist will contact you shortly.");
-                                    setTimeout(() => setSettingsFeedback(""), 8000);
-                                  }}
+                                  onClick={() => setSupportModalOpen(true)}
                                   className="px-4 py-3 bg-slate-950 hover:bg-slate-850 border border-slate-800 text-slate-200 text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center min-h-[44px]"
                                   id="settings-btn-contact-support"
                                 >
                                   Contact Support
                                 </button>
                                 <button 
-                                  onClick={() => {
-                                    setSettingsFeedback("Navigating to Frequently Asked Questions...");
-                                    setTimeout(() => setSettingsFeedback(""), 6000);
-                                  }}
+                                  onClick={() => setFaqModalOpen(true)}
                                   className="px-4 py-3 bg-slate-950 hover:bg-slate-850 border border-slate-800 text-slate-200 text-xs font-bold rounded-xl transition cursor-pointer flex items-center justify-center min-h-[44px]"
                                   id="settings-btn-faq"
                                 >
@@ -3545,6 +3538,17 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
         phone={selectedDonorPhone}
         contributions={contributions}
         projects={projects}
+      />
+
+      {/* Support & FAQ Modals */}
+      <ContactSupportModal 
+        isOpen={supportModalOpen}
+        onClose={() => setSupportModalOpen(false)}
+      />
+
+      <FaqModal
+        isOpen={faqModalOpen}
+        onClose={() => setFaqModalOpen(false)}
       />
     </div>
     </PWAFrameWrapper>

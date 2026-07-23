@@ -145,7 +145,7 @@ export default function LiveFundraisingCommandCenter({
         setLastUpdatedTime(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
         setConnectionStatus("connected");
 
-        console.log(`[CONTRIBUTION PIPELINE] [${new Date().toLocaleTimeString()}] Realtime Snapshot Fired: ${list.length} contributions received for campaign ${activeProject.id}`);
+        console.log(`[PUBLIC DONATION PIPELINE] [${new Date().toLocaleTimeString()}] Snapshot Triggered: ${list.length} contributions received for campaign ${activeProject.id}`);
       },
       (error) => {
         console.error("Live contributions error:", error);
@@ -168,6 +168,7 @@ export default function LiveFundraisingCommandCenter({
               timestamp: fData.lastContributionTime || new Date().toISOString()
             });
           }
+          console.log(`[PUBLIC DONATION PIPELINE] [${new Date().toLocaleTimeString()}] Snapshot Triggered: Fundraiser doc totals updated for ${activeProject.id}`);
         }
       },
       (fErr) => {
@@ -229,7 +230,7 @@ export default function LiveFundraisingCommandCenter({
 
     const finalSum = computedBase + simAmount;
 
-    console.log(`[CONTRIBUTION PIPELINE] [${new Date().toLocaleTimeString()}] Dashboard Rendered: Raised = KES ${finalSum.toLocaleString()}, Remaining = KES ${Math.max(0, targetAmount - finalSum).toLocaleString()}, Progress = ${Math.min(100, Math.round((finalSum / targetAmount) * 100))}%`);
+    console.log(`[PUBLIC DONATION PIPELINE] [${new Date().toLocaleTimeString()}] Dashboard Refreshed: Raised = KES ${finalSum.toLocaleString()}, Remaining = KES ${Math.max(0, targetAmount - finalSum).toLocaleString()}, Progress = ${Math.min(100, Math.round((finalSum / targetAmount) * 100))}%`);
 
     return finalSum;
   }, [liveContributions, liveFundraiserDoc, activeProject.currentAmount, simulatedEvents, targetAmount]);

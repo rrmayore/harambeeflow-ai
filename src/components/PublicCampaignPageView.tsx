@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { getDonorBadgeInfo } from "../utils/donor";
 import { getTheme, getCampaignBanner, getCampaignLogo, getCampaignMotto } from "../utils/branding";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, runTransaction, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
 import { motion, AnimatePresence } from "motion/react";
 import LiveFundraisingCommandCenter from "./LiveFundraisingCommandCenter";
@@ -92,6 +92,8 @@ export default function PublicCampaignPageView({
     setLoading(true);
     setError(false);
 
+    let unsubDoc = () => {};
+
     const fetchCampaign = async () => {
       try {
         if (campaignId === "demo-project-id") {
@@ -125,71 +127,80 @@ export default function PublicCampaignPageView({
 
         if (db) {
           const docRef = doc(db, "fundraisers", campaignId);
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists() && active) {
-            const data = docSnap.data();
-            const mappedProject: Project = {
-              id: docSnap.id,
-              name: data.fundraiserName || data.name || "",
-              targetAmount: Number(data.targetAmount),
-              currentAmount: Number(data.currentAmount || 0),
-              description: data.description || "",
-              category: data.sectorCategory || data.category || "General/Harambee",
-              treasurerPhone: data.treasurerPhone || "",
-              paybillNumber: data.mpesaShortcode || data.paybillNumber || "225588",
-              accountReference: data.accountReference || "",
-              whatsappGroupName: data.whatsappGroupName || `${data.fundraiserName || data.name} Group`,
-              createdAt: data.createdAt,
-              campaignImage: data.campaignImage || "",
-              campaignLogo: data.campaignLogo || "",
-              themeColor: data.themeColor || "Blue",
-              campaignCategory: data.campaignCategory || data.sectorCategory || data.category || "General/Harambee",
-              motto: data.motto || "",
-              organizer: data.organizer || data.organizerName || "Harambee Committee",
-              createdBy: data.createdBy || ""
-            };
-            setActiveProject(mappedProject);
-            if (mappedProject.description) {
-              setStory(mappedProject.description);
-            }
-          } else if (active) {
-            // Try fetching from fallback REST API
-            try {
-              const res = await fetch("/api/projects");
-              const projects: any[] = await res.json();
-              const found = projects.find(p => p.id === campaignId);
-              if (found && active) {
-                const mappedProject: Project = {
-                  id: found.id,
-                  name: found.fundraiserName || found.name || "",
-                  targetAmount: Number(found.targetAmount),
-                  currentAmount: Number(found.currentAmount || 0),
-                  description: found.description || "",
-                  category: found.sectorCategory || found.category || "General/Harambee",
-                  treasurerPhone: found.treasurerPhone || "",
-                  paybillNumber: found.mpesaShortcode || found.paybillNumber || "225588",
-                  accountReference: found.accountReference || "",
-                  whatsappGroupName: found.whatsappGroupName || `${found.fundraiserName || found.name} Group`,
-                  createdAt: found.createdAt,
-                  campaignImage: found.campaignImage || "",
-                  campaignLogo: found.campaignLogo || "",
-                  themeColor: found.themeColor || "Blue",
-                  campaignCategory: found.campaignCategory || found.sectorCategory || found.category || "General/Harambee",
-                  motto: found.motto || "",
-                  organizer: found.organizer || found.organizerName || "Harambee Committee",
-                  createdBy: found.createdBy || ""
-                };
-                setActiveProject(mappedProject);
-                if (mappedProject.description) {
-                  setStory(mappedProject.description);
-                }
-              } else if (active) {
-                setError(true);
+          unsubDoc = onSnapshot(docRef, (docSnap) => {
+            if (docSnap.exists() && active) {
+              const data = docSnap.data();
+              const mappedProject: Project = {
+                id: docSnap.id,
+                name: data.fundraiserName || data.name || "",
+                targetAmount: Number(data.targetAmount || 0),
+                currentAmount: Number(data.currentAmount || data.totalRaised || 0),
+                description: data.description || "",
+                category: data.sectorCategory || data.category || "General/Harambee",
+                treasurerPhone: data.treasurerPhone || "",
+                paybillNumber: data.mpesaShortcode || data.paybillNumber || "225588",
+                accountReference: data.accountReference || "",
+                whatsappGroupName: data.whatsappGroupName || `${data.fundraiserName || data.name} Group`,
+                createdAt: data.createdAt,
+                campaignImage: data.campaignImage || "",
+                campaignLogo: data.campaignLogo || "",
+                themeColor: data.themeColor || "Blue",
+                campaignCategory: data.campaignCategory || data.sectorCategory || data.category || "General/Harambee",
+                motto: data.motto || "",
+                organizer: data.organizer || data.organizerName || "Harambee Committee",
+                createdBy: data.createdBy || ""
+              };
+              setActiveProject(mappedProject);
+              if (mappedProject.description) {
+                setStory(mappedProject.description);
               }
-            } catch {
-              if (active) setError(true);
+              setLoading(false);
+              console.log(`[PUBLIC DONATION PIPELINE] [${new Date().toLocaleTimeString()}] Stage: Snapshot Triggered - Public Campaign Page fundraiser doc updated (${docSnap.id})`);
+            } else if (active) {
+              // Try fetching from fallback REST API
+              fetch("/api/projects")
+                .then(res => res.json())
+                .then((projects: any[]) => {
+                  const found = projects.find(p => p.id === campaignId);
+                  if (found && active) {
+                    const mappedProject: Project = {
+                      id: found.id,
+                      name: found.fundraiserName || found.name || "",
+                      targetAmount: Number(found.targetAmount),
+                      currentAmount: Number(found.currentAmount || 0),
+                      description: found.description || "",
+                      category: found.sectorCategory || found.category || "General/Harambee",
+                      treasurerPhone: found.treasurerPhone || "",
+                      paybillNumber: found.mpesaShortcode || found.paybillNumber || "225588",
+                      accountReference: found.accountReference || "",
+                      whatsappGroupName: found.whatsappGroupName || `${found.fundraiserName || found.name} Group`,
+                      createdAt: found.createdAt,
+                      campaignImage: found.campaignImage || "",
+                      campaignLogo: found.campaignLogo || "",
+                      themeColor: found.themeColor || "Blue",
+                      campaignCategory: found.campaignCategory || found.sectorCategory || found.category || "General/Harambee",
+                      motto: found.motto || "",
+                      organizer: found.organizer || found.organizerName || "Harambee Committee",
+                      createdBy: found.createdBy || ""
+                    };
+                    setActiveProject(mappedProject);
+                    if (mappedProject.description) {
+                      setStory(mappedProject.description);
+                    }
+                  } else if (active) {
+                    setError(true);
+                  }
+                })
+                .catch(() => { if (active) setError(true); })
+                .finally(() => { if (active) setLoading(false); });
             }
-          }
+          }, (err) => {
+            console.error("Error loading campaign snapshot:", err);
+            if (active) {
+              setError(true);
+              setLoading(false);
+            }
+          });
         } else {
           // Direct fallback
           const res = await fetch("/api/projects");
@@ -223,12 +234,12 @@ export default function PublicCampaignPageView({
           } else if (active) {
             setError(true);
           }
+          setLoading(false);
         }
       } catch (err) {
         console.error("Error loading campaign:", err);
         if (active) setError(true);
-      } finally {
-        if (active) setLoading(false);
+        setLoading(false);
       }
     };
 
@@ -236,6 +247,7 @@ export default function PublicCampaignPageView({
 
     return () => {
       active = false;
+      unsubDoc();
     };
   }, [campaignId]);
 
@@ -426,63 +438,178 @@ export default function PublicCampaignPageView({
     setSimStep("processing");
     setSimFeedback("Safaricom Daraja secure handshaking active... updating Firestore...");
 
-    // Create correct Daraja callback notification payload
+    const targetProjectId = activeProject?.id || "demo-project-id";
+    const amountNum = Number(donationAmount);
     const receiptNum = "STK" + Math.random().toString(36).substring(2, 9).toUpperCase();
-    const transTime = new Date().toISOString().replace(/[-:T]/g, "").substring(0, 14);
-    const amountStr = Number(donationAmount).toFixed(2);
-    const billRef = (activeProject.accountReference || "AUTO").toUpperCase();
+    const nowIso = new Date().toISOString();
+    const donorNameVal = (donorName || "Anonymous Contributor").trim();
+    const donorPhoneVal = (donorPhone || "254712345678").trim();
 
     // Map names
-    const parts = (donorName || "Anonymous Contributor").trim().split(/\s+/);
+    const parts = donorNameVal.split(/\s+/);
     const fN = parts[0] || "WELL-WISHER";
     const mN = parts.length > 2 ? parts[1] : "";
     const lN = parts.length > 2 ? parts.slice(2).join(" ") : (parts[1] || "GIVER");
 
-    const paybillPayload = {
-      TransactionType: "Pay Bill",
-      TransID: receiptNum,
-      TransTime: transTime,
-      TransAmount: amountStr,
-      BusinessShortCode: activeProject.paybillNumber || "225588",
-      BillRefNumber: billRef,
-      OrgAccountBalance: "125000.00",
-      MSISDN: donorPhone.trim() || "254712345678",
-      FirstName: fN,
-      MiddleName: mN,
-      LastName: lN
+    const billRef = (activeProject?.accountReference || "AUTO").toUpperCase();
+    const transTime = nowIso.replace(/[-:T]/g, "").substring(0, 14);
+
+    // STAGE 1: Donation Submitted Log
+    console.log(`[PUBLIC DONATION PIPELINE] [${new Date().toLocaleTimeString()}] Donation Submitted: KES ${amountNum} from ${donorNameVal} for campaign ${targetProjectId}`);
+
+    // Normalized Contribution Payload supporting all ID variants (projectId, campaignId, fundraiserId)
+    const payload = {
+      id: receiptNum,
+      projectId: targetProjectId,
+      campaignId: targetProjectId,
+      fundraiserId: targetProjectId,
+      amount: amountNum,
+      senderName: donorNameVal,
+      senderPhone: donorPhoneVal,
+      phoneNumber: donorPhoneVal,
+      transactionCode: receiptNum,
+      receiptNumber: receiptNum,
+      timestamp: nowIso,
+      transactionTime: nowIso,
+      category: "Well-wisher",
+      notes: donorNotes.trim() || "",
+      hasDuplicates: false,
+      status: "completed",
+      cleanedName: donorNameVal,
+      firstName: fN,
+      middleName: mN,
+      lastName: lN,
+      billReference: billRef,
+      donorId: donorPhoneVal || receiptNum,
+      whatsappPosted: false
     };
 
     try {
-      // Post actual callback to backend node
-      const response = await fetch("/api/daraja/callback?token=SANDBOX_SIMULATION_BYPASS_TOKEN", {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "X-Mpesa-Signature": "SANDBOX_SIMULATION_BYPASS_SIGNATURE"
-        },
-        body: JSON.stringify(paybillPayload)
-      });
-      
-      const resData = await response.json();
-      setGeneratedReceiptCode(receiptNum);
+      // STAGE 2 & STAGE 3: Atomic Transaction Write to Firestore
+      if (db) {
+        try {
+          await runTransaction(db, async (transaction) => {
+            const fundraiserRef = doc(db, "fundraisers", targetProjectId);
+            const fundraiserSnap = await transaction.get(fundraiserRef);
 
-      // If note was specified, save the note asynchronously to direct firestore document once it is created
-      if (db && donorNotes.trim()) {
-        setTimeout(async () => {
-          try {
-            const donationRef = doc(db, "donations", receiptNum);
-            await setDoc(donationRef, { notes: donorNotes.trim() }, { merge: true });
-          } catch (err) {
-            console.error("Failed to append simulated notes to donation:", err);
+            let existingAmount = 0;
+            let existingCount = 0;
+            let targetAmount = activeProject?.targetAmount || 500000;
+
+            if (fundraiserSnap.exists()) {
+              const fData = fundraiserSnap.data();
+              existingAmount = Number(fData.currentAmount || fData.totalRaised || 0);
+              existingCount = Number(fData.contributionCount || 0);
+              targetAmount = Number(fData.targetAmount || targetAmount);
+            } else if (activeProject) {
+              existingAmount = Number(activeProject.currentAmount || 0);
+            }
+
+            const newAmount = existingAmount + amountNum;
+            const newCount = existingCount + 1;
+            const remainingAmount = Math.max(0, targetAmount - newAmount);
+            const progressPercentage = Math.min(100, Math.round((newAmount / targetAmount) * 100));
+
+            // Write contribution document
+            transaction.set(doc(db, "donations", receiptNum), payload);
+
+            // Write fundraiser totals document atomically
+            transaction.set(fundraiserRef, {
+              currentAmount: newAmount,
+              totalRaised: newAmount,
+              contributionCount: newCount,
+              lastContribution: amountNum,
+              lastContributionName: donorNameVal,
+              lastContributionTime: nowIso,
+              remainingAmount,
+              progressPercentage,
+              updatedAt: nowIso,
+              lastUpdated: nowIso
+            }, { merge: true });
+
+            console.log(`[PUBLIC DONATION PIPELINE] [${new Date().toLocaleTimeString()}] Firestore Contribution Created: donations/${receiptNum}`);
+            console.log(`[PUBLIC DONATION PIPELINE] [${new Date().toLocaleTimeString()}] Campaign Totals Updated: fundraisers/${targetProjectId} (New Total: KES ${newAmount})`);
+          });
+        } catch (txErr) {
+          console.warn("[PUBLIC DONATION PIPELINE] Transaction fallback to direct setDoc:", txErr);
+          await setDoc(doc(db, "donations", receiptNum), payload);
+          if (activeProject) {
+            const fundraiserRef = doc(db, "fundraisers", targetProjectId);
+            const newProjAmount = (activeProject.currentAmount || 0) + amountNum;
+            const targetAmt = activeProject.targetAmount || 500000;
+            await setDoc(fundraiserRef, {
+              currentAmount: newProjAmount,
+              totalRaised: newProjAmount,
+              contributionCount: (activeProject.contributionCount || 0) + 1,
+              lastContribution: amountNum,
+              lastContributionName: donorNameVal,
+              lastContributionTime: nowIso,
+              remainingAmount: Math.max(0, targetAmt - newProjAmount),
+              progressPercentage: Math.min(100, Math.round((newProjAmount / targetAmt) * 100)),
+              updatedAt: nowIso,
+              lastUpdated: nowIso
+            }, { merge: true });
+
+            console.log(`[PUBLIC DONATION PIPELINE] [${new Date().toLocaleTimeString()}] Firestore Contribution Created: donations/${receiptNum} (fallback)`);
+            console.log(`[PUBLIC DONATION PIPELINE] [${new Date().toLocaleTimeString()}] Campaign Totals Updated: fundraisers/${targetProjectId} (fallback)`);
           }
-        }, 1500);
+        }
       }
 
+      // Synchronize with backend REST node for in-memory server state & WhatsApp messages
+      try {
+        await fetch("/api/contributions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            projectId: targetProjectId,
+            amount: amountNum,
+            senderName: donorNameVal,
+            senderPhone: donorPhoneVal,
+            transactionCode: receiptNum,
+            category: "Well-wisher",
+            notes: donorNotes.trim() || "",
+            timestamp: nowIso
+          })
+        });
+      } catch (apiErr) {
+        console.warn("Backend REST contribution post notice:", apiErr);
+      }
+
+      // Trigger Daraja Webhook simulation endpoint
+      const paybillPayload = {
+        TransactionType: "Pay Bill",
+        TransID: receiptNum,
+        TransTime: transTime,
+        TransAmount: amountNum.toFixed(2),
+        BusinessShortCode: activeProject?.paybillNumber || "225588",
+        BillRefNumber: billRef,
+        OrgAccountBalance: "125000.00",
+        MSISDN: donorPhoneVal,
+        FirstName: fN,
+        MiddleName: mN,
+        LastName: lN
+      };
+
+      try {
+        await fetch("/api/daraja/callback?token=SANDBOX_SIMULATION_BYPASS_TOKEN", {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "X-Mpesa-Signature": "SANDBOX_SIMULATION_BYPASS_SIGNATURE"
+          },
+          body: JSON.stringify(paybillPayload)
+        });
+      } catch (cbErr) {
+        console.warn("Daraja callback trigger notice:", cbErr);
+      }
+
+      setGeneratedReceiptCode(receiptNum);
       setSimStep("success");
-      setSimFeedback(`Payment of KES ${Number(donationAmount).toLocaleString()} processed successfully!`);
+      setSimFeedback(`Payment of KES ${amountNum.toLocaleString()} processed successfully!`);
       triggerConfettiBurst();
     } catch (err: any) {
-      console.error(err);
+      console.error("[PUBLIC DONATION PIPELINE] Submission error:", err);
       setSimStep("idle");
       setSimFeedback(`Error: ${err.message || "Simulated transaction failed"}`);
     }
