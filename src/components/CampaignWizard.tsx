@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { 
   ArrowLeft, ArrowRight, Sparkles, Check, CheckCircle2, 
   HelpCircle, AlertTriangle, Users, Plus, Trash2, Calendar, 
@@ -262,6 +262,27 @@ export default function CampaignWizard({
       handleUploadFile(e.target.files[0]);
     }
   };
+
+  // Smooth step transition: scroll container to top and focus first input
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    const timer = setTimeout(() => {
+      const stepContent = containerRef.current || document;
+      const firstInput = stepContent.querySelector<HTMLElement>(
+        "input:not([type='hidden']):not([disabled]), textarea:not([disabled]), select:not([disabled]), button[data-autofocus='true']"
+      );
+      if (firstInput && typeof firstInput.focus === "function") {
+        firstInput.focus({ preventScroll: true });
+      }
+    }, 320);
+
+    return () => clearTimeout(timer);
+  }, [step]);
 
   // Form step navigation checks
   const handleNext = () => {
@@ -975,54 +996,66 @@ export default function CampaignWizard({
 
             </div>
 
+            {/* In-flow Navigation Controls - Immediately below the step content in natural page flow */}
+            <div className="mt-8 pt-6 border-t border-slate-800 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 w-full">
+              {/* Left Group: Back & Save Draft Actions */}
+              <div className="flex items-center gap-2.5 w-full sm:w-auto justify-start">
+                {step > 1 && (
+                  <button
+                    type="button"
+                    onClick={handleBack}
+                    className="flex items-center justify-center gap-1.5 min-h-[48px] px-4.5 py-2.5 bg-slate-850 border border-slate-800 hover:bg-slate-800 text-slate-300 text-xs font-bold rounded-xl transition cursor-pointer flex-1 sm:flex-none"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" /> Back
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  className="flex items-center justify-center gap-1.5 min-h-[48px] px-4 py-2.5 bg-slate-900 border border-slate-800 hover:bg-slate-850 text-slate-400 hover:text-slate-200 text-xs font-bold rounded-xl transition cursor-pointer flex-1 sm:flex-none"
+                >
+                  {step === 12 ? "Save Draft" : "Save & Exit"}
+                </button>
+              </div>
+
+              {/* Right Group: Primary Continue / Publish Action */}
+              <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+                {step < 12 ? (
+                  <button
+                    type="button"
+                    ref={nextBtnRef}
+                    onClick={handleNext}
+                    className="flex items-center justify-center gap-2 min-h-[48px] px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 rounded-xl text-xs font-extrabold shadow-md shadow-emerald-950/30 cursor-pointer transition w-full sm:w-auto"
+                  >
+                    Continue <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    ref={nextBtnRef}
+                    onClick={handlePublish}
+                    disabled={isSubmitting}
+                    className="flex items-center justify-center gap-2 min-h-[48px] px-7 py-2.5 bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-400 hover:to-green-400 text-slate-950 rounded-xl text-xs font-black shadow-lg shadow-emerald-950/40 cursor-pointer transition w-full sm:w-auto disabled:opacity-50"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <span className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                        Publishing...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4 stroke-[2.5]" /> 🚀 Publish Campaign
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+
           </div>
 
         </div>
-      </div>
-
-      {/* Sticky Bottom Action Bar with Safe Area supports (Requirement 3 & 6) */}
-      <div 
-        className="sticky bottom-0 left-0 right-0 bg-slate-950/95 backdrop-blur-md border-t border-slate-850 px-6 py-4 flex items-center justify-between z-40 shrink-0 shadow-2xl"
-        style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}
-      >
-        <button
-          type="button"
-          onClick={handleBack}
-          disabled={step === 1}
-          className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 border border-slate-850 hover:bg-slate-850 disabled:opacity-30 rounded-xl text-xs font-bold transition cursor-pointer"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" /> Back
-        </button>
-
-        {step < 12 ? (
-          <button
-            type="button"
-            ref={nextBtnRef}
-            onClick={handleNext}
-            className="flex items-center gap-1.5 px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl text-xs font-extrabold shadow-md cursor-pointer transition"
-          >
-            Next Step <ArrowRight className="w-3.5 h-3.5 stroke-[2.5]" />
-          </button>
-        ) : (
-          <button
-            type="button"
-            ref={nextBtnRef}
-            onClick={handlePublish}
-            disabled={isSubmitting}
-            className="flex items-center gap-1.5 px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-slate-950 rounded-xl text-xs font-black shadow-lg shadow-emerald-950/40 cursor-pointer transition disabled:opacity-50"
-          >
-            {isSubmitting ? (
-              <>
-                <span className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
-                Publishing...
-              </>
-            ) : (
-              <>
-                <Check className="w-4 h-4 stroke-[2.5]" /> Publish Campaign
-              </>
-            )}
-          </button>
-        )}
       </div>
 
     </div>

@@ -268,6 +268,30 @@ export default function OrganizerOnboardingWizard({
     }
   };
 
+  // Smooth step transition: scroll next step to top and auto-focus first input field
+  useEffect(() => {
+    const container = document.getElementById("onboarding-wizard-container");
+    if (container) {
+      container.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    const focusTimer = setTimeout(() => {
+      const stepContent = document.getElementById("onboarding-step-content");
+      if (stepContent) {
+        const firstInput = stepContent.querySelector<HTMLElement>(
+          "input:not([type='hidden']):not([disabled]), textarea:not([disabled]), select:not([disabled]), button[data-autofocus='true']"
+        );
+        if (firstInput && typeof firstInput.focus === "function") {
+          firstInput.focus({ preventScroll: true });
+        }
+      }
+    }, 320);
+
+    return () => clearTimeout(focusTimer);
+  }, [step]);
+
   // Step 3 Validation Simulation
   const handleValidateTill = () => {
     const targetNumber = form.tillNumber || form.paybillNumber;
@@ -502,7 +526,7 @@ export default function OrganizerOnboardingWizard({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-50 flex flex-col justify-between overflow-y-auto w-full h-full pb-[calc(100px+env(safe-area-inset-bottom))] md:pb-0" id="onboarding-wizard-container">
+    <div className="fixed inset-0 z-50 bg-slate-50 flex flex-col justify-between overflow-y-auto w-full h-full pb-8 md:pb-0" id="onboarding-wizard-container">
       {/* Dynamic Header */}
       <header className="bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between sticky top-0 z-40">
         <div className="flex items-center gap-3">
@@ -615,7 +639,7 @@ export default function OrganizerOnboardingWizard({
             </div>
           </div>
 
-          <div className="p-6 md:p-8 pb-40 md:pb-8 flex-1 flex flex-col justify-between">
+          <div className="p-5 md:p-8 flex-1 flex flex-col justify-between">
             {errorMsg && (
               <div className="p-4 mb-6 bg-rose-50 border border-rose-100 text-rose-800 text-xs font-semibold rounded-2xl flex items-center gap-3">
                 <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
@@ -1423,36 +1447,37 @@ export default function OrganizerOnboardingWizard({
               </AnimatePresence>
             </div>
 
-            {/* Sticky/Fixed Bottom Navigation Footer */}
+            {/* In-Flow Navigation Controls - Immediately below active step content */}
             {!success && (
-              <div className="sticky md:relative bottom-0 left-0 right-0 bg-white border-t border-slate-200 md:border-slate-100 px-4 py-3.5 md:px-8 md:py-5 flex flex-col sm:flex-row items-center justify-between gap-3 z-30 shadow-[0_-8px_24px_rgba(0,0,0,0.06)] md:shadow-none rounded-b-3xl pb-[calc(env(safe-area-inset-bottom)+14px)]">
-                
-                {/* Left Group: Save & Exit + Back */}
-                <div className="flex items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-start">
-                  <button
-                    type="button"
-                    onClick={handleSaveAndExit}
-                    className="min-h-[48px] px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-slate-100 text-slate-500 hover:text-slate-800 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shrink-0"
-                    title="Save your progress and return to the welcome screen"
-                  >
-                    Save & Exit
-                  </button>
-
+              <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 w-full">
+                {/* Left Group: Back & Save Actions based on current step */}
+                <div className="flex items-center gap-2.5 w-full sm:w-auto justify-start">
+                  {/* Back button displayed ONLY on Middle Steps (2-5) and Final Step (6) */}
                   {step > 1 && (
                     <button
                       type="button"
                       onClick={handleBack}
-                      className="min-h-[48px] px-4.5 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 focus:outline-none focus:ring-4 focus:ring-slate-200 text-slate-700 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                      className="min-h-[48px] px-4.5 py-2.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300 text-slate-700 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer flex-1 sm:flex-none"
                     >
                       <ArrowLeft className="w-4 h-4" />
                       Back
                     </button>
                   )}
+
+                  {/* Save & Exit on Steps 1-5 / Save Draft on Step 6 */}
+                  <button
+                    type="button"
+                    onClick={handleSaveAndExit}
+                    className="min-h-[48px] px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-200 text-slate-700 hover:text-slate-900 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer flex-1 sm:flex-none shadow-2xs"
+                    title={step === 6 ? "Save as draft and exit wizard" : "Save your progress and return to dashboard"}
+                  >
+                    {step === 6 ? "Save Draft" : "Save & Exit"}
+                  </button>
                 </div>
 
-                {/* Right Group: Skip Option + Continue/Next */}
+                {/* Right Group: Skip Option + Primary Continue/Launch Action */}
                 <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
-                  {/* Skip Step Trigger (Steps 2, 3, 4, 5) */}
+                  {/* Skip Step Trigger on skippable middle steps (Steps 2, 3, 4, 5) */}
                   {step > 1 && step < 6 && (
                     <button
                       type="button"
@@ -1462,17 +1487,18 @@ export default function OrganizerOnboardingWizard({
                         step === 4 ? handleSkipStep4 :
                         handleSkipStep5
                       }
-                      className="min-h-[48px] px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100/80 text-indigo-700 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                      className="min-h-[48px] px-4 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 hover:text-slate-900 text-xs font-semibold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer flex-1 sm:flex-none"
                     >
                       Skip Step
                     </button>
                   )}
 
+                  {/* Primary Action: HarambeeFlow Green for highest visual emphasis */}
                   {step < 6 ? (
                     <button
                       type="button"
                       onClick={handleNext}
-                      className="min-h-[48px] px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white focus:outline-none focus:ring-4 focus:ring-indigo-200 text-xs font-extrabold rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer shrink-0 w-full sm:w-auto justify-center"
+                      className="min-h-[48px] px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white focus:outline-none focus:ring-4 focus:ring-emerald-200 text-xs font-extrabold rounded-xl shadow-md shadow-emerald-600/20 transition flex items-center justify-center gap-2 cursor-pointer w-full sm:w-auto"
                     >
                       Continue
                       <ArrowRight className="w-4 h-4" />
@@ -1482,7 +1508,7 @@ export default function OrganizerOnboardingWizard({
                       type="button"
                       onClick={handleLaunch}
                       disabled={loading}
-                      className="min-h-[48px] px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white focus:outline-none focus:ring-4 focus:ring-emerald-200 text-xs font-black rounded-xl shadow-md transition flex items-center gap-2 cursor-pointer shrink-0 w-full sm:w-auto justify-center disabled:opacity-50"
+                      className="min-h-[48px] px-7 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white focus:outline-none focus:ring-4 focus:ring-emerald-200 text-xs font-black rounded-xl shadow-lg shadow-emerald-600/25 transition flex items-center justify-center gap-2 cursor-pointer w-full sm:w-auto disabled:opacity-50"
                     >
                       {loading ? (
                         <>
@@ -1491,8 +1517,8 @@ export default function OrganizerOnboardingWizard({
                         </>
                       ) : (
                         <>
-                          <Sparkles className="w-4 h-4 text-yellow-300" />
-                          Launch HarambeeFlow Dashboard
+                          <Sparkles className="w-4 h-4 text-amber-300" />
+                          🚀 Launch Fundraiser
                         </>
                       )}
                     </button>
