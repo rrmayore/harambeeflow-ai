@@ -70,7 +70,7 @@ import {
   onSnapshot,
   onSnapshotsInSync
 } from "firebase/firestore";
-import { db, auth } from "./firebase";
+import { db, auth, ensureAuthPersistence } from "./firebase";
 import AuthScreen from "./components/AuthScreen";
 import { getCategoryIllustration } from "./utils/branding";
 
@@ -1228,6 +1228,7 @@ export default function App() {
     }
 
     try {
+      await ensureAuthPersistence(auth);
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
       const credential = GoogleAuthProvider.credentialFromResult(result);

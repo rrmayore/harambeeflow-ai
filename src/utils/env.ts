@@ -4,25 +4,43 @@
  * Fully defensive against cross-origin iframe security restrictions.
  */
 export const IS_SANDBOX = (() => {
-  // Determine Sandbox Mode strictly from compile-time configuration (Vite environment variables)
   const metaEnv = import.meta.env;
-  
-  // If explicitly configured as "false", Sandbox Mode is disabled (secure production behavior)
+  const hostname = typeof window !== "undefined" && window.location ? window.location.hostname.toLowerCase() : "";
+
+  // 1. Explicit production domains MUST ALWAYS disable sandbox mode (IS_SANDBOX = false)
+  const productionDomains = [
+    "harambeeflow.org",
+    "www.harambeeflow.org",
+    "harambeeflow.web.app",
+    "harambeeflow.firebaseapp.com"
+  ];
+
+  if (productionDomains.includes(hostname) || hostname.endsWith(".harambeeflow.org") || hostname.endsWith(".web.app")) {
+    return false;
+  }
+
+  // 2. Production build mode checks (import.meta.env.PROD === true or MODE === 'production')
+  if (metaEnv.PROD === true || metaEnv.MODE === "production") {
+    // Only enable sandbox in production build if explicitly requested via VITE_SANDBOX="true"
+    if (metaEnv.VITE_SANDBOX === "true") {
+      return true;
+    }
+    return false;
+  }
+
+  // 3. Explicit VITE_SANDBOX overrides
   if (metaEnv.VITE_SANDBOX === "false") {
     return false;
   }
-  
-  // If explicitly configured as "true", Sandbox Mode is enabled
   if (metaEnv.VITE_SANDBOX === "true") {
     return true;
   }
-  
-  // In development or non-production builds, always default to Sandbox Mode
+
+  // 4. Local development / AI Studio preview environment default to Sandbox Mode
   if (metaEnv.DEV || metaEnv.MODE !== "production") {
     return true;
   }
-  
-  // For production builds, if VITE_SANDBOX is not explicitly defined, we default to Sandbox Mode
-  // to allow seamless sandbox/testing deployments without requiring a manual .env file setup.
-  return true;
+
+  return false;
 })();
+

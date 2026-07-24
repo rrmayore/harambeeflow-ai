@@ -3,15 +3,14 @@ import { IS_SANDBOX } from "../utils/env";
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
-  setPersistence,
-  browserLocalPersistence,
   GoogleAuthProvider,
   signInWithPopup,
   linkWithCredential,
-  sendEmailVerification
+  sendEmailVerification,
+  sendPasswordResetEmail
 } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
-import { db, auth } from "../firebase";
+import { db, auth, ensureAuthPersistence } from "../firebase";
 import { Sparkles, Coins, ShieldCheck, Mail, Lock, User, ArrowRight } from "lucide-react";
 import { trackAuthEvent } from "../lib/analytics";
 
@@ -57,7 +56,27 @@ export default function AuthScreen({ onSuccess }: AuthScreenProps) {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState("");
+  const [resetSuccess, setResetSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      setError("Please enter your official email address above to receive a password reset link.");
+      return;
+    }
+    setError("");
+    setResetSuccess("");
+    setLoading(true);
+    try {
+      await ensureAuthPersistence(auth);
+      await sendPasswordResetEmail(auth, email.trim());
+      setResetSuccess(`Password reset email sent to ${email.trim()}. Please check your inbox.`);
+    } catch (err: any) {
+      setError(mapAuthErrorToFriendlyMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Dynamic state for Google popup flow account linking 
   const [pendingCredential, setPendingCredential] = useState<any>(null);
@@ -75,7 +94,7 @@ export default function AuthScreen({ onSuccess }: AuthScreenProps) {
 
     const provider = new GoogleAuthProvider();
     try {
-      await setPersistence(auth, browserLocalPersistence);
+      await ensureAuthPersistence(auth);
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
@@ -86,7 +105,7 @@ export default function AuthScreen({ onSuccess }: AuthScreenProps) {
         const now = new Date().toISOString();
 
         if (!userProfileSnap.exists()) {
-          // First login: Create documents
+          // First login: Create user profile document
           const verifiedStatus = IS_SANDBOX ? true : user.emailVerified;
 
           const profileData = {
@@ -97,8 +116,11 @@ export default function AuthScreen({ onSuccess }: AuthScreenProps) {
             photoURL: user.photoURL || "",
             createdAt: now,
             lastLogin: now,
+            authProvider: "google",
             provider: "google",
             emailVerified: verifiedStatus,
+            hasCompletedWelcomeTour: false,
+            activeCampaignId: null,
             role: "organizer",
             language: "en",
             country: "KE",
@@ -241,8 +263,8 @@ export default function AuthScreen({ onSuccess }: AuthScreenProps) {
     }
 
     try {
-      // Set persistence to LOCAL so session survives browser refreshes
-      await setPersistence(auth, browserLocalPersistence);
+      // Set persistence with cascading fallback so session survives browser refreshes or storage limits
+      await ensureAuthPersistence(auth);
 
       if (isRegister) {
         // Create user
@@ -377,6 +399,8 @@ export default function AuthScreen({ onSuccess }: AuthScreenProps) {
               authProvider: "email",
               onboardingComplete: false,
               onboarded: false,
+              hasCompletedWelcomeTour: false,
+              activeCampaignId: null,
               createdAt: now,
               lastLogin: now,
               provider: "email",
@@ -465,6 +489,14 @@ export default function AuthScreen({ onSuccess }: AuthScreenProps) {
           <div className="mb-6 p-4 bg-rose-950/40 border border-rose-900/50 text-rose-300 text-xs rounded-xl flex items-start gap-2.5 leading-relaxed font-mono animate-fade-in">
             <span className="text-rose-400 font-bold">⚠️</span>
             <span className="flex-1 shrink-0">{error}</span>
+          </div>
+        )}
+
+        {/* Reset Success Alert Panel */}
+        {resetSuccess && (
+          <div className="mb-6 p-4 bg-emerald-950/40 border border-emerald-900/50 text-emerald-300 text-xs rounded-xl flex items-start gap-2.5 leading-relaxed font-mono animate-fade-in">
+            <span className="text-emerald-400 font-bold">✓</span>
+            <span className="flex-1 shrink-0">{resetSuccess}</span>
           </div>
         )}
 
@@ -605,9 +637,20 @@ export default function AuthScreen({ onSuccess }: AuthScreenProps) {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block">
-                  Secure Account Password
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider block">
+                    Secure Account Password
+                  </label>
+                  {!isRegister && (
+                    <button
+                      type="button"
+                      onClick={handleForgotPassword}
+                      className="text-[10px] font-mono text-emerald-400 hover:underline bg-transparent border-0 cursor-pointer p-0"
+                    >
+                      Forgot password?
+                    </button>
+                  )}
+                </div>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
                     <Lock className="w-4 h-4" />
