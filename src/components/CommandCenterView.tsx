@@ -29,6 +29,7 @@ interface CommandCenterViewProps {
   currentUser?: any;
   onTriggerTour?: () => void;
   isDemoMode?: boolean;
+  onOpenCampaignSwitcher?: () => void;
 }
 
 export default function CommandCenterView({
@@ -43,7 +44,8 @@ export default function CommandCenterView({
   onAddManualContribution,
   currentUser,
   onTriggerTour,
-  isDemoMode = false
+  isDemoMode = false,
+  onOpenCampaignSwitcher
 }: CommandCenterViewProps) {
   // Global States
   const [copiedLink, setCopiedLink] = useState(false);
@@ -776,11 +778,11 @@ Thank you for your generous support!`;
   }
 
   return (
-    <div className="flex-1 overflow-y-auto bg-slate-950 p-4 sm:p-6 text-slate-100 min-h-full font-sans select-none relative">
+    <div className="flex-1 bg-slate-950 p-4 sm:p-6 pb-28 sm:pb-32 md:pb-6 text-slate-100 min-h-full font-sans select-none relative">
       
       {/* Toast Alert Banner */}
       {toastMessage && (
-        <div className={`fixed bottom-6 right-6 px-5 py-3 rounded-xl border shadow-2xl z-50 flex items-center gap-3 animate-slide-in-right ${
+        <div className={`fixed bottom-[calc(80px+env(safe-area-inset-bottom))] sm:bottom-24 md:bottom-6 right-4 sm:right-6 px-5 py-3 rounded-xl border shadow-2xl z-50 flex items-center gap-3 animate-slide-in-right ${
           toastMessage.type === "error" 
             ? "bg-rose-950 border-rose-500/30 text-rose-300" 
             : toastMessage.type === "info"
@@ -1051,9 +1053,19 @@ Thank you for your generous support!`;
                     </span>
                   )}
                 </div>
-                <h1 className="text-xl sm:text-2xl font-black font-sans text-white tracking-tight leading-none">
-                  {activeProject.name}
-                </h1>
+                <button
+                  onClick={() => onOpenCampaignSwitcher?.()}
+                  aria-label="Switch Active Campaign"
+                  className="group text-left cursor-pointer transition flex items-center gap-2 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-emerald-400 rounded-xl px-1 -ml-1"
+                  title="Click to switch active campaign"
+                >
+                  <h1 className="text-xl sm:text-2xl font-black font-sans text-white group-hover:text-emerald-400 transition-colors tracking-tight leading-none">
+                    {activeProject.name}
+                  </h1>
+                  <span className="text-[10px] text-slate-400 font-mono font-bold bg-slate-800/80 group-hover:bg-emerald-500/20 group-hover:text-emerald-300 border border-slate-700/80 px-2 py-0.5 rounded-lg transition-all shrink-0">
+                    Switch ▼
+                  </span>
+                </button>
                 <p className="text-xs text-slate-400 italic">
                   "{activeProject.motto || "United in faith, building a brighter future."}"
                 </p>

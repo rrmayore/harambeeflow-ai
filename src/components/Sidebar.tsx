@@ -3,8 +3,9 @@ import {
   LayoutDashboard, Smartphone, Bot, Cpu, FileText, Sparkles, HelpCircle, Download,
   Home, Gift, Landmark, MessageSquare, Shield, ShieldAlert, Scale, Settings, Terminal, Briefcase,
   Globe, Flame, Trophy, Archive, Users, Plus, HeartHandshake, Share2, Coins, TrendingUp, Target,
-  CreditCard
+  CreditCard, ChevronDown
 } from "lucide-react";
+import { Project } from "../types";
 
 interface SidebarProps {
   activeTab: string;
@@ -19,6 +20,8 @@ interface SidebarProps {
   setIsDeveloperMode: (dev: boolean) => void;
   syncStatus?: "Online and Synced" | "Offline Changes Pending" | "Sync Complete";
   hasCampaign: boolean;
+  activeProject?: Project | null;
+  onOpenCampaignSwitcher?: () => void;
   onCreateCampaign?: () => void;
   onLoadSampleCampaign?: () => void;
   onShowHelp?: () => void;
@@ -37,6 +40,8 @@ export default function Sidebar({
   setIsDeveloperMode,
   syncStatus = "Online and Synced",
   hasCampaign,
+  activeProject,
+  onOpenCampaignSwitcher,
   onCreateCampaign,
   onLoadSampleCampaign,
   onShowHelp
@@ -46,12 +51,7 @@ export default function Sidebar({
 
   const renderSyncStatusBadge = (status: "Online and Synced" | "Offline Changes Pending" | "Sync Complete") => {
     if (status === "Online and Synced") {
-      return (
-        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-medium font-mono bg-emerald-950/40 text-emerald-400 border border-emerald-800/30">
-          <span className="w-1 h-1 rounded-full bg-emerald-500 shadow-[0_0_6px_#10b981]" />
-          Online & Synced
-        </span>
-      );
+      return null;
     }
     if (status === "Sync Complete") {
       return (
@@ -152,58 +152,86 @@ export default function Sidebar({
   return (
     <aside className={isMobile ? "flex-1 flex flex-col select-none overflow-y-auto" : "w-80 bg-slate-900 border-r border-slate-800 text-slate-100 flex flex-col h-screen select-none sticky top-0 md:flex hidden animate-fade-in z-20"}>
       
-      {/* Brand Header */}
-      <div className="p-5 border-b border-slate-800 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-xl shadow-lg shadow-emerald-950/50 text-slate-950 font-black font-mono text-sm shrink-0">
-            HF
-          </div>
-          <div className="flex flex-col leading-tight text-left">
-            <h1 className="font-sans font-black tracking-tight text-lg text-white">
-              HarambeeFlow
-            </h1>
-            <span className="text-xs font-mono font-medium text-emerald-400 tracking-wide mt-0.5">
-              AI Treasurer
-            </span>
-            <div className="mt-1.5">
-              {renderSyncStatusBadge(syncStatus)}
+      {/* Brand Header (Desktop only - mobile drawer provides primary header) */}
+      {!isMobile && (
+        <div className="p-5 border-b border-slate-800 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-xl shadow-lg shadow-emerald-950/50 text-slate-950 font-black font-mono text-sm shrink-0">
+              HF
+            </div>
+            <div className="flex flex-col leading-tight text-left">
+              <h1 className="font-sans font-black tracking-tight text-lg text-white">
+                HarambeeFlow
+              </h1>
+              <span className="text-xs font-mono font-medium text-emerald-400 tracking-wide mt-0.5">
+                AI Treasurer
+              </span>
+              {syncStatus !== "Online and Synced" && (
+                <div className="mt-1">
+                  {renderSyncStatusBadge(syncStatus)}
+                </div>
+              )}
             </div>
           </div>
-        </div>
 
-        {/* Mode Switcher Widget */}
-        {hasCampaign && (
-          <div className="mt-4 p-1.5 bg-slate-950 border border-slate-800 rounded-xl flex gap-1">
+          {/* Active Campaign Switcher Widget */}
+          {activeProject && (
             <button
-              onClick={() => {
-                setIsDeveloperMode(false);
-                if (["whatsapp-api", "daraja-onboarding", "super-admin", "compliance", "simulator", "ai-prompt", "developer"].includes(activeTab)) {
-                  setActiveTab("dashboard");
-                }
-              }}
-              className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold font-sans flex items-center justify-center gap-1 cursor-pointer transition ${
-                !isDeveloperMode 
-                  ? "bg-emerald-500 text-slate-950 shadow-md" 
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
-              }`}
+              onClick={() => onOpenCampaignSwitcher?.()}
+              aria-label="Switch Active Campaign"
+              className="mt-3.5 w-full p-2.5 bg-slate-950 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/50 rounded-xl transition duration-150 flex items-center justify-between text-left group cursor-pointer shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/80"
+              id="sidebar-active-campaign-button"
+              title="Click to switch or manage campaigns"
             >
-              <Briefcase className="w-3.5 h-3.5" />
-              Treasurer
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981] shrink-0 animate-pulse" />
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-wider block">
+                    Active Fundraiser
+                  </span>
+                  <span className="text-xs font-bold text-white group-hover:text-emerald-400 transition-colors truncate block">
+                    {activeProject.name}
+                  </span>
+                </div>
+              </div>
+              <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-emerald-400 transition-transform group-hover:translate-y-0.5 shrink-0 ml-1" />
             </button>
-            <button
-              onClick={() => setIsDeveloperMode(true)}
-              className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold font-sans flex items-center justify-center gap-1 cursor-pointer transition ${
-                isDeveloperMode 
-                  ? "bg-amber-500 text-slate-950 shadow-md" 
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
-              }`}
-            >
-              <Terminal className="w-3.5 h-3.5" />
-              Developer
-            </button>
-          </div>
-        )}
-      </div>
+          )}
+
+          {/* Mode Switcher Widget */}
+          {hasCampaign && (
+            <div className="mt-4 p-1.5 bg-slate-950 border border-slate-800 rounded-xl flex gap-1">
+              <button
+                onClick={() => {
+                  setIsDeveloperMode(false);
+                  if (["whatsapp-api", "daraja-onboarding", "super-admin", "compliance", "simulator", "ai-prompt", "developer"].includes(activeTab)) {
+                    setActiveTab("dashboard");
+                  }
+                }}
+                className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold font-sans flex items-center justify-center gap-1 cursor-pointer transition ${
+                  !isDeveloperMode 
+                    ? "bg-emerald-500 text-slate-950 shadow-md" 
+                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
+                }`}
+              >
+                <Briefcase className="w-3.5 h-3.5" />
+                Treasurer
+              </button>
+              <button
+                onClick={() => setIsDeveloperMode(true)}
+                className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold font-sans flex items-center justify-center gap-1 cursor-pointer transition ${
+                  isDeveloperMode 
+                    ? "bg-amber-500 text-slate-950 shadow-md" 
+                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
+                }`}
+              >
+                <Terminal className="w-3.5 h-3.5" />
+                Developer
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Categories Content scrollable */}
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">

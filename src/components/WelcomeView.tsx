@@ -38,7 +38,7 @@ export default function WelcomeView({
   ];
 
   return (
-    <div className="flex-1 overflow-y-auto bg-slate-950 flex flex-col items-center justify-center p-6 text-slate-100 min-h-full">
+    <div className="flex-1 overflow-y-auto bg-slate-950 flex flex-col items-center justify-center p-6 pb-[calc(100px+env(safe-area-inset-bottom))] md:pb-12 text-slate-100 min-h-full">
       {/* Dynamic Background Glow */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.06)_0%,rgba(0,0,0,0)_60%)] pointer-events-none" />
 

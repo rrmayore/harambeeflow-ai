@@ -37,6 +37,7 @@ interface DashboardViewProps {
   summaryText: string;
   isSummarizing: boolean;
   onAddProject: (newProj: any) => Promise<any>;
+  onOpenCampaignSwitcher?: () => void;
 }
 
 export default function DashboardView({
@@ -49,7 +50,8 @@ export default function DashboardView({
   onTriggerSummarize,
   summaryText,
   isSummarizing,
-  onAddProject
+  onAddProject,
+  onOpenCampaignSwitcher
 }: DashboardViewProps) {
   // Local state for filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -476,9 +478,19 @@ TX88283749,2026-06-24,3500,CHAMA INVESTMENT CORP,254755123456`;
                 </div>
               </div>
 
-              <h2 className="text-2xl md:text-3xl font-sans font-black tracking-tight text-white leading-tight drop-shadow-xs">
-                {activeProject.name}
-              </h2>
+              <button
+                onClick={() => onOpenCampaignSwitcher?.()}
+                aria-label="Switch Active Campaign"
+                className="group text-left transition cursor-pointer flex items-center gap-2 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-emerald-400 rounded-xl px-1.5 py-0.5 -ml-1.5"
+                title="Click to switch active campaign"
+              >
+                <h2 className="text-2xl md:text-3xl font-sans font-black tracking-tight text-white group-hover:text-emerald-400 transition-colors leading-tight drop-shadow-xs">
+                  {activeProject.name}
+                </h2>
+                <span className="text-xs text-slate-400 font-mono font-bold bg-slate-800/80 group-hover:bg-emerald-500/20 group-hover:text-emerald-300 border border-slate-700/80 px-2 py-0.5 rounded-lg transition-all shrink-0">
+                  Switch ▼
+                </span>
+              </button>
               
               <div className="text-[11px] text-slate-300 font-medium">
                 Organizer: <span className="text-white font-extrabold">{activeProject.organizer || `${activeProject.name} Board`}</span>

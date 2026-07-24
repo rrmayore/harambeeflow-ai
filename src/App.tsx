@@ -36,6 +36,9 @@ import { BackToTopButton } from "./components/BackToTopButton";
 import WelcomeView from "./components/WelcomeView";
 import CampaignWizard from "./components/CampaignWizard";
 import OrganizerOnboardingWizard from "./components/OrganizerOnboardingWizard";
+import CampaignSwitcherModal from "./components/CampaignSwitcherModal";
+import CampaignBreadcrumbs from "./components/CampaignBreadcrumbs";
+import DuplicateCampaignPromptModal from "./components/DuplicateCampaignPromptModal";
 import EmailVerificationScreen from "./components/EmailVerificationScreen";
 import { getLocalAuthAnalytics } from "./lib/analytics";
 import CampaignActivationWizard from "./components/CampaignActivationWizard";
@@ -53,7 +56,7 @@ import CommunicationsAutomationCenter from "./components/CommunicationsAutomatio
 import PlatformIntelligenceDashboard from "./components/PlatformIntelligenceDashboard";
 import { EventBus } from "./utils/eventBus";
 import { Project, Contribution, WhatsAppMessage } from "./types";
-import { Sparkles, Menu, X, Plus, Calendar, Coins, Users, Smartphone, CheckCircle2, Download, ExternalLink, Wifi, Battery, LayoutDashboard, Landmark, Megaphone, FileText, Settings, HeartHandshake, Share2, Eye, TrendingUp, Layers, Cpu, Briefcase, CreditCard } from "lucide-react";
+import { Sparkles, Menu, X, Plus, Calendar, Coins, Users, Smartphone, CheckCircle2, Download, ExternalLink, Wifi, Battery, LayoutDashboard, Landmark, Megaphone, FileText, Settings, HeartHandshake, Share2, Eye, TrendingUp, Layers, Cpu, Briefcase, CreditCard, ChevronDown, FolderOpen } from "lucide-react";
 import { onAuthStateChanged, signOut, User as FirebaseUser, GoogleAuthProvider, linkWithCredential, signInWithPopup } from "firebase/auth";
 import { 
   collection, 
@@ -169,7 +172,18 @@ const PWAFrameWrapper = ({ isSimulated, children, handleExit }: { isSimulated: b
 
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState("landing");
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      if (typeof window !== "undefined" && window.location.hash.includes("#/f/")) {
+        return "public";
+      }
+      const saved = localStorage.getItem("harambeeflow_last_active_tab");
+      if (saved && saved !== "landing" && saved !== "public" && saved !== "trust") {
+        return saved;
+      }
+    } catch (e) {}
+    return "landing";
+  });
   const [publicCampaignId, setPublicCampaignId] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<"Online and Synced" | "Offline Changes Pending" | "Sync Complete">(
     typeof navigator !== "undefined" && !navigator.onLine ? "Offline Changes Pending" : "Online and Synced"
@@ -251,6 +265,48 @@ export default function App() {
 
   // V2 UX Refactor Onboarding & Setup wizard states
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [showCampaignSwitcher, setShowCampaignSwitcher] = useState(false);
+  const [showDuplicateCampaignPrompt, setShowDuplicateCampaignPrompt] = useState(false);
+  const [isSwitchingCampaign, setIsSwitchingCampaign] = useState(false);
+  const [switchingToastMsg, setSwitchingToastMsg] = useState<string | null>(null);
+
+  // Helper to switch active project smoothly with feedback and local persistence
+  const handleSelectActiveProject = (project: Project) => {
+    if (!project) return;
+    setIsSwitchingCampaign(true);
+    setActiveProject(project);
+    try {
+      localStorage.setItem("harambeeflow_last_active_project_id", project.id);
+    } catch (e) {
+      console.warn("Could not persist active project ID to localStorage", e);
+    }
+    setSwitchingToastMsg(`Now managing "${project.name}"`);
+    setTimeout(() => {
+      setSwitchingToastMsg(null);
+    }, 3500);
+    setTimeout(() => {
+      setIsSwitchingCampaign(false);
+    }, 320);
+  };
+
+  // Persist active project preference to localStorage
+  useEffect(() => {
+    if (activeProject?.id) {
+      try {
+        localStorage.setItem("harambeeflow_last_active_project_id", activeProject.id);
+      } catch (e) {}
+    }
+  }, [activeProject]);
+
+  // Persist active tab preference to localStorage
+  useEffect(() => {
+    if (activeTab && activeTab !== "landing" && activeTab !== "public" && activeTab !== "trust") {
+      try {
+        localStorage.setItem("harambeeflow_last_active_tab", activeTab);
+      } catch (e) {}
+    }
+  }, [activeTab]);
+
   const [draftProject, setDraftProject] = useState<any>(null);
   const [launchChecklistOpen, setLaunchChecklistOpen] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
@@ -350,10 +406,49 @@ export default function App() {
     }
   }, [activeTab]);
 
-  // Central handler to trigger campaign creation onboarding wizard
-  const handleCreateCampaign = () => {
+  // Central handler to trigger campaign creation with duplicate check
+  const handleTriggerCreateCampaign = () => {
     setSidebarOpen(false);
-    setWizardOpen(true);
+    if (activeProject && projects.length > 0) {
+      setShowDuplicateCampaignPrompt(true);
+    } else {
+      setWizardOpen(true);
+    }
+  };
+
+  const handleCreateCampaign = () => {
+    handleTriggerCreateCampaign();
+  };
+
+  const handleDuplicateProject = (proj: Project) => {
+    const newId = `fundraiser-${Date.now()}`;
+    const duplicated: Project = {
+      ...proj,
+      id: newId,
+      name: `${proj.name} (Copy)`,
+      currentAmount: 0,
+      status: "Draft",
+      accountReference: `${(proj.accountReference || "COPY").slice(0, 7)}${Math.floor(Math.random() * 90 + 10)}`,
+      createdAt: new Date().toISOString()
+    };
+    setProjects(prev => [duplicated, ...prev]);
+    setActiveProject(duplicated);
+  };
+
+  const handleArchiveProject = (proj: Project) => {
+    const nextStatus = proj.status === "Archived" ? "Active" : "Archived";
+    setProjects(prev => prev.map(p => p.id === proj.id ? { ...p, status: nextStatus } : p));
+    if (activeProject?.id === proj.id) {
+      setActiveProject(prev => prev ? { ...prev, status: nextStatus } : null);
+    }
+  };
+
+  const handleDeleteProject = (projId: string) => {
+    const updated = projects.filter(p => p.id !== projId);
+    setProjects(updated);
+    if (activeProject?.id === projId) {
+      setActiveProject(updated.length > 0 ? updated[0] : null);
+    }
   };
 
   // Optional "Load Sample Campaign" seed trigger
@@ -1068,9 +1163,18 @@ export default function App() {
         if (userProjs.length > 0) {
           setProjects(userProjs);
           setActiveProject(prev => {
-            if (!prev) return userProjs[0];
-            const fresh = userProjs.find(p => p.id === prev.id);
-            return fresh || userProjs[0];
+            if (prev) {
+              const fresh = userProjs.find(p => p.id === prev.id);
+              if (fresh) return fresh;
+            }
+            try {
+              const savedId = localStorage.getItem("harambeeflow_last_active_project_id");
+              if (savedId) {
+                const match = userProjs.find(p => p.id === savedId);
+                if (match) return match;
+              }
+            } catch (e) {}
+            return userProjs[0];
           });
         } else {
           setProjects([]);
@@ -1131,9 +1235,18 @@ export default function App() {
         .then((sandboxData: Project[]) => {
           setProjects(sandboxData);
           setActiveProject(prev => {
-            if (!prev) return sandboxData[0];
-            const fresh = sandboxData.find(p => p.id === prev.id);
-            return fresh || sandboxData[0];
+            if (prev) {
+              const fresh = sandboxData.find(p => p.id === prev.id);
+              if (fresh) return fresh;
+            }
+            try {
+              const savedId = localStorage.getItem("harambeeflow_last_active_project_id");
+              if (savedId) {
+                const match = sandboxData.find(p => p.id === savedId);
+                if (match) return match;
+              }
+            } catch (e) {}
+            return sandboxData[0];
           });
         })
         .catch(err => console.error("Fallback projects fetch failed:", err))
@@ -2006,6 +2119,49 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
     );
   }
 
+  const isWorkspaceMode = [
+    "dashboard",
+    "campaigns",
+    "supporters",
+    "pledges",
+    "report",
+    "reports",
+    "committee",
+    "collect",
+    "share",
+    "documents",
+    "insights",
+    "communications",
+    "autopilot",
+    "simulator"
+  ].includes(activeTab);
+
+  const isSystemMode = [
+    "settings",
+    "billing",
+    "help",
+    "faqs",
+    "developer",
+    "developers",
+    "whatsapp-api",
+    "daraja-onboarding",
+    "super-admin",
+    "compliance",
+    "ai-prompt",
+    "landing",
+    "trust",
+    "public",
+    "profile",
+    "account",
+    "security",
+    "notifications",
+    "privacy",
+    "legal",
+    "system-preferences"
+  ].includes(activeTab);
+
+  const showCampaignSwitcherInHeader = isWorkspaceMode && !isSystemMode;
+
   return (
     <PWAFrameWrapper isSimulated={isSimulatedStandalone} handleExit={() => setIsSimulatedStandalone(false)}>
       <div className={`min-h-screen bg-slate-950 flex flex-col font-sans leading-normal relative ${
@@ -2045,6 +2201,8 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
         setIsDeveloperMode={setIsDeveloperMode}
         syncStatus={syncStatus}
         hasCampaign={projects.length > 0}
+        activeProject={activeProject}
+        onOpenCampaignSwitcher={() => setShowCampaignSwitcher(true)}
         onCreateCampaign={handleCreateCampaign}
         onLoadSampleCampaign={handleLoadSampleCampaign}
         onShowHelp={() => setTourOpen(true)}
@@ -2054,54 +2212,100 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
       <div className={`flex flex-col flex-1 ${
         projects.length === 0 && wizardOpen ? "min-h-screen" : "h-screen overflow-hidden"
       }`}>
-        <header className="bg-slate-900 border-b border-slate-800 px-4 py-3 shrink-0 flex items-center justify-between md:hidden sticky top-0 z-30 shadow-md">
+        <header className="bg-slate-900 border-b border-slate-800 px-3 sm:px-4 py-2 shrink-0 flex items-center justify-between gap-2 md:hidden sticky top-0 z-30 shadow-md min-h-[56px]">
+          {/* Priority 1: HF Logo + HarambeeFlow AI Treasurer */}
           <div 
-            className="flex items-center gap-2.5 text-white cursor-pointer active:opacity-80 transition-opacity"
+            className="flex items-center gap-2 text-white cursor-pointer active:opacity-80 transition-opacity min-w-0 shrink-0"
             onClick={() => handleSetActiveTab("dashboard")}
+            aria-label="Navigate to Dashboard"
           >
             <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-xl flex items-center justify-center text-xs font-black text-slate-950 shadow-md shadow-emerald-500/20 shrink-0">
               HF
             </div>
-            <div className="flex flex-col leading-tight text-left">
-              <span className="text-base font-sans font-black tracking-tight text-white">HarambeeFlow</span>
-              <span className="text-xs font-mono font-medium text-emerald-400 tracking-wide mt-0.5">
+            <div className="flex flex-col leading-tight text-left min-w-0">
+              <span className="text-sm sm:text-base font-sans font-black tracking-tight text-white whitespace-nowrap">
+                HarambeeFlow
+              </span>
+              <span className="text-[10px] sm:text-xs font-mono font-medium text-emerald-400 tracking-wide mt-0.5 whitespace-nowrap">
                 AI Treasurer
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {renderSyncStatusBadge(syncStatus)}
-            <button 
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="text-slate-200 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-750 border border-slate-700/60 rounded-xl transition-all duration-150 active:scale-95 flex items-center gap-1.5 cursor-pointer min-h-[38px]"
-              aria-label="Open menu"
-            >
-              <Menu className="w-4.5 h-4.5 text-emerald-400" />
-              <span className="text-xs font-bold text-slate-200">Menu</span>
-            </button>
-          </div>
+          {/* Priority 3: Active Campaign Switcher (ONLY in Workspace Mode) */}
+          {showCampaignSwitcherInHeader && (
+            <div className="flex-1 min-w-0 flex items-center justify-end px-0.5">
+              {activeProject ? (
+                <button
+                  onClick={() => setShowCampaignSwitcher(true)}
+                  className="flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-2 min-h-[48px] bg-slate-800 hover:bg-slate-750 border border-slate-700/80 hover:border-emerald-500/50 rounded-xl text-left transition cursor-pointer shadow-sm shrink min-w-0 max-w-full focus:outline-none focus:ring-2 focus:ring-emerald-400/80 active:scale-95"
+                  id="mobile-campaign-switcher-btn"
+                  aria-label="Switch Active Campaign"
+                  title="Switch Campaign"
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_#10b981] shrink-0 animate-pulse" />
+                  
+                  {/* Large screens (>=414px): Full campaign name with truncation */}
+                  <span className="hidden min-[414px]:inline text-xs font-bold text-white truncate max-w-[130px] sm:max-w-[200px]">
+                    {activeProject.name}
+                  </span>
+
+                  {/* Medium screens (360px - 413px): Shorter truncated name */}
+                  <span className="hidden min-[360px]:max-[413px]:inline text-xs font-bold text-white truncate max-w-[75px]">
+                    {activeProject.name}
+                  </span>
+
+                  {/* Small screens (320px - 359px): "Active" text */}
+                  <span className="hidden min-[320px]:max-[359px]:inline text-[11px] font-bold text-emerald-400">
+                    Active
+                  </span>
+
+                  {/* Very narrow screens (<320px): Just the dot and down arrow */}
+
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                </button>
+              ) : (
+                syncStatus !== "Online and Synced" && renderSyncStatusBadge(syncStatus)
+              )}
+            </div>
+          )}
+
+          {/* Priority 2: Menu Button (Highest UI Priority - shrink-0, min 48x48px, never clipped or hidden) */}
+          <button 
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="shrink-0 text-slate-200 px-2.5 sm:px-3 py-2 min-h-[48px] min-w-[48px] bg-slate-800 hover:bg-slate-750 border border-slate-700/60 rounded-xl transition-all duration-150 active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs focus:outline-none focus:ring-2 focus:ring-emerald-400/80"
+            aria-label="Open menu"
+          >
+            <Menu className="w-5 h-5 text-emerald-400 shrink-0" />
+            <span className="text-xs font-bold text-slate-200 hidden min-[360px]:inline">Menu</span>
+          </button>
         </header>
 
         {/* Mobile Slide-out Drawer Sidebar */}
         {sidebarOpen && (
           <div className="fixed inset-0 z-40 flex md:hidden">
             <div className="fixed inset-0 bg-black/60 backdrop-blur-xs animate-fade-in-overlay" onClick={() => setSidebarOpen(false)} />
-            <div className="relative flex-1 flex flex-col w-full bg-slate-900 pt-5 pb-4 text-slate-100 animate-slide-in-left shadow-2xl">
-              <div className="absolute top-4 right-4">
-                <button onClick={() => setSidebarOpen(false)} className="p-1 bg-slate-800 rounded-lg">
+            <div className="relative flex-1 flex flex-col w-full max-w-[320px] bg-slate-900 text-slate-100 animate-slide-in-left shadow-2xl h-full overflow-hidden">
+              {/* Primary Drawer Header */}
+              <div className="px-5 py-3.5 border-b border-slate-800 flex items-center justify-between gap-3 shrink-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-xl flex items-center justify-center text-xs font-black text-slate-950 shadow-md shadow-emerald-500/20 shrink-0">
+                    HF
+                  </div>
+                  <div className="flex flex-col leading-tight text-left min-w-0">
+                    <span className="text-base font-sans font-black tracking-tight text-white truncate">HarambeeFlow</span>
+                    <span className="text-[11px] font-mono font-medium text-emerald-400 tracking-wide mt-0.5">AI Treasurer</span>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setSidebarOpen(false)} 
+                  className="p-2 bg-slate-800 hover:bg-slate-750 border border-slate-700/60 rounded-xl text-slate-300 transition active:scale-95 focus:outline-none focus:ring-2 focus:ring-emerald-400/80 cursor-pointer shrink-0"
+                  aria-label="Close menu"
+                >
                   <X className="w-5 h-5 text-slate-300" />
                 </button>
               </div>
-              <div className="px-6 pb-5 border-b border-slate-800 flex items-center gap-3">
-                <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-xl flex items-center justify-center text-xs font-black text-slate-950 shadow-md">
-                  HF
-                </div>
-                <div className="flex flex-col leading-tight text-left">
-                  <span className="text-base font-sans font-black tracking-tight text-white">HarambeeFlow</span>
-                  <span className="text-xs font-mono font-medium text-emerald-400 tracking-wide mt-0.5">AI Treasurer</span>
-                </div>
-              </div>
+
               <Sidebar 
                 activeTab={activeTab} 
                 setActiveTab={(tab) => {
@@ -2118,6 +2322,11 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
                 setIsDeveloperMode={setIsDeveloperMode}
                 syncStatus={syncStatus}
                 hasCampaign={projects.length > 0}
+                activeProject={activeProject}
+                onOpenCampaignSwitcher={() => {
+                  setSidebarOpen(false);
+                  setShowCampaignSwitcher(true);
+                }}
                 onCreateCampaign={handleCreateCampaign}
                 onLoadSampleCampaign={handleLoadSampleCampaign}
                 onShowHelp={() => setTourOpen(true)}
@@ -2245,8 +2454,8 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
                           scrollbar-width: none;
                         }
                       `}} />
-                      <div className="max-w-7xl mx-auto px-3 sm:px-4">
-                        <div className="flex overflow-x-auto scrollbar-none items-center gap-1.5 py-1.5 md:py-2 -mb-px">
+                      <div className="max-w-7xl mx-auto px-3 sm:px-4 flex items-center justify-between gap-2">
+                        <div className="flex overflow-x-auto scrollbar-none items-center gap-1.5 py-1.5 md:py-2 -mb-px flex-1">
                           {[
                             { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
                             { id: "campaigns", label: "Campaigns", icon: Layers },
@@ -2283,12 +2492,57 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
                             );
                           })}
                         </div>
+
+                        {/* Desktop Active Campaign Quick Switcher Badge */}
+                        {activeProject && (
+                          <button
+                            onClick={() => setShowCampaignSwitcher(true)}
+                            className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-700/80 hover:border-emerald-500/50 rounded-xl text-left transition cursor-pointer text-xs font-bold text-white shadow-sm shrink-0"
+                            id="desktop-quick-nav-campaign-switcher"
+                            title="Click to switch active fundraiser"
+                          >
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_#10b981] animate-pulse shrink-0" />
+                            <span className="text-slate-400 font-mono text-[11px] font-semibold">Active:</span>
+                            <span className="text-emerald-400 font-extrabold truncate max-w-[150px]">{activeProject.name}</span>
+                            <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-0.5" />
+                          </button>
+                        )}
                       </div>
                     </nav>
 
+                    {/* Campaign Workspace Breadcrumbs */}
+                    <CampaignBreadcrumbs
+                      activeTab={activeTab}
+                      activeProject={activeProject}
+                      onOpenCampaignSwitcher={() => setShowCampaignSwitcher(true)}
+                      onNavigateTab={handleSetActiveTab}
+                    />
+
                     {/* Scrollable Viewport Container for Active Tab */}
-                    <div id="main-tab-viewport" className="flex-1 overflow-y-auto pb-24 md:pb-6 relative w-full h-full">
-                    {activeTab === "dashboard" && (!activeProject ? (
+                    <div id="main-tab-viewport" className="flex-1 overflow-y-auto pb-[calc(104px+env(safe-area-inset-bottom))] md:pb-8 relative w-full h-full scroll-smooth">
+                      
+                      {/* Active Campaign Switch Toast Notification */}
+                      {switchingToastMsg && (
+                        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[140] bg-slate-900 border border-emerald-500/60 text-emerald-300 px-4 py-2.5 rounded-2xl shadow-2xl font-mono text-xs flex items-center gap-2.5 animate-slide-in-down backdrop-blur-md">
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
+                          <span className="font-extrabold">{switchingToastMsg}</span>
+                        </div>
+                      )}
+
+                      {/* Brief Skeleton Loader during workspace switch */}
+                      {isSwitchingCampaign ? (
+                        <div className="p-6 max-w-7xl mx-auto space-y-6 animate-pulse">
+                          <div className="h-10 bg-slate-800/60 rounded-2xl w-1/3" />
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="h-32 bg-slate-800/40 rounded-2xl" />
+                            <div className="h-32 bg-slate-800/40 rounded-2xl" />
+                            <div className="h-32 bg-slate-800/40 rounded-2xl" />
+                          </div>
+                          <div className="h-64 bg-slate-800/30 rounded-2xl w-full" />
+                        </div>
+                      ) : (
+                        <>
+                          {activeTab === "dashboard" && (!activeProject ? (
                       <div className="flex-1 bg-slate-950 flex flex-col items-center justify-center p-6 text-center text-slate-100 min-h-screen">
                         <div className="space-y-4 max-w-sm animate-fade-in">
                           <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
@@ -2314,6 +2568,7 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
                         currentUser={currentUser}
                         onTriggerTour={() => setTourOpen(true)}
                         isDemoMode={isDemoMode}
+                        onOpenCampaignSwitcher={() => setShowCampaignSwitcher(true)}
                       />
                     ))}
 
@@ -3279,6 +3534,36 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
                         }}
                       />
                     )}
+
+                    {/* Global Footer rendered inside the main scroll viewport so it always scrolls above mobile bottom navigation */}
+                    <footer className="bg-white border-t border-slate-200 px-6 py-4 shrink-0 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 mt-10 rounded-t-xl shadow-xs" id="app-global-footer">
+                      <div className="flex items-center gap-2">
+                        <span>© 2026 HarambeeFlow. All Rights Reserved.</span>
+                        <span>•</span>
+                        <a href="https://harambeeflow.org" target="_blank" rel="noopener noreferrer" className="text-emerald-600 font-mono hover:underline font-semibold">
+                          https://harambeeflow.org
+                        </a>
+                      </div>
+                      {projects.length > 0 ? (
+                        <button 
+                          onClick={() => setShowCampaignSwitcher(true)}
+                          className="text-xs font-mono font-bold text-emerald-700 hover:text-emerald-900 uppercase flex items-center gap-1.5 py-1.5 px-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 rounded-lg transition cursor-pointer"
+                          id="footer-manage-campaigns-btn"
+                        >
+                          <FolderOpen className="w-3.5 h-3.5 text-emerald-600" /> Manage Campaigns
+                        </button>
+                      ) : (
+                        <button 
+                          onClick={() => handleTriggerCreateCampaign()}
+                          className="text-xs font-mono font-bold text-indigo-600 hover:text-indigo-800 uppercase flex items-center gap-1.5 py-1.5 px-3 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition cursor-pointer"
+                          id="footer-setup-new-fundraiser-btn"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Set Up New Fundraiser
+                        </button>
+                      )}
+                    </footer>
+                        </>
+                      )}
                     </div>
 
                     {/* Mobile Bottom Navigation Bar */}
@@ -3325,23 +3610,6 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
                 )}
               </>
             )}
-
-            {/* Quick footer bar with "Setup New Fundraiser" launcher button */}
-            <footer className="bg-white border-t border-slate-200 px-6 py-3 shrink-0 flex flex-wrap items-center justify-between text-xs text-slate-500">
-              <div className="flex items-center gap-2">
-                <span>© 2026 HarambeeFlow. All Rights Reserved.</span>
-                <span>•</span>
-                <a href="https://harambeeflow.org" target="_blank" rel="noopener noreferrer" className="text-emerald-600 font-mono hover:underline font-semibold">
-                  https://harambeeflow.org
-                </a>
-              </div>
-              <button 
-                onClick={() => setShowAddProject(true)}
-                className="text-xs font-mono font-bold text-indigo-600 hover:text-indigo-800 uppercase flex items-center gap-1 py-1 px-3 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition"
-              >
-                <Plus className="w-3.5 h-3.5" /> Set Up New Fundraiser
-              </button>
-            </footer>
           </div>
 
           {/* SIMULATED PHONE - Logged under active participant workspaces */}
@@ -3698,6 +3966,69 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
       <FaqModal
         isOpen={faqModalOpen}
         onClose={() => setFaqModalOpen(false)}
+      />
+
+      {/* Context-Aware Floating Action Button */}
+      {activeTab !== "landing" && activeTab !== "trust" && !wizardOpen && !launchChecklistOpen && (
+        <div className="fixed bottom-[calc(70px+env(safe-area-inset-bottom))] md:bottom-6 right-4 sm:right-6 z-[120]">
+          {projects.length === 0 ? (
+            <button
+              onClick={handleTriggerCreateCampaign}
+              className="px-4 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-black text-xs sm:text-sm rounded-2xl shadow-2xl shadow-emerald-950/60 flex items-center gap-2 transition transform hover:scale-105 active:scale-95 cursor-pointer border border-emerald-400/40"
+              id="fab-create-first-campaign"
+            >
+              <Plus className="w-4 h-4 text-slate-950 stroke-[3]" />
+              <span>Create First Fundraiser</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowCampaignSwitcher(true)}
+              className="px-4 py-2.5 bg-slate-900/95 hover:bg-slate-850 text-white border border-slate-700/80 hover:border-emerald-500/50 font-extrabold text-xs rounded-2xl shadow-2xl shadow-slate-950/80 flex items-center gap-2 transition transform hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer"
+              id="fab-manage-campaigns"
+            >
+              <FolderOpen className="w-4 h-4 text-emerald-400" />
+              <span className="hidden xs:inline">Manage Campaigns</span>
+              <span className="xs:hidden">Campaigns</span>
+              {activeProject && (
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse ml-0.5" />
+              )}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Campaign Switcher Modal */}
+      <CampaignSwitcherModal
+        isOpen={showCampaignSwitcher}
+        onClose={() => setShowCampaignSwitcher(false)}
+        projects={projects}
+        activeProject={activeProject}
+        onSelectProject={(proj) => {
+          handleSelectActiveProject(proj);
+          setShowCampaignSwitcher(false);
+        }}
+        onCreateNewCampaign={() => {
+          setShowCampaignSwitcher(false);
+          handleTriggerCreateCampaign();
+        }}
+        onDuplicateProject={handleDuplicateProject}
+        onArchiveProject={handleArchiveProject}
+        onDeleteProject={handleDeleteProject}
+      />
+
+      {/* Duplicate Campaign Warning Prompt Modal */}
+      <DuplicateCampaignPromptModal
+        isOpen={showDuplicateCampaignPrompt}
+        onClose={() => setShowDuplicateCampaignPrompt(false)}
+        activeProject={activeProject}
+        onContinueManaging={() => {
+          handleSetActiveTab("dashboard");
+          setShowDuplicateCampaignPrompt(false);
+        }}
+        onCreateAnother={() => {
+          setShowDuplicateCampaignPrompt(false);
+          setWizardOpen(true);
+        }}
       />
 
       {/* Global Smart Back To Top Floating Button */}

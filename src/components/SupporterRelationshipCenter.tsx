@@ -1217,7 +1217,7 @@ export default function SupporterRelationshipCenter({
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 15 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[250] bg-slate-900 border border-slate-800 px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2"
+            className="fixed bottom-[calc(80px+env(safe-area-inset-bottom))] sm:bottom-24 md:bottom-6 left-1/2 -translate-x-1/2 z-[250] bg-slate-900 border border-slate-800 px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2"
           >
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
             <span className="text-xs font-mono font-bold text-slate-300">{toastMsg}</span>

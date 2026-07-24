@@ -792,7 +792,7 @@ export default function PublicCampaignPageView({
   ];
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#030712] font-sans text-slate-100 relative min-h-screen selection:bg-emerald-500/30 selection:text-emerald-300" id="public-pages-root">
+    <div className="flex-1 overflow-y-auto bg-[#030712] font-sans text-slate-100 relative min-h-screen selection:bg-emerald-500/30 selection:text-emerald-300 pb-[calc(104px+env(safe-area-inset-bottom))] md:pb-12" id="public-pages-root">
       
       {/* Dynamic ambient grid overlay & background glow for world-class visual quality */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.08)_0%,rgba(0,0,0,0)_60%)] pointer-events-none" />
