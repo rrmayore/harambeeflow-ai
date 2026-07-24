@@ -226,35 +226,6 @@ export default function App() {
     }
   }, [activeTab]);
 
-  useEffect(() => {
-    const handleRouting = () => {
-      const hash = window.location.hash;
-      const path = window.location.pathname;
-      
-      // Match #/public/:id or #/campaign/:id or #/f/:id or /public/:id or /f/:id
-      let match = hash.match(/^#\/(public|campaign|f)\/([^?\/]+)/);
-      if (!match) {
-        match = path.match(/^\/(public|campaign|f)\/([^?\/]+)/);
-      }
-      
-      if (match) {
-        const campaignId = match[2];
-        setPublicCampaignId(campaignId);
-        setActiveTab("public");
-      } else if (hash === "#/landing" || hash === "#landing") {
-        setActiveTab("landing");
-      }
-    };
-
-    window.addEventListener("hashchange", handleRouting);
-    window.addEventListener("popstate", handleRouting);
-    handleRouting(); // run once on mount
-
-    return () => {
-      window.removeEventListener("hashchange", handleRouting);
-      window.removeEventListener("popstate", handleRouting);
-    };
-  }, [projects, activeProject]);
   const [lastSuccessfulStk, setLastSuccessfulStk] = useState<any>(null);
   const [contributions, setContributions] = useState<Contribution[]>([]);
   const [whatsappMessages, setWhatsappMessages] = useState<WhatsAppMessage[]>([]);
@@ -745,6 +716,73 @@ export default function App() {
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const [pendingDeepLink, setPendingDeepLink] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleRouting = () => {
+      const hash = window.location.hash;
+      const path = window.location.pathname;
+      
+      // Match #/public/:id or #/campaign/:id or #/f/:id or /public/:id or /f/:id
+      let match = hash.match(/^#\/(public|campaign|f)\/([^?\/]+)/);
+      if (!match) {
+        match = path.match(/^\/(public|campaign|f)\/([^?\/]+)/);
+      }
+      
+      if (match) {
+        const campaignId = match[2];
+        setPublicCampaignId(campaignId);
+        setActiveTab("public");
+        return;
+      }
+
+      // Handle direct navigation & deep links (/dashboard, /campaigns, /reports, /settings, /share, etc.)
+      const rawRoute = (hash.replace(/^#\/?/, '') || path.replace(/^\/?/, '')).split('/')[0].toLowerCase();
+      const protectedRoutes: Record<string, string> = {
+        "dashboard": "dashboard",
+        "command": "dashboard",
+        "campaigns": "campaigns",
+        "fundraisers": "campaigns",
+        "reports": "report",
+        "report": "report",
+        "settings": "settings",
+        "share": "share",
+        "collect": "collect",
+        "supporters": "supporters",
+        "autopilot": "autopilot",
+        "committee": "committee",
+        "pledges": "pledges",
+        "insights": "insights",
+        "billing": "billing",
+        "trust": "trust",
+        "landing": "landing",
+        "home": "landing"
+      };
+
+      if (rawRoute && protectedRoutes[rawRoute]) {
+        const targetTab = protectedRoutes[rawRoute];
+        if (targetTab === "landing" || targetTab === "trust") {
+          setActiveTab(targetTab);
+        } else {
+          setPendingDeepLink(targetTab);
+          setActiveTab(targetTab);
+        }
+      } else if (!hash && (path === "/" || !path)) {
+        if (!currentUser) {
+          setActiveTab("landing");
+        }
+      }
+    };
+
+    window.addEventListener("hashchange", handleRouting);
+    window.addEventListener("popstate", handleRouting);
+    handleRouting(); // run once on mount
+
+    return () => {
+      window.removeEventListener("hashchange", handleRouting);
+      window.removeEventListener("popstate", handleRouting);
+    };
+  }, [currentUser]);
 
   const [devSettings, setDevSettings] = useState(() => {
     const defaults = {
@@ -844,13 +882,63 @@ export default function App() {
     };
   }
 
-  // Trigger interactive tour on first load if not completed
-  useEffect(() => {
-    const isCompleted = localStorage.getItem("harambeeflowTutorialCompleted");
-    if (!isCompleted) {
-      setTourOpen(true);
+  // Handle tour completion and persistence to Firestore & localStorage
+  const handleFinishTour = async () => {
+    setTourOpen(false);
+    if (currentUser) {
+      const now = new Date().toISOString();
+      try {
+        localStorage.setItem(`has_completed_welcome_tour_${currentUser.uid}`, "true");
+        localStorage.setItem("harambeeflowTutorialCompleted", "true");
+        setUserProfile(prev => ({ ...prev, hasCompletedWelcomeTour: true, onboarded: true }));
+
+        if (db) {
+          await setDoc(doc(db, "users", currentUser.uid), {
+            hasCompletedWelcomeTour: true,
+            updatedAt: now
+          }, { merge: true });
+          await setDoc(doc(db, "userProfiles", currentUser.uid), {
+            hasCompletedWelcomeTour: true,
+            onboarded: true,
+            updatedAt: now
+          }, { merge: true });
+        }
+      } catch (err) {
+        console.error("Error updating welcome tour completion in Firestore:", err);
+      }
     }
-  }, []);
+
+    if (projects.length === 0) {
+      setWizardOpen(true);
+    } else {
+      if (activeTab === "landing") {
+        setActiveTab("dashboard");
+      }
+    }
+  };
+
+  const handleStartFundraising = () => {
+    if (!currentUser) {
+      setActiveTab("dashboard");
+    } else {
+      const isTourDone = Boolean(
+        userProfile?.hasCompletedWelcomeTour || 
+        userProfile?.onboarded || 
+        localStorage.getItem(`has_completed_welcome_tour_${currentUser.uid}`) === "true" ||
+        localStorage.getItem("harambeeflowTutorialCompleted") === "true"
+      );
+
+      if (!isTourDone) {
+        setTourOpen(true);
+      } else {
+        if (projects.length === 0) {
+          setWizardOpen(true);
+        } else {
+          setActiveTab("dashboard");
+        }
+      }
+    }
+  };
 
   // Diagnostic logging for authentication and sandbox detection in development
   useEffect(() => {
@@ -895,23 +983,46 @@ export default function App() {
     );
   }, [currentUser, activeTab, isDemoMode, devSettings.skipEmailVerification]);
 
-  // Bind Auth Observer
+  // Bind Auth Observer & update lastLogin in Firestore
   useEffect(() => {
     if (!auth) {
       setCheckingAuth(false);
       return;
     }
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       setCheckingAuth(false);
       
-      // If user logs in, route them from landing straight to AI Command Center
+      if (user && db) {
+        const now = new Date().toISOString();
+        try {
+          await setDoc(doc(db, "users", user.uid), {
+            uid: user.uid,
+            email: user.email || "",
+            displayName: user.displayName || "Ecosystem User",
+            lastLogin: now,
+            updatedAt: now
+          }, { merge: true });
+          await setDoc(doc(db, "userProfiles", user.uid), {
+            uid: user.uid,
+            email: user.email || "",
+            displayName: user.displayName || "Ecosystem User",
+            lastLogin: now,
+            updatedAt: now
+          }, { merge: true });
+        } catch (e) {
+          console.error("Error logging user lastLogin to Firestore:", e);
+        }
+      }
+
       if (user && activeTab === "landing") {
-        setActiveTab("dashboard");
+        const target = pendingDeepLink || "dashboard";
+        setActiveTab(target);
+        setPendingDeepLink(null);
       }
     });
     return unsubscribe;
-  }, [activeTab]);
+  }, [activeTab, pendingDeepLink]);
 
   // Fetch user profile from userProfiles collection in real-time
   useEffect(() => {
@@ -927,7 +1038,7 @@ export default function App() {
         try {
           setUserProfile(JSON.parse(cached));
         } catch (e) {
-          setUserProfile({ onboarded: true });
+          setUserProfile({ onboarded: true, hasCompletedWelcomeTour: true });
         }
       } else {
         setUserProfile(null);
@@ -946,11 +1057,10 @@ export default function App() {
         try {
           setUserProfile(JSON.parse(cached));
         } catch (e) {
-          setUserProfile({ onboarded: IS_SANDBOX ? false : true });
+          setUserProfile({ onboarded: true });
         }
       } else {
-        // In sandbox mode, default to not onboarded so the wizard launches; in production default to true
-        setUserProfile({ onboarded: IS_SANDBOX ? false : true });
+        setUserProfile({ onboarded: true });
       }
       setLoadingProfile(false);
     }, 2500);
@@ -960,9 +1070,18 @@ export default function App() {
       const unsubscribe = onSnapshot(userProfileRef, (docSnap) => {
         clearTimeout(timer);
         if (docSnap.exists()) {
-          setUserProfile(docSnap.data());
+          const profileData = docSnap.data();
+          setUserProfile(profileData);
+
+          // Restore session preferences (lastVisitedWorkspace and activeCampaignId)
+          if (profileData.lastVisitedWorkspace && activeTab === "dashboard" && !pendingDeepLink) {
+            setActiveTab(profileData.lastVisitedWorkspace);
+          }
+          if (profileData.activeCampaignId && !activeProject && projects.length > 0) {
+            const matched = projects.find(p => p.id === profileData.activeCampaignId);
+            if (matched) setActiveProject(matched);
+          }
         } else {
-          // Check sandbox local cache fallback
           const cached = localStorage.getItem(`demo_profile_${currentUser.uid}`);
           if (cached) {
             try {
@@ -978,17 +1097,7 @@ export default function App() {
       }, (error) => {
         clearTimeout(timer);
         console.error("Error loading user profile:", error);
-        // Try fallback
-        const cached = localStorage.getItem(`demo_profile_${currentUser.uid}`);
-        if (cached) {
-          try {
-            setUserProfile(JSON.parse(cached));
-          } catch (e) {
-            setUserProfile(null);
-          }
-        } else {
-          setUserProfile(null);
-        }
+        setUserProfile(null);
         setLoadingProfile(false);
       });
       return () => {
@@ -997,28 +1106,60 @@ export default function App() {
       };
     } else {
       clearTimeout(timer);
-      const cached = localStorage.getItem(`demo_profile_${currentUser.uid}`);
-      if (cached) {
-        try {
-          setUserProfile(JSON.parse(cached));
-        } catch (e) {
-          setUserProfile(null);
-        }
-      } else {
-        setUserProfile(null);
-      }
+      setUserProfile(null);
       setLoadingProfile(false);
     }
   }, [currentUser, isDemoMode]);
+
+  // Persist lastVisitedWorkspace to Firestore & localStorage
+  useEffect(() => {
+    if (currentUser && activeTab && activeTab !== "landing" && activeTab !== "trust" && activeTab !== "public") {
+      try {
+        localStorage.setItem(`last_visited_workspace_${currentUser.uid}`, activeTab);
+      } catch (e) {}
+
+      if (db) {
+        const now = new Date().toISOString();
+        setDoc(doc(db, "users", currentUser.uid), {
+          lastVisitedWorkspace: activeTab,
+          updatedAt: now
+        }, { merge: true }).catch(() => {});
+
+        setDoc(doc(db, "userProfiles", currentUser.uid), {
+          lastVisitedWorkspace: activeTab,
+          updatedAt: now
+        }, { merge: true }).catch(() => {});
+      }
+    }
+  }, [currentUser, activeTab]);
+
+  // Persist activeCampaignId to Firestore & localStorage
+  useEffect(() => {
+    if (currentUser && activeProject?.id) {
+      try {
+        localStorage.setItem(`active_campaign_id_${currentUser.uid}`, activeProject.id);
+      } catch (e) {}
+
+      if (db) {
+        const now = new Date().toISOString();
+        setDoc(doc(db, "users", currentUser.uid), {
+          activeCampaignId: activeProject.id,
+          updatedAt: now
+        }, { merge: true }).catch(() => {});
+
+        setDoc(doc(db, "userProfiles", currentUser.uid), {
+          activeCampaignId: activeProject.id,
+          updatedAt: now
+        }, { merge: true }).catch(() => {});
+      }
+    }
+  }, [currentUser, activeProject]);
 
   // Handle loading reset on auth state change
   useEffect(() => {
     if (currentUser) {
       setLoading(true);
-      
-      // Safety timeout: Never let the loading screen spin forever (limit to 2.5 seconds max)
       const timer = setTimeout(() => {
-        console.warn("Main database loading timed out. Clearing loading screen...");
         setLoading(false);
       }, 2500);
       return () => clearTimeout(timer);
@@ -1027,12 +1168,35 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // Auto-launch onboarding wizard for first-time signups
+  // Auto-launch Welcome Tour for first-time authenticated signups
   useEffect(() => {
-    if (!loading && !loadingProfile && projects.length === 0 && currentUser && !userProfile?.onboarded) {
+    if (currentUser && !loading && !loadingProfile && !isDemoMode) {
+      const isTourDone = Boolean(
+        userProfile?.hasCompletedWelcomeTour || 
+        userProfile?.onboarded || 
+        localStorage.getItem(`has_completed_welcome_tour_${currentUser.uid}`) === "true" ||
+        localStorage.getItem("harambeeflowTutorialCompleted") === "true"
+      );
+
+      if (!isTourDone) {
+        setTourOpen(true);
+      }
+    }
+  }, [currentUser, loading, loadingProfile, userProfile, isDemoMode]);
+
+  // Auto-launch Create First Fundraiser Wizard ONLY for onboarded users with 0 fundraisers
+  useEffect(() => {
+    const isTourDone = Boolean(
+      userProfile?.hasCompletedWelcomeTour || 
+      userProfile?.onboarded || 
+      (currentUser && localStorage.getItem(`has_completed_welcome_tour_${currentUser.uid}`) === "true") ||
+      localStorage.getItem("harambeeflowTutorialCompleted") === "true"
+    );
+
+    if (!loading && !loadingProfile && projects.length === 0 && currentUser && isTourDone && !tourOpen && activeTab !== "landing" && activeTab !== "trust") {
       setWizardOpen(true);
     }
-  }, [loading, loadingProfile, projects.length, currentUser, userProfile]);
+  }, [loading, loadingProfile, projects.length, currentUser, userProfile, tourOpen, activeTab]);
 
   const handleLogout = async () => {
     try {
@@ -2063,9 +2227,37 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
   if (activeTab !== "landing" && activeTab !== "trust" && !currentUser) {
     return (
       <AuthScreen 
-        onSuccess={(user) => {
+        onSuccess={async (user) => {
           setCurrentUser(user);
-          setActiveTab("dashboard");
+          const tourDone = localStorage.getItem(`has_completed_welcome_tour_${user.uid}`) === "true" ||
+            localStorage.getItem("harambeeflowTutorialCompleted") === "true";
+
+          let isTourCompleted = tourDone;
+          if (db) {
+            try {
+              const userSnap = await getDoc(doc(db, "users", user.uid));
+              const profileSnap = await getDoc(doc(db, "userProfiles", user.uid));
+              if (userSnap.exists() && userSnap.data()?.hasCompletedWelcomeTour) {
+                isTourCompleted = true;
+              } else if (profileSnap.exists() && (profileSnap.data()?.hasCompletedWelcomeTour || profileSnap.data()?.onboarded)) {
+                isTourCompleted = true;
+              }
+            } catch (e) {
+              console.error("Error checking welcome tour in Firestore:", e);
+            }
+          }
+
+          if (!isTourCompleted) {
+            setTourOpen(true);
+          } else {
+            if (projects.length === 0) {
+              setWizardOpen(true);
+            }
+          }
+
+          const targetTab = pendingDeepLink || userProfile?.lastVisitedWorkspace || "dashboard";
+          setActiveTab(targetTab);
+          setPendingDeepLink(null);
         }}
       />
     );
@@ -2356,7 +2548,7 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
 
             {/* Render selected tabs */}
             {activeTab === "landing" && (
-              <LandingPageView onEnterApp={() => setActiveTab("dashboard")} onEnterDemo={handleEnterDemo} />
+              <LandingPageView onEnterApp={handleStartFundraising} onEnterDemo={handleEnterDemo} />
             )}
 
             {activeTab === "trust" && (
@@ -3938,7 +4130,7 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
 
       {tourOpen && (
         <InteractiveTour 
-          onClose={() => setTourOpen(false)} 
+          onClose={handleFinishTour} 
           activeTab={activeTab}
           setActiveTab={handleSetActiveTab}
           wizardOpen={wizardOpen}

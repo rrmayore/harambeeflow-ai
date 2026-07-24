@@ -4,7 +4,6 @@ import {
   CheckCircle2, Info, Landmark, Layers, Sparkles, Send, X, AlertTriangle 
 } from "lucide-react";
 import { motion } from "motion/react";
-import InteractiveTour from "./InteractiveTour";
 import TrustSecurityView from "./TrustSecurityView";
 
 interface LandingPageViewProps {
@@ -15,7 +14,6 @@ interface LandingPageViewProps {
 type MarketingTab = "home" | "how-it-works" | "pricing" | "trust" | "faq" | "contact";
 
 export default function LandingPageView({ onEnterApp, onEnterDemo }: LandingPageViewProps) {
-  const [showTour, setShowTour] = useState(false);
   const [activeTab, setActiveTab] = useState<MarketingTab>("home");
 
   // Contact Form Simulated State
@@ -52,15 +50,15 @@ export default function LandingPageView({ onEnterApp, onEnterDemo }: LandingPage
         
         {/* TAB 1: HOME */}
         {activeTab === "home" && (
-          <main className="flex-1 flex flex-col items-center justify-center px-6 py-12 text-center z-20 relative max-w-5xl mx-auto w-full" id="home-view">
-            <div className="flex flex-col items-center max-w-4xl py-6">
+          <main className="flex-1 flex flex-col items-center justify-center px-4 pt-6 pb-10 sm:px-6 sm:py-12 md:py-16 text-center z-20 relative max-w-5xl mx-auto w-full" id="home-view">
+            <div className="flex flex-col items-center max-w-4xl py-0 sm:py-4 md:py-6">
               
               {/* Badge: Kenya's Trusted M-PESA Fundraising Platform */}
               <motion.div 
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.1 }}
-                className="px-4 py-1.5 rounded-full bg-slate-900/80 border border-slate-800/80 text-[11px] sm:text-xs font-semibold text-slate-400 tracking-wide shadow-lg shadow-emerald-500/5 flex items-center gap-2 mb-6 sm:mb-8"
+                className="px-3.5 py-1.5 rounded-full bg-slate-900/80 border border-slate-800/80 text-[11px] sm:text-xs font-semibold text-slate-400 tracking-wide shadow-lg shadow-emerald-500/5 flex items-center gap-2 mb-4 sm:mb-6 md:mb-8"
               >
                 <span>🇰🇪 Kenya's Trusted M-PESA Fundraising Platform</span>
               </motion.div>
@@ -70,9 +68,9 @@ export default function LandingPageView({ onEnterApp, onEnterDemo }: LandingPage
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, ease: "easeOut" }}
-                className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight leading-[1.08] text-white mb-5 sm:mb-6"
+                className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight leading-[1.1] sm:leading-[1.08] text-white mb-3.5 sm:mb-6"
               >
-                Never Track M-PESA Contributions <br />
+                Never Track M-PESA Contributions <br className="hidden sm:inline" />
                 <span className="bg-gradient-to-r from-emerald-400 via-emerald-300 to-sky-400 bg-clip-text text-transparent">
                   Manually Again
                 </span>
@@ -83,7 +81,7 @@ export default function LandingPageView({ onEnterApp, onEnterDemo }: LandingPage
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.8, delay: 0.3 }}
-                className="text-slate-300 text-sm sm:text-base md:text-lg font-medium max-w-2xl leading-relaxed mb-6 sm:mb-8"
+                className="text-slate-300 text-xs sm:text-base md:text-lg font-medium max-w-2xl leading-relaxed mb-4 sm:mb-6 md:mb-8"
               >
                 Automatically record every M-PESA contribution, update your fundraiser instantly, and keep supporters informed on WhatsApp in real time.
               </motion.p>
@@ -93,16 +91,16 @@ export default function LandingPageView({ onEnterApp, onEnterDemo }: LandingPage
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.8, delay: 0.4 }}
-                className="flex flex-col items-center gap-3 w-full mb-8 sm:mb-10"
+                className="flex flex-col items-center gap-2 sm:gap-3 w-full mb-5 sm:mb-8 md:mb-10"
               >
                 <span className="text-[10px] sm:text-xs font-extrabold tracking-widest uppercase text-slate-500">
                   Built For
                 </span>
-                <div className="flex flex-wrap justify-center gap-2 max-w-xl">
+                <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2 max-w-xl">
                   {["Churches", "Schools", "Chamas", "NGOs", "Medical Appeals", "Funeral Committees"].map((sector) => (
                     <span 
                       key={sector} 
-                      className="px-3.5 py-1.5 rounded-full bg-slate-900/60 border border-slate-800/60 text-[11px] sm:text-xs font-medium text-slate-300 shadow-sm"
+                      className="px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-slate-900/60 border border-slate-800/60 text-[10px] sm:text-xs font-medium text-slate-300 shadow-sm"
                     >
                       {sector}
                     </span>
@@ -115,20 +113,20 @@ export default function LandingPageView({ onEnterApp, onEnterDemo }: LandingPage
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.5, type: "spring" }}
-                className="pt-2 flex flex-col items-center gap-4"
+                className="pt-1 sm:pt-2 flex flex-col items-center gap-3 sm:gap-4 w-full sm:w-auto"
               >
                 <button
                   onClick={onEnterApp}
-                  className="px-12 py-6 bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-300 hover:to-teal-400 text-slate-950 font-black text-base rounded-2xl shadow-[0_0_20px_rgba(16,185,129,0.25)] hover:shadow-[0_0_30px_rgba(16,185,129,0.45)] border border-emerald-300/20 hover:border-emerald-200/30 transition-all duration-200 ease-in-out transform hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] flex items-center justify-center gap-3 cursor-pointer group"
+                  className="w-full sm:w-auto px-8 sm:px-12 py-3.5 sm:py-5 md:py-6 bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-300 hover:to-teal-400 text-slate-950 font-black text-sm sm:text-base rounded-xl sm:rounded-2xl shadow-[0_0_20px_rgba(16,185,129,0.25)] hover:shadow-[0_0_30px_rgba(16,185,129,0.45)] border border-emerald-300/20 hover:border-emerald-200/30 transition-all duration-200 ease-in-out transform hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] flex items-center justify-center gap-2.5 sm:gap-3 cursor-pointer group min-h-[48px]"
                   id="btn-start-fundraising-primary"
                 >
                   Start Fundraising
-                  <ArrowRight className="w-5 h-5 stroke-[2.5] transition group-hover:translate-x-1" />
+                  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5] transition group-hover:translate-x-1" />
                 </button>
 
                 <button 
                   onClick={() => setActiveTab("how-it-works")}
-                  className="text-xs font-extrabold text-slate-400 hover:text-slate-200 transition underline cursor-pointer"
+                  className="text-[11px] sm:text-xs font-extrabold text-slate-400 hover:text-slate-200 transition underline cursor-pointer"
                 >
                   Learn how the system is completely non-custodial
                 </button>
@@ -440,19 +438,6 @@ export default function LandingPageView({ onEnterApp, onEnterDemo }: LandingPage
           </div>
         </div>
       </footer>
-
-      {/* Onboarding tour modal overlay */}
-      {showTour && (
-        <InteractiveTour 
-          onClose={() => setShowTour(false)} 
-          activeTab="landing"
-          setActiveTab={() => {}}
-          wizardOpen={false}
-          setWizardOpen={() => {}}
-          projectsCount={0}
-          contributionsCount={0}
-        />
-      )}
 
     </div>
   );
