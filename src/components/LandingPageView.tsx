@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import TrustSecurityView from "./TrustSecurityView";
+import { getRuntimeEnvironmentInfo, IS_SANDBOX } from "../utils/env";
 
 interface LandingPageViewProps {
   onEnterApp: () => void;
@@ -50,17 +51,17 @@ export default function LandingPageView({ onEnterApp, onEnterDemo }: LandingPage
         
         {/* TAB 1: HOME */}
         {activeTab === "home" && (
-          <main className="flex-1 flex flex-col items-center justify-center px-4 pt-6 pb-10 sm:px-6 sm:py-12 md:py-16 text-center z-20 relative max-w-5xl mx-auto w-full" id="home-view">
-            <div className="flex flex-col items-center max-w-4xl py-0 sm:py-4 md:py-6">
+          <main className="flex-1 flex flex-col items-center justify-start sm:justify-center px-4 pt-6 sm:pt-10 md:pt-14 pb-0 text-center z-20 relative max-w-5xl mx-auto w-full" id="home-view">
+            <div className="flex flex-col items-center max-w-4xl py-0">
               
-              {/* Badge: Kenya's Trusted M-PESA Fundraising Platform */}
+              {/* Badge: Kenya's Trusted Fundraising Platform */}
               <motion.div 
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.1 }}
-                className="px-3.5 py-1.5 rounded-full bg-slate-900/80 border border-slate-800/80 text-[11px] sm:text-xs font-semibold text-slate-400 tracking-wide shadow-lg shadow-emerald-500/5 flex items-center gap-2 mb-4 sm:mb-6 md:mb-8"
+                className="px-3.5 py-1.5 rounded-full bg-slate-900/80 border border-slate-800/80 text-[11px] sm:text-xs font-semibold text-slate-300 tracking-wide shadow-lg flex items-center gap-2 mb-6"
               >
-                <span>🇰🇪 Kenya's Trusted M-PESA Fundraising Platform</span>
+                <span>🇰🇪 Kenya's Trusted Fundraising Platform</span>
               </motion.div>
 
               {/* Main Headline */}
@@ -68,7 +69,7 @@ export default function LandingPageView({ onEnterApp, onEnterDemo }: LandingPage
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, ease: "easeOut" }}
-                className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight leading-[1.1] sm:leading-[1.08] text-white mb-3.5 sm:mb-6"
+                className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight leading-[1.1] sm:leading-[1.08] text-white mb-6"
               >
                 Never Track M-PESA Contributions <br className="hidden sm:inline" />
                 <span className="bg-gradient-to-r from-emerald-400 via-emerald-300 to-sky-400 bg-clip-text text-transparent">
@@ -81,26 +82,26 @@ export default function LandingPageView({ onEnterApp, onEnterDemo }: LandingPage
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.8, delay: 0.3 }}
-                className="text-slate-300 text-xs sm:text-base md:text-lg font-medium max-w-2xl leading-relaxed mb-4 sm:mb-6 md:mb-8"
+                className="text-slate-300 text-xs sm:text-base md:text-lg font-medium max-w-2xl leading-relaxed mb-8"
               >
                 Automatically record every M-PESA contribution, update your fundraiser instantly, and keep supporters informed on WhatsApp in real time.
               </motion.p>
 
-              {/* Audience / Sectors Section */}
+              {/* Supported Organizations */}
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.8, delay: 0.4 }}
-                className="flex flex-col items-center gap-2 sm:gap-3 w-full mb-5 sm:mb-8 md:mb-10"
+                className="flex flex-col items-center gap-2.5 sm:gap-3 w-full mb-8"
               >
-                <span className="text-[10px] sm:text-xs font-extrabold tracking-widest uppercase text-slate-500">
-                  Built For
+                <span className="text-[10px] sm:text-xs font-semibold tracking-wider uppercase text-slate-500">
+                  Supported organizations
                 </span>
-                <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2 max-w-xl">
+                <div className="flex flex-wrap justify-center gap-2 max-w-xl">
                   {["Churches", "Schools", "Chamas", "NGOs", "Medical Appeals", "Funeral Committees"].map((sector) => (
                     <span 
                       key={sector} 
-                      className="px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-slate-900/60 border border-slate-800/60 text-[10px] sm:text-xs font-medium text-slate-300 shadow-sm"
+                      className="px-3.5 py-1.5 rounded-full bg-slate-900/60 border border-slate-800/60 text-xs font-medium text-slate-300 shadow-xs"
                     >
                       {sector}
                     </span>
@@ -108,27 +109,26 @@ export default function LandingPageView({ onEnterApp, onEnterDemo }: LandingPage
                 </div>
               </motion.div>
 
-              {/* Action Button */}
+              {/* Primary CTA & Secondary Link */}
               <motion.div 
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.5, type: "spring" }}
-                className="pt-1 sm:pt-2 flex flex-col items-center gap-3 sm:gap-4 w-full sm:w-auto"
+                className="flex flex-col items-center gap-5 w-full sm:w-auto mb-12"
               >
                 <button
                   onClick={onEnterApp}
-                  className="w-full sm:w-auto px-8 sm:px-12 py-3.5 sm:py-5 md:py-6 bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-300 hover:to-teal-400 text-slate-950 font-black text-sm sm:text-base rounded-xl sm:rounded-2xl shadow-[0_0_20px_rgba(16,185,129,0.25)] hover:shadow-[0_0_30px_rgba(16,185,129,0.45)] border border-emerald-300/20 hover:border-emerald-200/30 transition-all duration-200 ease-in-out transform hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] flex items-center justify-center gap-2.5 sm:gap-3 cursor-pointer group min-h-[48px]"
+                  className="w-full sm:w-auto px-8 sm:px-12 py-3.5 sm:py-4 bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-300 hover:to-teal-400 text-slate-950 font-black text-sm sm:text-base rounded-xl sm:rounded-2xl shadow-[0_0_20px_rgba(16,185,129,0.25)] hover:shadow-[0_0_30px_rgba(16,185,129,0.45)] border border-emerald-300/20 hover:border-emerald-200/30 transition-all duration-200 ease-in-out transform hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer group min-h-[48px]"
                   id="btn-start-fundraising-primary"
                 >
-                  Start Fundraising
-                  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5] transition group-hover:translate-x-1" />
+                  Start Fundraising →
                 </button>
 
                 <button 
                   onClick={() => setActiveTab("how-it-works")}
-                  className="text-[11px] sm:text-xs font-extrabold text-slate-400 hover:text-slate-200 transition underline cursor-pointer"
+                  className="text-xs sm:text-sm font-medium text-slate-400 hover:text-slate-200 transition underline cursor-pointer"
                 >
-                  Learn how the system is completely non-custodial
+                  Learn how HarambeeFlow remains completely non-custodial
                 </button>
               </motion.div>
 
@@ -413,29 +413,33 @@ export default function LandingPageView({ onEnterApp, onEnterDemo }: LandingPage
 
       </div>
 
-      {/* Modern Marketing Footer */}
-      <footer className="w-full bg-slate-950 border-t border-slate-900 px-6 py-8 mt-auto shrink-0 z-10" id="marketing-footer">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4 text-center sm:text-left">
-          <div className="flex flex-col leading-tight text-left">
-            <p className="text-sm font-black text-white tracking-tight">HarambeeFlow</p>
-            <p className="text-xs font-mono font-medium text-emerald-400 tracking-wide mt-0.5">AI Treasurer</p>
-            <p className="text-[10px] text-slate-500 mt-1">Non-custodial Lipa Na M-PESA organization and records automation.</p>
-          </div>
-          <div className="flex gap-4 text-slate-500 text-[11px] font-bold">
-            <button onClick={() => setActiveTab("trust")} className="hover:text-slate-300">Trust & Security Policy</button>
-            <span>•</span>
-            <button onClick={() => setActiveTab("faq")} className="hover:text-slate-300">FAQ Help Desk</button>
-            <span>•</span>
-            <button onClick={() => setActiveTab("contact")} className="hover:text-slate-300">Contact Desk</button>
-          </div>
-          <div className="text-right">
-            <p className="text-[10px] text-slate-500 font-mono">
-              &copy; 2026 HarambeeFlow. All rights reserved.
-            </p>
-            <a href="https://harambeeflow.org" target="_blank" rel="noopener noreferrer" className="text-[10px] text-emerald-400 font-mono hover:underline block">
-              https://harambeeflow.org
-            </a>
-          </div>
+      {/* Minimal SaaS Footer */}
+      <footer className="w-full border-t border-slate-900 pt-12 pb-8 px-4 sm:px-6 mt-auto shrink-0 z-10" id="marketing-footer">
+        <div className="max-w-4xl mx-auto flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-xs font-medium text-slate-400">
+          <span className="text-slate-300 font-semibold">© 2026 HarambeeFlow</span>
+          <span className="text-slate-800">•</span>
+          <span className="text-slate-400">Secure AI Fundraising Platform</span>
+          <span className="text-slate-800">•</span>
+          <button 
+            onClick={() => setActiveTab("trust")} 
+            className="hover:text-slate-200 transition cursor-pointer"
+          >
+            Privacy
+          </button>
+          <span className="text-slate-800">•</span>
+          <button 
+            onClick={() => setActiveTab("trust")} 
+            className="hover:text-slate-200 transition cursor-pointer"
+          >
+            Terms
+          </button>
+          <span className="text-slate-800">•</span>
+          <button 
+            onClick={() => setActiveTab("contact")} 
+            className="hover:text-slate-200 transition cursor-pointer"
+          >
+            Support
+          </button>
         </div>
       </footer>
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { IS_SANDBOX } from "./utils/env";
+import { IS_SANDBOX, getRuntimeEnvironmentInfo } from "./utils/env";
 import Sidebar from "./components/Sidebar";
 import DashboardView from "./components/DashboardView";
 import FOSHomeView from "./components/FOSHomeView";
@@ -56,7 +56,7 @@ import CommunicationsAutomationCenter from "./components/CommunicationsAutomatio
 import PlatformIntelligenceDashboard from "./components/PlatformIntelligenceDashboard";
 import { EventBus } from "./utils/eventBus";
 import { Project, Contribution, WhatsAppMessage } from "./types";
-import { Sparkles, Menu, X, Plus, Calendar, Coins, Users, Smartphone, CheckCircle2, Download, ExternalLink, Wifi, Battery, LayoutDashboard, Landmark, Megaphone, FileText, Settings, HeartHandshake, Share2, Eye, TrendingUp, Layers, Cpu, Briefcase, CreditCard, ChevronDown, FolderOpen } from "lucide-react";
+import { Sparkles, Menu, X, Plus, Calendar, Coins, Users, Smartphone, CheckCircle2, Download, ExternalLink, Wifi, Battery, LayoutDashboard, Landmark, Megaphone, FileText, Settings, HeartHandshake, Share2, Eye, TrendingUp, Layers, Cpu, Briefcase, CreditCard, ChevronDown, FolderOpen, Bell, Search } from "lucide-react";
 import { onAuthStateChanged, signOut, User as FirebaseUser, GoogleAuthProvider, linkWithCredential, signInWithPopup } from "firebase/auth";
 import { 
   collection, 
@@ -2406,7 +2406,7 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
         projects.length === 0 && wizardOpen ? "min-h-screen" : "h-screen overflow-hidden"
       }`}>
         <header className="bg-slate-900 border-b border-slate-800 px-3 sm:px-4 py-2 shrink-0 flex items-center justify-between gap-2 md:hidden sticky top-0 z-30 shadow-md min-h-[56px]">
-          {/* Priority 1: HF Logo + HarambeeFlow AI Treasurer */}
+          {/* HF Logo */}
           <div 
             className="flex items-center gap-2 text-white cursor-pointer active:opacity-80 transition-opacity min-w-0 shrink-0"
             onClick={() => handleSetActiveTab("dashboard")}
@@ -2415,63 +2415,53 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
             <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-xl flex items-center justify-center text-xs font-black text-slate-950 shadow-md shadow-emerald-500/20 shrink-0">
               HF
             </div>
-            <div className="flex flex-col leading-tight text-left min-w-0">
-              <span className="text-sm sm:text-base font-sans font-black tracking-tight text-white whitespace-nowrap">
-                HarambeeFlow
-              </span>
-              <span className="text-[10px] sm:text-xs font-mono font-medium text-emerald-400 tracking-wide mt-0.5 whitespace-nowrap">
-                AI Treasurer
-              </span>
-            </div>
           </div>
 
-          {/* Priority 3: Active Campaign Switcher (ONLY in Workspace Mode) */}
-          {showCampaignSwitcherInHeader && (
-            <div className="flex-1 min-w-0 flex items-center justify-end px-0.5">
-              {activeProject ? (
-                <button
-                  onClick={() => setShowCampaignSwitcher(true)}
-                  className="flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-2 min-h-[48px] bg-slate-800 hover:bg-slate-750 border border-slate-700/80 hover:border-emerald-500/50 rounded-xl text-left transition cursor-pointer shadow-sm shrink min-w-0 max-w-full focus:outline-none focus:ring-2 focus:ring-emerald-400/80 active:scale-95"
-                  id="mobile-campaign-switcher-btn"
-                  aria-label="Switch Active Campaign"
-                  title="Switch Campaign"
-                >
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_#10b981] shrink-0 animate-pulse" />
-                  
-                  {/* Large screens (>=414px): Full campaign name with truncation */}
-                  <span className="hidden min-[414px]:inline text-xs font-bold text-white truncate max-w-[130px] sm:max-w-[200px]">
-                    {activeProject.name}
-                  </span>
-
-                  {/* Medium screens (360px - 413px): Shorter truncated name */}
-                  <span className="hidden min-[360px]:max-[413px]:inline text-xs font-bold text-white truncate max-w-[75px]">
-                    {activeProject.name}
-                  </span>
-
-                  {/* Small screens (320px - 359px): "Active" text */}
-                  <span className="hidden min-[320px]:max-[359px]:inline text-[11px] font-bold text-emerald-400">
-                    Active
-                  </span>
-
-                  {/* Very narrow screens (<320px): Just the dot and down arrow */}
-
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                </button>
-              ) : (
-                syncStatus !== "Online and Synced" && renderSyncStatusBadge(syncStatus)
-              )}
-            </div>
+          {/* Campaign Name Dropdown */}
+          {activeProject && (
+            <button
+              onClick={() => setShowCampaignSwitcher(true)}
+              className="flex items-center justify-center gap-1.5 px-3 py-2 min-h-[48px] bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 hover:border-emerald-500/50 rounded-xl transition cursor-pointer shadow-sm min-w-0 max-w-[200px] active:scale-95"
+              id="mobile-campaign-switcher-btn"
+              aria-label="Switch Active Campaign"
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
+              <span className="text-xs font-bold text-white truncate max-w-[130px]">
+                {activeProject.name}
+              </span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            </button>
           )}
 
-          {/* Priority 2: Menu Button (Highest UI Priority - shrink-0, min 48x48px, never clipped or hidden) */}
-          <button 
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="shrink-0 text-slate-200 px-2.5 sm:px-3 py-2 min-h-[48px] min-w-[48px] bg-slate-800 hover:bg-slate-750 border border-slate-700/60 rounded-xl transition-all duration-150 active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs focus:outline-none focus:ring-2 focus:ring-emerald-400/80"
-            aria-label="Open menu"
-          >
-            <Menu className="w-5 h-5 text-emerald-400 shrink-0" />
-            <span className="text-xs font-bold text-slate-200 hidden min-[360px]:inline">Menu</span>
-          </button>
+          {/* Right Controls: Search, Notifications & Menu/Profile */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={() => handleSetActiveTab("dashboard")}
+              className="p-2.5 min-h-[44px] min-w-[44px] bg-slate-800 hover:bg-slate-750 border border-slate-700/60 rounded-xl text-slate-300 transition flex items-center justify-center cursor-pointer active:scale-95"
+              aria-label="Search"
+            >
+              <Search className="w-4.5 h-4.5 text-slate-300" />
+            </button>
+
+            <button
+              onClick={() => handleSetActiveTab("dashboard")}
+              className="p-2.5 min-h-[44px] min-w-[44px] bg-slate-800 hover:bg-slate-750 border border-slate-700/60 rounded-xl text-slate-300 transition flex items-center justify-center cursor-pointer active:scale-95 relative"
+              aria-label="Notifications"
+            >
+              <Bell className="w-4.5 h-4.5 text-slate-300" />
+              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-500 text-slate-950 rounded-full flex items-center justify-center text-[8px] font-mono font-black">
+                {contributions.length > 0 ? "!" : "0"}
+              </span>
+            </button>
+
+            <button 
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-2.5 min-h-[44px] min-w-[44px] bg-slate-800 hover:bg-slate-750 border border-slate-700/60 rounded-xl transition-all duration-150 active:scale-95 flex items-center justify-center cursor-pointer shadow-xs"
+              aria-label="Open menu"
+            >
+              <Menu className="w-5 h-5 text-emerald-400 shrink-0" />
+            </button>
+          </div>
         </header>
 
         {/* Mobile Slide-out Drawer Sidebar */}
@@ -2685,21 +2675,6 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
                             );
                           })}
                         </div>
-
-                        {/* Desktop Active Campaign Quick Switcher Badge */}
-                        {activeProject && (
-                          <button
-                            onClick={() => setShowCampaignSwitcher(true)}
-                            className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-700/80 hover:border-emerald-500/50 rounded-xl text-left transition cursor-pointer text-xs font-bold text-white shadow-sm shrink-0"
-                            id="desktop-quick-nav-campaign-switcher"
-                            title="Click to switch active fundraiser"
-                          >
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_#10b981] animate-pulse shrink-0" />
-                            <span className="text-slate-400 font-mono text-[11px] font-semibold">Active:</span>
-                            <span className="text-emerald-400 font-extrabold truncate max-w-[150px]">{activeProject.name}</span>
-                            <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-0.5" />
-                          </button>
-                        )}
                       </div>
                     </nav>
 
@@ -3729,31 +3704,33 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
                     )}
 
                     {/* Global Footer rendered inside the main scroll viewport so it always scrolls above mobile bottom navigation */}
-                    <footer className="bg-white border-t border-slate-200 px-6 py-4 shrink-0 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 mt-10 rounded-t-xl shadow-xs" id="app-global-footer">
-                      <div className="flex items-center gap-2">
-                        <span>© 2026 HarambeeFlow. All Rights Reserved.</span>
-                        <span>•</span>
-                        <a href="https://harambeeflow.org" target="_blank" rel="noopener noreferrer" className="text-emerald-600 font-mono hover:underline font-semibold">
-                          https://harambeeflow.org
-                        </a>
+                    <footer className="w-full border-t border-slate-800/60 pt-12 pb-8 px-6 mt-12 text-center text-xs text-slate-400 font-sans shrink-0 z-10" id="app-global-footer">
+                      <div className="max-w-4xl mx-auto flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-xs font-medium text-slate-400">
+                        <span className="text-slate-300 font-semibold">© 2026 HarambeeFlow</span>
+                        <span className="text-slate-700">•</span>
+                        <span className="text-slate-400">Secure AI Fundraising Platform</span>
+                        <span className="text-slate-700">•</span>
+                        <button 
+                          onClick={() => handleSetActiveTab("trust")} 
+                          className="text-slate-400 hover:text-slate-200 transition cursor-pointer"
+                        >
+                          Privacy
+                        </button>
+                        <span className="text-slate-700">•</span>
+                        <button 
+                          onClick={() => handleSetActiveTab("trust")} 
+                          className="text-slate-400 hover:text-slate-200 transition cursor-pointer"
+                        >
+                          Terms
+                        </button>
+                        <span className="text-slate-700">•</span>
+                        <button 
+                          onClick={() => setSupportModalOpen(true)} 
+                          className="text-slate-400 hover:text-slate-200 transition cursor-pointer"
+                        >
+                          Support
+                        </button>
                       </div>
-                      {projects.length > 0 ? (
-                        <button 
-                          onClick={() => setShowCampaignSwitcher(true)}
-                          className="text-xs font-mono font-bold text-emerald-700 hover:text-emerald-900 uppercase flex items-center gap-1.5 py-1.5 px-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 rounded-lg transition cursor-pointer"
-                          id="footer-manage-campaigns-btn"
-                        >
-                          <FolderOpen className="w-3.5 h-3.5 text-emerald-600" /> Manage Campaigns
-                        </button>
-                      ) : (
-                        <button 
-                          onClick={() => handleTriggerCreateCampaign()}
-                          className="text-xs font-mono font-bold text-indigo-600 hover:text-indigo-800 uppercase flex items-center gap-1.5 py-1.5 px-3 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition cursor-pointer"
-                          id="footer-setup-new-fundraiser-btn"
-                        >
-                          <Plus className="w-3.5 h-3.5" /> Set Up New Fundraiser
-                        </button>
-                      )}
                     </footer>
                         </>
                       )}
@@ -4162,31 +4139,16 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
       />
 
       {/* Context-Aware Floating Action Button */}
-      {activeTab !== "landing" && activeTab !== "trust" && !wizardOpen && !launchChecklistOpen && (
+      {activeTab !== "landing" && activeTab !== "trust" && !wizardOpen && !launchChecklistOpen && projects.length === 0 && (
         <div className="fixed bottom-[calc(70px+env(safe-area-inset-bottom))] md:bottom-6 right-4 sm:right-6 z-[120]">
-          {projects.length === 0 ? (
-            <button
-              onClick={handleTriggerCreateCampaign}
-              className="px-4 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-black text-xs sm:text-sm rounded-2xl shadow-2xl shadow-emerald-950/60 flex items-center gap-2 transition transform hover:scale-105 active:scale-95 cursor-pointer border border-emerald-400/40"
-              id="fab-create-first-campaign"
-            >
-              <Plus className="w-4 h-4 text-slate-950 stroke-[3]" />
-              <span>Create First Fundraiser</span>
-            </button>
-          ) : (
-            <button
-              onClick={() => setShowCampaignSwitcher(true)}
-              className="px-4 py-2.5 bg-slate-900/95 hover:bg-slate-850 text-white border border-slate-700/80 hover:border-emerald-500/50 font-extrabold text-xs rounded-2xl shadow-2xl shadow-slate-950/80 flex items-center gap-2 transition transform hover:scale-105 active:scale-95 backdrop-blur-md cursor-pointer"
-              id="fab-manage-campaigns"
-            >
-              <FolderOpen className="w-4 h-4 text-emerald-400" />
-              <span className="hidden xs:inline">Manage Campaigns</span>
-              <span className="xs:hidden">Campaigns</span>
-              {activeProject && (
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse ml-0.5" />
-              )}
-            </button>
-          )}
+          <button
+            onClick={handleTriggerCreateCampaign}
+            className="px-4 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-black text-xs sm:text-sm rounded-2xl shadow-2xl shadow-emerald-950/60 flex items-center gap-2 transition transform hover:scale-105 active:scale-95 cursor-pointer border border-emerald-400/40"
+            id="fab-create-first-campaign"
+          >
+            <Plus className="w-4 h-4 text-slate-950 stroke-[3]" />
+            <span>Create First Fundraiser</span>
+          </button>
         </div>
       )}
 

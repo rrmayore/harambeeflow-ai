@@ -5,7 +5,7 @@ import {
   Smartphone, Bot, FileText, ArrowRight, Plus, Share2, Copy, Check, 
   ChevronRight, Calendar, Activity, Zap, ThumbsUp, Flame, Play, AlertCircle,
   Bell, Search, Trash2, ShieldAlert, Archive, ClipboardCheck, ArrowUpRight,
-  Info, RefreshCw, X, UserCheck
+  Info, RefreshCw, X, UserCheck, ChevronDown, Settings, Coins
 } from "lucide-react";
 import { getTheme, getCampaignLogo, getCampaignMotto, getCampaignBanner } from "../utils/branding";
 import { collection, onSnapshot, doc, setDoc, addDoc, getDocs, deleteDoc } from "firebase/firestore";
@@ -54,6 +54,8 @@ export default function CommandCenterView({
   const [searchQuery, setSearchQuery] = useState("");
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: "success" | "error" | "info" } | null>(null);
 
   // Firestore Synced States
@@ -78,6 +80,56 @@ export default function CommandCenterView({
   const projectContributions = useMemo(() => {
     return contributions.filter(c => c.projectId === activeProject.id || c.campaignId === activeProject.id || c.fundraiserId === activeProject.id);
   }, [contributions, activeProject.id]);
+
+  // Live Feed Smart Filtering & Pagination States
+  const [liveFilter, setLiveFilter] = useState<"All" | "Today" | "M-PESA" | "Cash" | "Bank">("All");
+  const [visibleContributionsCount, setVisibleContributionsCount] = useState(12);
+
+  const todayContributionsCount = useMemo(() => {
+    const todayStr = new Date().toDateString();
+    return projectContributions.filter(c => new Date(c.timestamp).toDateString() === todayStr).length;
+  }, [projectContributions]);
+
+  const filteredLiveContributions = useMemo(() => {
+    let list = [...projectContributions].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    
+    if (liveFilter === "Today") {
+      const todayStr = new Date().toDateString();
+      list = list.filter(c => new Date(c.timestamp).toDateString() === todayStr);
+    } else if (liveFilter === "M-PESA") {
+      list = list.filter(c => 
+        (c.category && c.category.toUpperCase().includes("MPESA")) ||
+        (c.transactionCode && !c.transactionCode.startsWith("CASH") && !c.transactionCode.startsWith("BANK")) ||
+        (c.rawMessage && c.rawMessage.includes("M-PESA"))
+      );
+    } else if (liveFilter === "Cash") {
+      list = list.filter(c => 
+        c.category?.toLowerCase() === "cash" || 
+        c.transactionCode?.startsWith("CASH") ||
+        c.notes?.toLowerCase().includes("cash")
+      );
+    } else if (liveFilter === "Bank") {
+      list = list.filter(c => 
+        c.category?.toLowerCase() === "bank" || 
+        c.transactionCode?.startsWith("BANK") ||
+        c.notes?.toLowerCase().includes("bank")
+      );
+    }
+    
+    return list;
+  }, [projectContributions, liveFilter]);
+
+  const getRelativeTimeLabel = (timestamp: string): string => {
+    if (!timestamp) return "🟢 Just Now";
+    const diffMs = Date.now() - new Date(timestamp).getTime();
+    const diffSec = Math.floor(diffMs / 1000);
+    if (diffSec < 45) return "🟢 Just Now";
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr}h ago`;
+    return new Date(timestamp).toLocaleDateString([], { month: "short", day: "numeric" });
+  };
 
   const [showWelcomeDashboard, setShowWelcomeDashboard] = useState(() => projectContributions.length === 0);
 
@@ -778,7 +830,7 @@ Thank you for your generous support!`;
   }
 
   return (
-    <div className="flex-1 bg-slate-950 p-4 sm:p-6 pb-28 sm:pb-32 md:pb-6 text-slate-100 min-h-full font-sans select-none relative">
+    <div className="flex-1 bg-slate-950 p-3 sm:p-6 pb-28 sm:pb-32 md:pb-6 text-slate-100 min-h-full font-sans select-none relative">
       
       {/* Toast Alert Banner */}
       {toastMessage && (
@@ -794,479 +846,579 @@ Thank you for your generous support!`;
         </div>
       )}
 
-      {/* --- TOP BRAND HEADER WITH ADVANCED SEARCH, ROLE SELECTOR, & NOTIFICATION CENTER --- */}
       <div className="max-w-6xl mx-auto space-y-6">
         
-        {/* Custom Global App bar */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-900 pb-5">
-          {/* Advanced Search Engine with Overlay */}
-          <div className="relative flex-1 max-w-md w-full">
-            <div className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none text-slate-500">
-              <Search className="w-4 h-4" />
-            </div>
-            <input
-              type="text"
-              placeholder="Search campaigns, donors, receipts, MPESA codes..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-hidden focus:border-emerald-500 transition font-medium"
-              id="global-search-input"
-            />
-            {searchQuery.trim() && (
-              <button 
-                onClick={() => setSearchQuery("")}
-                className="absolute inset-y-0 right-3.5 flex items-center text-slate-500 hover:text-slate-300 transition"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-
-            {/* Instant search autocomplete list container */}
-            {searchResults && (
-              <div className="absolute top-12 left-0 right-0 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-4 z-40 max-h-[380px] overflow-y-auto space-y-4 animate-scale-up">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-1.5">
-                  <span className="text-[10px] font-bold font-mono text-slate-500 uppercase">Universal Search Results</span>
-                  <button onClick={() => setSearchQuery("")} className="text-[10px] text-slate-400 hover:text-slate-200 underline">Close</button>
+        {/* --- EXPANDABLE SEARCH OVERLAY MODAL --- */}
+        {isSearchOpen && (
+          <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md p-4 sm:p-8 flex flex-col items-center justify-start pt-12 animate-fade-in">
+            <div className="w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-4 sm:p-6 space-y-4 relative">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2 text-emerald-400 font-mono text-xs font-bold uppercase">
+                  <Search className="w-4 h-4" />
+                  <span>Search Workspace</span>
                 </div>
-
-                {/* Match Categories */}
-                {searchResults.campaigns.length === 0 && searchResults.donors.length === 0 && searchResults.receipts.length === 0 && searchResults.members.length === 0 && (
-                  <p className="text-center py-6 text-xs text-slate-500">No matching search query entries found.</p>
-                )}
-
-                {/* Campaigns Match */}
-                {searchResults.campaigns.length > 0 && (
-                  <div className="space-y-1.5">
-                    <p className="text-[9px] font-bold font-mono text-emerald-400 uppercase tracking-widest">Active Fundraisers</p>
-                    {searchResults.campaigns.map(p => (
-                      <button
-                        key={p.id}
-                        onClick={() => {
-                          setActiveProject(p);
-                          setSearchQuery("");
-                        }}
-                        className="w-full p-2 hover:bg-slate-950 border border-transparent hover:border-slate-850 rounded-xl flex items-center justify-between transition text-left"
-                      >
-                        <span className="text-xs font-bold text-slate-200 block truncate">{p.name}</span>
-                        <span className="text-[9px] font-mono text-slate-500">KES {p.targetAmount.toLocaleString()} target</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Donors Match */}
-                {searchResults.donors.length > 0 && (
-                  <div className="space-y-1.5">
-                    <p className="text-[9px] font-bold font-mono text-sky-400 uppercase tracking-widest">Supporter List</p>
-                    {searchResults.donors.map((d, i) => (
-                      <button
-                        key={i}
-                        onClick={() => {
-                          (window as any).viewDonorProfile(d.phone);
-                          setSearchQuery("");
-                        }}
-                        className="w-full p-2 hover:bg-slate-950 border border-transparent hover:border-slate-850 rounded-xl flex items-center justify-between transition text-left"
-                      >
-                        <div>
-                          <span className="text-xs font-bold text-slate-200 block">{d.name}</span>
-                          <span className="text-[9px] font-mono text-slate-500 block">{d.phone}</span>
-                        </div>
-                        <span className="text-xs font-bold text-emerald-400 font-mono">KES {d.total.toLocaleString()} total</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Receipts Match */}
-                {searchResults.receipts.length > 0 && (
-                  <div className="space-y-1.5">
-                    <p className="text-[9px] font-bold font-mono text-purple-400 uppercase tracking-widest">M-PESA / Ledger Codes</p>
-                    {searchResults.receipts.map(r => (
-                      <div
-                        key={r.id}
-                        className="p-2 bg-slate-950 border border-slate-850 rounded-xl flex items-center justify-between"
-                      >
-                        <div>
-                          <span className="text-xs font-bold text-slate-300 font-mono block">{r.transactionCode}</span>
-                          <span className="text-[9px] text-slate-500 block">{r.senderName}</span>
-                        </div>
-                        <span className="text-xs font-extrabold text-emerald-400 font-mono">+ KES {r.amount.toLocaleString()}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Committee Members Match */}
-                {searchResults.members.length > 0 && (
-                  <div className="space-y-1.5">
-                    <p className="text-[9px] font-bold font-mono text-amber-400 uppercase tracking-widest">Committee Members</p>
-                    {searchResults.members.map((m, i) => (
-                      <div
-                        key={i}
-                        className="p-2.5 bg-slate-950 border border-slate-850 rounded-xl flex items-center justify-between"
-                      >
-                        <span className="text-xs font-bold text-slate-200">{m}</span>
-                        <span className="text-[9px] font-mono text-slate-500 uppercase">Reconciliation clearance</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Sandbox Role Switcher & Notification Bell */}
-          <div className="flex items-center gap-3">
-            {/* Simulated Role Dropdown */}
-            <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5">
-              <UserCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <span className="text-[10px] font-mono font-bold text-slate-400 uppercase mr-1">Role:</span>
-              <select
-                value={simulatedRole}
-                onChange={(e) => {
-                  setSimulatedRole(e.target.value as SimulatedRole);
-                  showToast(`Role switched to simulated: ${e.target.value}`);
-                }}
-                className="bg-transparent text-xs font-bold text-slate-200 focus:outline-hidden cursor-pointer"
-                id="role-sandbox-select"
-              >
-                <option value="Treasurer" className="bg-slate-900 text-slate-200">Treasurer</option>
-                <option value="Chairperson" className="bg-slate-900 text-slate-200">Chairperson</option>
-                <option value="Secretary" className="bg-slate-900 text-slate-200">Secretary</option>
-                <option value="Auditor" className="bg-slate-900 text-slate-200">Auditor</option>
-                <option value="Viewer" className="bg-slate-900 text-slate-200">Viewer (Read Only)</option>
-              </select>
-            </div>
-
-            {/* Notification Center Popover Trigger */}
-            <div className="relative">
-              <button
-                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                className="p-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-850 rounded-xl transition relative cursor-pointer"
-                id="notification-bell-btn"
-              >
-                <Bell className="w-4 h-4 text-slate-300" />
-                {notifications.filter(n => !n.read).length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 text-slate-950 rounded-full flex items-center justify-center text-[9px] font-mono font-black animate-bounce">
-                    {notifications.filter(n => !n.read).length}
-                  </span>
-                )}
-              </button>
-
-              {/* Slide-down Notification Center Popover / Mobile Full Screen */}
-              {isNotificationsOpen && (
-                <div 
-                  className="fixed inset-0 z-50 bg-slate-950 sm:absolute sm:inset-auto sm:right-0 sm:mt-2 sm:bg-slate-900 border-none sm:border border-slate-800 sm:max-w-md w-full sm:w-[360px] sm:rounded-2xl shadow-2xl p-6 sm:p-4 space-y-4 sm:space-y-3 animate-scale-up flex flex-col h-full sm:h-auto"
-                  id="intelligent-alerts-panel"
+                <button 
+                  onClick={() => setIsSearchOpen(false)}
+                  className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-lg transition"
                 >
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-4 sm:pb-2">
-                    <div className="flex items-center gap-2">
-                      <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg sm:hidden">
-                        <Bell className="w-4 h-4 animate-pulse" />
-                      </div>
-                      <span className="text-base sm:text-xs font-bold text-slate-100 sm:text-slate-300">Intelligent Alerts</span>
-                    </div>
-                    <button 
-                      onClick={() => setIsNotificationsOpen(false)} 
-                      className="text-xs sm:text-[10px] font-mono font-bold text-slate-400 hover:text-white px-3 py-2 sm:px-2 sm:py-1 bg-slate-900 sm:bg-transparent border border-slate-800 sm:border-none rounded-xl cursor-pointer"
-                    >
-                      Close [X]
-                    </button>
-                  </div>
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
 
-                  <div className="space-y-3 sm:space-y-2 flex-1 sm:flex-initial overflow-y-auto max-h-none sm:max-h-[280px] pr-1">
-                    {notifications.length === 0 ? (
-                      <div className="text-center py-16 sm:py-8 space-y-2">
-                        <Bell className="w-8 h-8 text-slate-700 mx-auto animate-pulse" />
-                        <p className="text-sm sm:text-[11px] text-slate-500 font-mono">No active campaign alerts found.</p>
-                      </div>
-                    ) : (
-                      notifications.map(n => (
-                        <div 
-                          key={n.id} 
-                          onClick={() => handleNotificationRead(n.id)}
-                          className={`p-4 sm:p-3 border rounded-xl space-y-2 sm:space-y-1.5 transition text-left cursor-pointer ${
-                            n.read 
-                              ? "bg-slate-950/40 border-slate-850 opacity-60" 
-                              : "bg-slate-950 border-emerald-500/20 hover:border-emerald-500/40"
-                          }`}
+              <input
+                type="text"
+                autoFocus
+                placeholder="Search campaigns, donors, receipts, M-PESA codes..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm font-medium text-white focus:outline-none focus:border-emerald-500"
+              />
+
+              {searchResults && (
+                <div className="max-h-[360px] overflow-y-auto space-y-3 pt-2">
+                  {searchResults.campaigns.length === 0 && searchResults.donors.length === 0 && searchResults.receipts.length === 0 && searchResults.members.length === 0 ? (
+                    <p className="text-center py-6 text-xs text-slate-500 font-mono">No matching records found.</p>
+                  ) : (
+                    <>
+                      {searchResults.campaigns.map(p => (
+                        <button
+                          key={p.id}
+                          onClick={() => {
+                            setActiveProject(p);
+                            setIsSearchOpen(false);
+                            setSearchQuery("");
+                          }}
+                          className="w-full p-3 bg-slate-950 hover:bg-slate-800 border border-slate-850 rounded-xl flex items-center justify-between text-left transition"
                         >
-                          <div className="flex items-start justify-between gap-2">
-                            <span className={`text-[10px] sm:text-[9px] font-bold uppercase font-mono px-1.5 py-0.5 rounded-md ${
-                              n.type === "large_donation" ? "bg-rose-500/15 text-rose-400" : "bg-emerald-500/15 text-emerald-400"
-                            }`}>
-                              {n.type.replace("_", " ")}
-                            </span>
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleNotificationDismiss(n.id);
-                              }}
-                              className="text-slate-500 hover:text-rose-400 p-1 rounded-lg hover:bg-slate-900 transition"
-                              aria-label="Dismiss alert"
-                            >
-                              <X className="w-4 h-4 sm:w-3.5 h-3.5" />
-                            </button>
+                          <span className="text-xs font-bold text-white">{p.name}</span>
+                          <span className="text-[10px] font-mono text-emerald-400">KES {p.targetAmount.toLocaleString()} target</span>
+                        </button>
+                      ))}
+
+                      {searchResults.donors.map((d, i) => (
+                        <div key={i} className="p-3 bg-slate-950 border border-slate-850 rounded-xl flex items-center justify-between">
+                          <div>
+                            <span className="text-xs font-bold text-slate-200 block">{d.name}</span>
+                            <span className="text-[10px] font-mono text-slate-500">{d.phone}</span>
                           </div>
-                          <p className="text-sm sm:text-xs font-bold text-slate-200 leading-snug">{n.title}</p>
-                          <p className="text-xs sm:text-[10px] text-slate-400 leading-normal">{n.message}</p>
+                          <span className="text-xs font-bold text-emerald-400 font-mono">KES {d.total.toLocaleString()}</span>
                         </div>
-                      ))
-                    )}
-                  </div>
+                      ))}
+
+                      {searchResults.receipts.map(r => (
+                        <div key={r.id} className="p-3 bg-slate-950 border border-slate-850 rounded-xl flex items-center justify-between font-mono">
+                          <div>
+                            <span className="text-xs font-bold text-slate-300 block">{r.transactionCode}</span>
+                            <span className="text-[10px] text-slate-500">{r.senderName}</span>
+                          </div>
+                          <span className="text-xs font-bold text-emerald-400">+ KES {r.amount.toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </>
+                  )}
                 </div>
               )}
             </div>
           </div>
-        </div>
+        )}
 
-        {/* --- CAMPAIGN HEADER & COVER IMAGE --- */}
-        <div className="relative rounded-3xl overflow-hidden border border-slate-800 bg-slate-900 shadow-2xl">
-          {/* Cover Banner */}
-          <div className="h-44 sm:h-52 w-full relative">
-            <img 
-              src={getCampaignBanner(activeProject)} 
-              alt="Campaign cover" 
-              referrerPolicy="no-referrer"
-              className="w-full h-full object-cover brightness-50"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/35 to-transparent" />
+        {/* ====================================================
+            3. HERO CARD (ONE Campaign Card Immediately Below Header)
+            ==================================================== */}
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-7 shadow-2xl space-y-5 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-emerald-500/10 via-emerald-500/5 to-transparent pointer-events-none" />
+
+          {/* Top Row: Badge, Campaign Name, Verse/Purpose */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] font-mono font-bold uppercase tracking-wider rounded-lg">
+                🇰🇪 Kenya's Trusted • {activeProject.category || "Fundraiser"}
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-bold font-mono">
+                Active
+              </span>
+            </div>
+
+            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">
+              {activeProject.name}
+            </h1>
+
+            <p className="text-xs sm:text-sm text-slate-400 italic">
+              "{activeProject.motto || "Each of you should give what you have decided in your heart to give, not reluctantly or under compulsion. - 2 Cor 9:7"}"
+            </p>
           </div>
 
-          {/* Header Info Block */}
-          <div className="p-6 -mt-16 sm:-mt-20 relative z-10 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
-            <div className="flex items-end gap-4">
-              {/* Campaign Logo */}
-              <CampaignLogo 
-                project={activeProject} 
-                size="lg" 
-                className="border-2 border-emerald-500 shadow-lg sm:w-24 sm:h-24"
+          {/* Large Progress Bar */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs font-mono font-bold">
+              <span className="text-slate-400">Fundraising Progress</span>
+              <span className="text-emerald-400 font-extrabold">{percentComplete}% Raised</span>
+            </div>
+
+            <div className="h-4 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+              <div 
+                className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-700 shadow-[0_0_12px_#10b981]"
+                style={{ width: `${percentComplete}%` }}
               />
-              <div className="space-y-1 pb-1">
-                <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-mono font-bold uppercase rounded-md">
-                    {activeProject.category || "Fundraiser"}
-                  </span>
-                  {activeProject.status === "Archived" && (
-                    <span className="px-2.5 py-0.5 bg-rose-500/15 text-rose-400 border border-rose-500/20 text-[10px] font-mono font-bold uppercase rounded-md">
-                      Archived / Reconciled
-                    </span>
+            </div>
+          </div>
+
+          {/* Metrics Line: Amount Raised | Target | Days Remaining */}
+          <div className="grid grid-cols-3 gap-3 pt-1 border-t border-slate-800/80 text-center sm:text-left">
+            <div>
+              <span className="text-[10px] font-mono font-bold text-slate-500 uppercase block">Amount Raised</span>
+              <p className="text-base sm:text-xl font-black font-mono text-emerald-400">
+                KES {totalRaised.toLocaleString()}
+              </p>
+            </div>
+            <div>
+              <span className="text-[10px] font-mono font-bold text-slate-500 uppercase block">Target</span>
+              <p className="text-base sm:text-xl font-black font-mono text-slate-200">
+                KES {activeProject.targetAmount.toLocaleString()}
+              </p>
+            </div>
+            <div>
+              <span className="text-[10px] font-mono font-bold text-slate-500 uppercase block">Days Remaining</span>
+              <p className="text-base sm:text-xl font-black font-mono text-indigo-300">
+                {daysRemaining} Days
+              </p>
+            </div>
+          </div>
+
+          {/* Two Primary Buttons (Min 48px Height for Mobile Accessibility) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+            <button
+              onClick={() => {
+                if (checkPermission("Log manual payments", ["Treasurer"])) {
+                  setShowAddContribution(true);
+                }
+              }}
+              className="w-full min-h-[48px] px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 text-slate-950 font-black text-sm rounded-2xl flex items-center justify-center gap-2 transition shadow-xl shadow-emerald-500/15 cursor-pointer active:scale-98"
+              id="hero-receive-contribution-btn"
+            >
+              <Plus className="w-5 h-5 stroke-[2.5]" />
+              <span>Receive Contribution</span>
+            </button>
+
+            <button
+              onClick={handleCopyLinkAction}
+              className="w-full min-h-[48px] px-6 py-3 bg-slate-800 hover:bg-slate-750 text-white font-bold text-sm rounded-2xl border border-slate-700 flex items-center justify-center gap-2 transition cursor-pointer active:scale-98"
+              id="hero-share-campaign-btn"
+            >
+              {copiedLink ? <Check className="w-5 h-5 text-emerald-400" /> : <Share2 className="w-5 h-5" />}
+              <span>{copiedLink ? "Link Copied!" : "Share Campaign"}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* ====================================================
+            4. DASHBOARD SUMMARY (4 KPI Cards)
+            ==================================================== */}
+        <div className="space-y-3">
+          <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-400">Fundraising Summary</h2>
+          
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            
+            {/* Raised Today */}
+            <div className="p-4 sm:p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-2 shadow-lg">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Raised Today</span>
+                <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl">
+                  <TrendingUp className="w-4 h-4" />
+                </div>
+              </div>
+              <p className="text-xl sm:text-2xl font-black font-mono text-emerald-400">
+                KES {todayRaised.toLocaleString()}
+              </p>
+            </div>
+
+            {/* Total Raised */}
+            <div className="p-4 sm:p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-2 shadow-lg">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Total Raised</span>
+                <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl">
+                  <Coins className="w-4 h-4" />
+                </div>
+              </div>
+              <p className="text-xl sm:text-2xl font-black font-mono text-white">
+                KES {totalRaised.toLocaleString()}
+              </p>
+            </div>
+
+            {/* Supporters */}
+            <div className="p-4 sm:p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-2 shadow-lg">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Supporters</span>
+                <div className="p-2 bg-indigo-500/10 text-indigo-400 rounded-xl">
+                  <Users className="w-4 h-4" />
+                </div>
+              </div>
+              <p className="text-xl sm:text-2xl font-black font-mono text-slate-100">
+                {projectContributions.length}
+              </p>
+            </div>
+
+            {/* Remaining to Target */}
+            <div className="p-4 sm:p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-2 shadow-lg">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Remaining Gap</span>
+                <div className="p-2 bg-amber-500/10 text-amber-400 rounded-xl">
+                  <Target className="w-4 h-4" />
+                </div>
+              </div>
+              <p className="text-xl sm:text-2xl font-black font-mono text-amber-400">
+                KES {remainingAmount.toLocaleString()}
+              </p>
+            </div>
+
+          </div>
+        </div>
+
+        {/* ====================================================
+            5. QUICK ACTIONS (Clean Rounded Tile Grid)
+            ==================================================== */}
+        <div className="space-y-3">
+          <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-400">Quick Actions</h2>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            
+            {/* Tile 1: Receive Contribution */}
+            <button
+              onClick={() => {
+                if (checkPermission("Log manual payments", ["Treasurer"])) {
+                  setShowAddContribution(true);
+                }
+              }}
+              className="p-4 min-h-[56px] bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/40 rounded-2xl flex flex-col items-start gap-2.5 transition cursor-pointer active:scale-98 group text-left"
+            >
+              <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl group-hover:bg-emerald-500 group-hover:text-slate-950 transition-colors">
+                <Plus className="w-5 h-5 stroke-[2.5]" />
+              </div>
+              <div>
+                <p className="text-xs font-black text-white group-hover:text-emerald-400 transition-colors">Receive Contribution</p>
+                <p className="text-[10px] text-slate-500">M-PESA STK or Cash</p>
+              </div>
+            </button>
+
+            {/* Tile 2: Manual Cash */}
+            <button
+              onClick={() => {
+                if (checkPermission("Log manual payments", ["Treasurer"])) {
+                  setShowAddContribution(true);
+                }
+              }}
+              className="p-4 min-h-[56px] bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/40 rounded-2xl flex flex-col items-start gap-2.5 transition cursor-pointer active:scale-98 group text-left"
+            >
+              <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl group-hover:bg-emerald-500 group-hover:text-slate-950 transition-colors">
+                <Landmark className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs font-black text-white group-hover:text-emerald-400 transition-colors">Manual Cash</p>
+                <p className="text-[10px] text-slate-500">Log physical notes</p>
+              </div>
+            </button>
+
+            {/* Tile 3: Share Campaign */}
+            <button
+              onClick={handleCopyLinkAction}
+              className="p-4 min-h-[56px] bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/40 rounded-2xl flex flex-col items-start gap-2.5 transition cursor-pointer active:scale-98 group text-left"
+            >
+              <div className="p-2 bg-sky-500/10 text-sky-400 rounded-xl group-hover:bg-sky-500 group-hover:text-slate-950 transition-colors">
+                <Share2 className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs font-black text-white group-hover:text-sky-400 transition-colors">Share Campaign</p>
+                <p className="text-[10px] text-slate-500">Copy public link</p>
+              </div>
+            </button>
+
+            {/* Tile 4: Reports */}
+            <button
+              onClick={() => onNavigateToTab("report")}
+              className="p-4 min-h-[56px] bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/40 rounded-2xl flex flex-col items-start gap-2.5 transition cursor-pointer active:scale-98 group text-left"
+            >
+              <div className="p-2 bg-purple-500/10 text-purple-400 rounded-xl group-hover:bg-purple-500 group-hover:text-slate-950 transition-colors">
+                <FileText className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs font-black text-white group-hover:text-purple-400 transition-colors">Reports & Docs</p>
+                <p className="text-[10px] text-slate-500">Reconciliation audit</p>
+              </div>
+            </button>
+
+            {/* Tile 5: Supporters */}
+            <button
+              onClick={() => onNavigateToTab("supporters")}
+              className="p-4 min-h-[56px] bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/40 rounded-2xl flex flex-col items-start gap-2.5 transition cursor-pointer active:scale-98 group text-left"
+            >
+              <div className="p-2 bg-indigo-500/10 text-indigo-400 rounded-xl group-hover:bg-indigo-500 group-hover:text-slate-950 transition-colors">
+                <Users className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs font-black text-white group-hover:text-indigo-400 transition-colors">Supporters</p>
+                <p className="text-[10px] text-slate-500">Donor list & directory</p>
+              </div>
+            </button>
+
+            {/* Tile 6: Settings */}
+            <button
+              onClick={() => onNavigateToTab("settings")}
+              className="p-4 min-h-[56px] bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/40 rounded-2xl flex flex-col items-start gap-2.5 transition cursor-pointer active:scale-98 group text-left"
+            >
+              <div className="p-2 bg-amber-500/10 text-amber-400 rounded-xl group-hover:bg-amber-500 group-hover:text-slate-950 transition-colors">
+                <Settings className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs font-black text-white group-hover:text-amber-400 transition-colors">Settings</p>
+                <p className="text-[10px] text-slate-500">Target, rules & roles</p>
+              </div>
+            </button>
+
+          </div>
+        </div>
+
+        {/* --- AI DAILY BRIEFING PANEL ("What should I do next?") --- */}
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-3 gap-2">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl shrink-0">
+                <Bot className="w-4.5 h-4.5" />
+              </div>
+              <div>
+                <h2 className="text-xs font-mono font-bold tracking-wider uppercase text-emerald-400 block">AI DAILY BRIEFING</h2>
+                <p className="text-xs font-bold text-slate-300">Action Plan for {simulatedRole}</p>
+              </div>
+            </div>
+            {onTriggerTour && (
+              <button
+                onClick={onTriggerTour}
+                className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 hover:underline cursor-pointer transition"
+              >
+                <Sparkles className="w-3.5 h-3.5 animate-pulse text-amber-400" />
+                Quick Tour
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+            <div className="md:col-span-8 space-y-3">
+              <p className="text-slate-300 text-xs leading-relaxed">
+                Summary for <strong className="text-white">{activeProject.name}</strong> as analyzed today:
+              </p>
+
+              <div className="p-3 bg-indigo-950/30 border border-indigo-500/25 rounded-xl space-y-1 flex items-start gap-2.5">
+                <Sparkles className="w-4 h-4 text-amber-400 shrink-0 mt-0.5 animate-pulse" />
+                <div className="space-y-0.5 text-xs">
+                  <span className="text-[9px] font-bold text-amber-400 font-mono block uppercase">RECOMMENDED ACTION TODAY</span>
+                  {projectContributions.length === 0 ? (
+                    <p className="text-slate-200 font-semibold">Log your first contribution or perform an STK push dry run to initialize models.</p>
+                  ) : (
+                    <>
+                      <p className="text-slate-200 font-semibold">{todayPriority.task}</p>
+                      <p className="text-slate-400 text-[11px] leading-relaxed">{todayPriority.reason}</p>
+                    </>
                   )}
                 </div>
-                <button
-                  onClick={() => onOpenCampaignSwitcher?.()}
-                  aria-label="Switch Active Campaign"
-                  className="group text-left cursor-pointer transition flex items-center gap-2 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-emerald-400 rounded-xl px-1 -ml-1"
-                  title="Click to switch active campaign"
-                >
-                  <h1 className="text-xl sm:text-2xl font-black font-sans text-white group-hover:text-emerald-400 transition-colors tracking-tight leading-none">
-                    {activeProject.name}
-                  </h1>
-                  <span className="text-[10px] text-slate-400 font-mono font-bold bg-slate-800/80 group-hover:bg-emerald-500/20 group-hover:text-emerald-300 border border-slate-700/80 px-2 py-0.5 rounded-lg transition-all shrink-0">
-                    Switch ▼
-                  </span>
-                </button>
-                <p className="text-xs text-slate-400 italic">
-                  "{activeProject.motto || "United in faith, building a brighter future."}"
-                </p>
               </div>
             </div>
 
-            <div className="flex gap-2 w-full sm:w-auto self-stretch sm:self-auto shrink-0">
+            {/* Broadcast Copy Block */}
+            <div className="md:col-span-4 bg-slate-950 border border-slate-850 rounded-2xl p-3.5 space-y-2.5">
+              <span className="text-[10px] font-mono font-bold uppercase text-slate-400 block">Suggested WhatsApp Broadcast</span>
+              <p className="text-[10px] font-mono text-slate-400 line-clamp-3 bg-slate-900 p-2 rounded-lg border border-slate-800">
+                {suggestedMsg}
+              </p>
               <button
-                onClick={handleCopyLinkAction}
-                className="flex-1 sm:flex-none py-2.5 px-3.5 bg-slate-950 hover:bg-slate-850 text-slate-300 border border-slate-800 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer"
-                id="campaign-copy-link-btn"
+                onClick={() => {
+                  navigator.clipboard.writeText(suggestedMsg);
+                  showToast("WhatsApp message copied to clipboard!");
+                }}
+                className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 border border-slate-800 cursor-pointer transition"
               >
-                {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                {copiedLink ? "Copied Link!" : "Copy Public Link"}
+                <Copy className="w-3.5 h-3.5" />
+                <span>Copy Message</span>
               </button>
-              
+            </div>
+          </div>
+        </div>
+
+        {/* ====================================================
+            LIVE CONTRIBUTIONS PANEL (Receiving donations in real time)
+            ==================================================== */}
+        <div className="bg-slate-900 border border-slate-800/90 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 relative overflow-hidden" id="live-contributions-feed">
+          
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-4 gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2.5">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+                </span>
+                <h2 className="text-base sm:text-lg font-black text-white tracking-tight">
+                  ● Live Contributions
+                </h2>
+                <span className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-mono font-bold rounded-md">
+                  Real-time
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 font-medium">
+                Receiving donations in real time • Auto-synced via Firestore
+              </p>
+            </div>
+
+            {/* Smart Filters (Requirement 6) */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 shrink-0 no-scrollbar">
+              {(["All", "Today", "M-PESA", "Cash", "Bank"] as const).map((filter) => {
+                const isActive = liveFilter === filter;
+                return (
+                  <button
+                    key={filter}
+                    onClick={() => {
+                      setLiveFilter(filter);
+                      setVisibleContributionsCount(12);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer whitespace-nowrap ${
+                      isActive
+                        ? "bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20 font-black scale-105"
+                        : "bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800"
+                    }`}
+                  >
+                    {filter === "All" && `All (${projectContributions.length})`}
+                    {filter === "Today" && `Today (${todayContributionsCount})`}
+                    {filter === "M-PESA" && `M-PESA`}
+                    {filter === "Cash" && `Cash`}
+                    {filter === "Bank" && `Bank`}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Feed Content */}
+          {filteredLiveContributions.length === 0 ? (
+            <div className="py-12 text-center space-y-3 border border-dashed border-slate-800/80 rounded-2xl bg-slate-950/40">
+              <div className="w-10 h-10 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mx-auto">
+                <Coins className="w-5 h-5 animate-pulse" />
+              </div>
+              <p className="text-xs font-bold text-slate-300">
+                No {liveFilter !== "All" ? liveFilter : ""} contributions recorded yet.
+              </p>
+              <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
+                New incoming M-PESA STK payments, bank transfers, or cash receipts will instantly appear here.
+              </p>
               <button
                 onClick={() => {
                   if (checkPermission("Log manual payments", ["Treasurer"])) {
                     setShowAddContribution(true);
                   }
                 }}
-                className="flex-1 sm:flex-none py-2.5 px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition shadow-lg shadow-emerald-500/10 cursor-pointer"
-                id="log-payment-header-btn"
+                className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black rounded-xl transition cursor-pointer shadow-lg shadow-emerald-500/10"
               >
-                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                Log Cash
+                + Receive First Contribution
               </button>
             </div>
-          </div>
-        </div>
+          ) : (
+            <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1 custom-scrollbar">
+              {filteredLiveContributions.slice(0, visibleContributionsCount).map((c, index) => {
+                const method = c.category?.toUpperCase().includes("CASH") || c.transactionCode?.startsWith("CASH")
+                  ? "Cash"
+                  : c.category?.toUpperCase().includes("BANK") || c.transactionCode?.startsWith("BANK")
+                  ? "Bank"
+                  : "M-PESA";
 
-        {/* --- AI DAILY BRIEFING PANEL ("What should I do today?") --- */}
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-44 h-full bg-linear-to-l from-indigo-500/5 to-transparent pointer-events-none" />
-          
-          <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-3 gap-2">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl shrink-0 animate-pulse">
-                  <Bot className="w-4.5 h-4.5" />
-                </div>
-                <div>
-                  <h2 className="text-xs font-mono font-bold tracking-wider uppercase text-emerald-400 block">AI DAILY BRIEFING</h2>
-                  <p className="text-xs font-bold text-slate-300">Good Morning, {simulatedRole} • Action Plan</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                {onTriggerTour && (
-                  <button
-                    onClick={onTriggerTour}
-                    className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 hover:underline cursor-pointer transition"
-                    id="dashboard-trigger-tour-link"
+                const isNewest = index === 0;
+
+                return (
+                  <div
+                    key={c.id || `cont-${index}`}
+                    className={`bg-slate-950 border rounded-2xl p-3.5 space-y-2.5 transition-all duration-300 shadow-sm hover:shadow-md ${
+                      isNewest
+                        ? "border-emerald-500/50 shadow-emerald-500/10 bg-gradient-to-r from-emerald-950/30 via-slate-950 to-slate-950 animate-fade-in"
+                        : "border-slate-850 hover:border-slate-750"
+                    }`}
                   >
-                    <Sparkles className="w-3.5 h-3.5 animate-pulse text-amber-400" />
-                    Need a Quick Tour?
-                  </button>
-                )}
-                <span className="text-[10px] font-mono text-slate-500">Live Feedback Grounded in Firestore</span>
-              </div>
-            </div>
+                    {/* Top Badges Row */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[10px] font-mono font-bold ${
+                          isNewest
+                            ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                            : "bg-slate-900 text-slate-400 border border-slate-800"
+                        }`}>
+                          {getRelativeTimeLabel(c.timestamp)}
+                        </span>
+                        <span className="text-[10px] font-mono font-extrabold text-slate-400 px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800">
+                          {c.transactionCode || "MPESA-DIRECT"}
+                        </span>
+                      </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
-              {/* Daily Brief metrics row */}
-              <div className="md:col-span-8 space-y-4 text-xs font-medium">
-                <p className="text-slate-300 leading-relaxed text-[12.5px]">
-                  Welcome back, <strong className="text-white">{simulatedRole}</strong>. Here is the daily summary 
-                  for <strong className="text-white">{activeProject.name}</strong> as analyzed from the real-time collections sheet today:
-                </p>
+                      <div className="flex items-center gap-1.5">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-800/60 text-[10px] font-bold text-emerald-300">
+                          <Check className="w-3 h-3 text-emerald-400" />
+                          Verified
+                        </span>
+                      </div>
+                    </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                  <div className="p-2.5 bg-slate-950/40 border border-slate-850 rounded-xl space-y-1">
-                    <span className="text-[9px] font-mono text-slate-500 block uppercase font-bold">Today's Raised</span>
-                    <p className="text-sm font-bold font-mono text-emerald-400">KES {todayRaised.toLocaleString()}</p>
-                  </div>
-                  <div className="p-2.5 bg-slate-950/40 border border-slate-850 rounded-xl space-y-1">
-                    <span className="text-[9px] font-mono text-slate-500 block uppercase font-bold">Velocity Goal</span>
-                    <p className="text-sm font-bold font-mono text-slate-300">KES {todayGoal.toLocaleString()}</p>
-                  </div>
-                  <div className="p-2.5 bg-slate-950/40 border border-slate-850 rounded-xl space-y-1">
-                    <span className="text-[9px] font-mono text-slate-500 block uppercase font-bold">Campaign Health</span>
-                    <p className="text-sm font-bold font-mono text-emerald-400">{healthScore}/100</p>
-                  </div>
-                  <div className="p-2.5 bg-slate-950/40 border border-slate-850 rounded-xl space-y-1">
-                    <span className="text-[9px] font-mono text-slate-500 block uppercase font-bold">Days Remaining</span>
-                    <p className="text-sm font-bold font-mono text-indigo-300">{daysRemaining} Days</p>
-                  </div>
-                </div>
+                    {/* Donor Details & Amount */}
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-extrabold text-white truncate">
+                          {c.senderName || c.cleanedName || "Anonymous Well-wisher"}
+                        </h4>
+                        <p className="text-[11px] text-slate-400 font-mono truncate">
+                          {c.senderPhone || "M-PESA Registered Number"}
+                        </p>
+                      </div>
 
-                {/* Highlighted recommended action */}
-                <div className="p-3 bg-indigo-950/30 border border-indigo-500/25 rounded-xl space-y-1 flex items-start gap-2.5">
-                  <Sparkles className="w-4 h-4 text-amber-400 shrink-0 mt-0.5 animate-pulse" />
-                  <div className="space-y-0.5 text-xs">
-                    <span className="text-[9px] font-bold text-amber-400 font-mono block uppercase">RECOMMENDED ACTION TODAY</span>
-                    {projectContributions.length === 0 ? (
-                      <>
-                        <p className="text-slate-200 font-semibold">The AI will begin providing recommendations after your first contribution.</p>
-                        <p className="text-slate-400 text-[11px] leading-relaxed">Your real-time Daraja API ledger link is online. Execute an STK simulation in the cash desk to fire up initial financial models.</p>
-                      </>
-                    ) : (
-                      <>
-                        <p className="text-slate-200 font-semibold">{todayPriority.task}</p>
-                        <p className="text-slate-400 text-[11px] leading-relaxed">{todayPriority.reason}</p>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
+                      <div className="text-right shrink-0">
+                        <span className="text-base sm:text-lg font-black font-mono text-emerald-400 block">
+                          KES {Number(c.amount).toLocaleString()}
+                        </span>
+                        <span className="text-[10px] font-mono text-slate-400 uppercase font-bold">
+                          Method: {method}
+                        </span>
+                      </div>
+                    </div>
 
-              {/* Suggested WhatsApp broadcast block */}
-              <div className="md:col-span-4 bg-slate-950/50 border border-slate-850 rounded-2xl p-4 flex flex-col justify-between space-y-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold uppercase text-slate-400">
-                    <Share2 className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Suggested WhatsApp Broadcast</span>
+                    {/* Receipt Status & Footer */}
+                    <div className="flex items-center justify-between border-t border-slate-900 pt-2 text-[10px] text-slate-400 font-mono">
+                      <div className="flex items-center gap-1.5 text-emerald-400 font-bold">
+                        <Check className="w-3 h-3" />
+                        <span>Receipt Generated ✓</span>
+                      </div>
+                      <span>
+                        {new Date(c.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
                   </div>
-                  <div className="p-2.5 bg-slate-950 border border-slate-850 rounded-xl font-mono text-[9.5px] leading-relaxed text-slate-400 whitespace-pre-wrap select-text max-h-[110px] overflow-y-auto">
-                    {suggestedMsg}
-                  </div>
-                </div>
+                );
+              })}
 
+              {/* Lazy Loading Pagination Button (Requirement 7) */}
+              {visibleContributionsCount < filteredLiveContributions.length && (
                 <button
-                  onClick={() => {
-                    if (checkPermission("Broadcast message updates", ["Secretary", "Chairperson", "Treasurer"])) {
-                      navigator.clipboard.writeText(suggestedMsg);
-                      showToast("WhatsApp broadcast copy ready! Paste into your group chat.");
-                    }
-                  }}
-                  className="w-full py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-850 text-[10.5px] font-bold rounded-lg flex items-center justify-center gap-1 transition cursor-pointer"
+                  onClick={() => setVisibleContributionsCount(prev => prev + 12)}
+                  className="w-full py-3 bg-slate-950 hover:bg-slate-850 text-slate-300 text-xs font-bold rounded-xl border border-slate-800 transition cursor-pointer flex items-center justify-center gap-2 mt-2"
                 >
-                  <Copy className="w-3.5 h-3.5" />
-                  <span>Copy Broadcast Broadcast</span>
+                  <span>Load Older Contributions ({filteredLiveContributions.length - visibleContributionsCount} remaining)</span>
+                  <ChevronDown className="w-3.5 h-3.5" />
                 </button>
-              </div>
+              )}
             </div>
-          </div>
+          )}
         </div>
 
-        {/* --- LIVE FUNDRAISING COMMAND CENTER (REAL-TIME ENGINE) --- */}
-        <LiveFundraisingCommandCenter
-          activeProject={activeProject}
-          contributions={projectContributions}
-          viewMode="organizer"
-          isDemoMode={isDemoMode}
-        />
-
-        {/* --- DYNAMIC CAMPAIGN CHECKLIST & PROGRESS VISUALIZER --- */}
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-            <div>
-              <h3 className="text-sm font-extrabold text-slate-200">Interactive Campaign Assistant Checklist</h3>
-              <p className="text-[10px] font-mono text-slate-500 mt-0.5">Celebrate step-by-step progress towards reconciliation completion</p>
-            </div>
-            {/* Visual Checklist percentage meter */}
-            <div className="text-right">
-              <span className="text-xs font-mono font-bold text-emerald-400">
-                {Math.round((checklist.filter(c => c.status).length / checklist.length) * 100)}% Complete
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-            {checklist.map((item, idx) => (
-              <div 
-                key={item.id} 
-                onClick={() => handleToggleChecklistItem(item.id)}
-                className={`p-3 border rounded-2xl flex items-start gap-3 transition cursor-pointer hover:border-slate-700 ${
-                  item.status 
-                    ? "bg-emerald-950/15 border-emerald-500/20 text-slate-300" 
-                    : "bg-slate-950/20 border-slate-850 text-slate-400 opacity-60"
-                }`}
-              >
-                <div className="shrink-0 mt-0.5">
-                  {item.status ? (
-                    <div className="p-1 bg-emerald-500 text-slate-950 rounded-full animate-pulse">
-                      <Check className="w-3 h-3 stroke-[3]" />
-                    </div>
-                  ) : (
-                    <div className="w-5 h-5 rounded-full border border-slate-700 flex items-center justify-center text-[10px] font-mono text-slate-500">
-                      {idx + 1}
-                    </div>
-                  )}
-                </div>
-                <div className="space-y-0.5 text-xs">
-                  <h4 className="font-bold text-slate-200 leading-tight">{item.label}</h4>
-                  <p className="text-[10px] text-slate-400 leading-tight">{item.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* --- DUAL GRID: CONTRIBUTIONS FEED & ACCOUNTABILITY ACTIVITY LOGS --- */}
+        {/* --- DUAL GRID: RECONCILED LEDGER & ACTIVITY LOGS --- */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
-          {/* Live Contributions List */}
-          <div className="lg:col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+          {/* Recent Ledger */}
+          <div className="lg:col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div>
-                <h3 className="text-sm font-extrabold text-slate-200">Reconciled Contribution Ledger</h3>
-                <p className="text-[10px] text-slate-500 font-mono mt-0.5">Real-time MPESA and physical logging</p>
+                <h3 className="text-xs font-extrabold text-slate-200">Reconciled Contribution Ledger</h3>
+                <p className="text-[10px] text-slate-500 font-mono">Real-time M-PESA and physical logs</p>
               </div>
               <button
                 onClick={() => onNavigateToTab("collect")}
@@ -1276,134 +1428,58 @@ Thank you for your generous support!`;
               </button>
             </div>
 
-            <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-[280px] overflow-y-auto">
               {projectContributions.length === 0 ? (
-                <div className="py-12 text-center space-y-4 flex flex-col items-center justify-center border border-dashed border-slate-800 rounded-2xl bg-slate-950/20">
-                  <div className="p-3 bg-slate-900 border border-slate-800 rounded-2xl text-slate-500">
-                    <Landmark className="w-8 h-8 stroke-[1.5]" />
-                  </div>
-                  <div className="space-y-1 max-w-xs mx-auto">
-                    <p className="text-xs font-bold text-slate-300">No donations have been received yet.</p>
-                    <p className="text-[10px] text-slate-500 leading-relaxed font-sans">
-                      Verify your real-time integration by executing a safe dry-run M-PESA STK payment push.
-                    </p>
-                  </div>
-                  <div className="flex flex-col sm:flex-row items-center gap-2 justify-center">
-                    <button
-                      onClick={() => onNavigateToTab("collect")}
-                      className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold rounded-xl transition cursor-pointer"
-                    >
-                      Test STK Push
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (checkPermission("Log manual payments", ["Treasurer"])) {
-                          setShowAddContribution(true);
-                        }
-                      }}
-                      className="px-3.5 py-2 bg-slate-900 hover:bg-slate-850 text-slate-300 hover:text-white border border-slate-800 text-[11px] font-bold rounded-xl transition cursor-pointer"
-                    >
-                      Log Manual Contribution
-                    </button>
-                  </div>
+                <div className="py-8 text-center space-y-2 border border-dashed border-slate-800 rounded-xl">
+                  <p className="text-xs font-bold text-slate-400">No donations received yet.</p>
+                  <button
+                    onClick={() => setShowAddContribution(true)}
+                    className="px-3 py-1.5 bg-emerald-500 text-slate-950 text-xs font-bold rounded-lg cursor-pointer"
+                  >
+                    Receive First Contribution
+                  </button>
                 </div>
               ) : (
                 projectContributions.slice(0, 5).map((c) => (
-                  <div key={c.id} className="p-3 bg-slate-950 border border-slate-850 rounded-xl flex items-center justify-between hover:border-slate-700 transition">
-                    <div className="space-y-1">
+                  <div key={c.id} className="p-3 bg-slate-950 border border-slate-850 rounded-xl flex items-center justify-between">
+                    <div className="space-y-0.5">
                       <p className="text-xs font-bold text-slate-200">{c.senderName || c.cleanedName}</p>
                       <p className="text-[10px] text-slate-500 font-mono">{c.transactionCode} • {c.senderPhone || "M-PESA"}</p>
                     </div>
-                    <div className="text-right space-y-0.5">
-                      <span className="text-xs font-bold text-emerald-400 font-mono">+ KES {Number(c.amount).toLocaleString()}</span>
-                      <span className="text-[9px] text-slate-500 font-mono block">reconciled</span>
-                    </div>
+                    <span className="text-xs font-bold text-emerald-400 font-mono">+ KES {Number(c.amount).toLocaleString()}</span>
                   </div>
                 ))
               )}
             </div>
           </div>
 
-          {/* Committee Audit Logs Panel (Never Allow Deletion!) */}
-          <div className="lg:col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+          {/* Committee Audit Trail */}
+          <div className="lg:col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div>
-                <h3 className="text-sm font-extrabold text-slate-200">Un-alterable Committee Activity Logs</h3>
-                <p className="text-[10px] text-slate-500 font-mono mt-0.5">Accountability audit logs (Immutable history)</p>
+                <h3 className="text-xs font-extrabold text-slate-200">Committee Activity Logs</h3>
+                <p className="text-[10px] text-slate-500 font-mono">Immutable audit history</p>
               </div>
               <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
             </div>
 
-            <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-[280px] overflow-y-auto">
               {activityLogs.length === 0 ? (
-                <p className="py-12 text-center text-xs text-slate-500 font-mono">No audit trail logs recorded yet.</p>
+                <p className="py-8 text-center text-xs text-slate-500 font-mono">No audit trail logs recorded yet.</p>
               ) : (
                 activityLogs.map((log) => (
-                  <div key={log.id} className="p-3 bg-slate-950 border border-slate-850 rounded-xl space-y-1.5">
+                  <div key={log.id} className="p-2.5 bg-slate-950 border border-slate-850 rounded-xl space-y-1">
                     <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono">
                       <span className="text-emerald-400 font-bold">{log.user}</span>
                       <span>{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
-                    <p className="text-xs text-slate-300 leading-normal font-medium">{log.action}</p>
-                    <span className="text-[9px] text-slate-500 font-mono block uppercase">device: {log.device}</span>
+                    <p className="text-xs text-slate-300 font-medium">{log.action}</p>
                   </div>
                 ))
               )}
             </div>
           </div>
-        </div>
 
-        {/* --- MAIN STATISTICS CONTAINER WITH LIVE PROGRESS BAR --- */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6 shadow-xl">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 border-b border-slate-800 pb-5">
-            {/* Amount Raised */}
-            <div className="space-y-1.5">
-              <span className="text-[10px] font-mono text-slate-500 uppercase block font-bold">Amount Raised So Far</span>
-              <p className="text-2xl sm:text-3xl font-black font-mono text-emerald-400">
-                KES {totalRaised.toLocaleString()}
-              </p>
-              <p className="text-[11px] text-slate-400">
-                Reconciled instantly via Lipa Na M-PESA
-              </p>
-            </div>
-
-            {/* Target Goal */}
-            <div className="space-y-1.5">
-              <span className="text-[10px] font-mono text-slate-500 uppercase block font-bold">Fundraising Target</span>
-              <p className="text-2xl sm:text-3xl font-black font-mono text-slate-200">
-                KES {activeProject.targetAmount.toLocaleString()}
-              </p>
-              <p className="text-[11px] text-slate-400">
-                Setup during wizard deployment
-              </p>
-            </div>
-
-            {/* Remaining Amount */}
-            <div className="space-y-1.5">
-              <span className="text-[10px] font-mono text-slate-500 uppercase block font-bold">Remaining Gap</span>
-              <p className="text-2xl sm:text-3xl font-black font-mono text-indigo-300">
-                KES {remainingAmount.toLocaleString()}
-              </p>
-              <p className="text-[11px] text-slate-400">
-                {percentComplete}% of the target reached
-              </p>
-            </div>
-          </div>
-
-          {/* Progress bar visual meter */}
-          <div className="space-y-1.5">
-            <div className="h-3.5 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-850">
-              <div 
-                className="h-full bg-emerald-500 rounded-full transition-all duration-500 shadow-[0_0_8px_#10b981]"
-                style={{ width: `${percentComplete}%` }}
-              />
-            </div>
-            <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono">
-              <span>0% Initialized</span>
-              <span className="text-emerald-400 font-bold">{percentComplete}% Completed</span>
-              <span>100% Goal Achieved</span>
-            </div>
-          </div>
         </div>
 
         {/* --- CLONING & ARCHIVING ADVANCED CONTROLS --- */}
