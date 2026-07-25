@@ -177,10 +177,6 @@ export default function App() {
       if (typeof window !== "undefined" && window.location.hash.includes("#/f/")) {
         return "public";
       }
-      const saved = localStorage.getItem("harambeeflow_last_active_tab");
-      if (saved && saved !== "landing" && saved !== "public" && saved !== "trust") {
-        return saved;
-      }
     } catch (e) {}
     return "landing";
   });
@@ -1015,9 +1011,8 @@ export default function App() {
         }
       }
 
-      if (user && activeTab === "landing") {
-        const target = pendingDeepLink || "dashboard";
-        setActiveTab(target);
+      if (user && pendingDeepLink) {
+        setActiveTab(pendingDeepLink);
         setPendingDeepLink(null);
       }
     });
@@ -2405,7 +2400,8 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
       <div className={`flex flex-col flex-1 ${
         projects.length === 0 && wizardOpen ? "min-h-screen" : "h-screen overflow-hidden"
       }`}>
-        <header className="bg-slate-900 border-b border-slate-800 px-3 sm:px-4 py-2 shrink-0 flex items-center justify-between gap-2 md:hidden sticky top-0 z-30 shadow-md min-h-[56px]">
+        {activeTab !== "landing" && activeTab !== "trust" && (
+          <header className="bg-slate-900 border-b border-slate-800 px-3 sm:px-4 py-2 shrink-0 flex items-center justify-between gap-2 md:hidden sticky top-0 z-30 shadow-md min-h-[56px]">
           {/* HF Logo */}
           <div 
             className="flex items-center gap-2 text-white cursor-pointer active:opacity-80 transition-opacity min-w-0 shrink-0"
@@ -2463,6 +2459,7 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
             </button>
           </div>
         </header>
+        )}
 
         {/* Mobile Slide-out Drawer Sidebar */}
         {sidebarOpen && (
