@@ -21,11 +21,7 @@ export default function EmailVerificationScreen({ currentUser, onVerified }: Ema
   const [successMsg, setSuccessMsg] = useState("");
   const [checking, setChecking] = useState(false);
 
-  const sandboxMode = 
-    import.meta.env.VITE_SANDBOX_MODE === "true" || 
-    import.meta.env.APP_ENV === "sandbox" || 
-    import.meta.env.VITE_SANDBOX === "true" || 
-    IS_SANDBOX;
+  const sandboxMode = IS_SANDBOX;
 
   // Unified computed verification value
   const verified = sandboxMode ? true : (currentUser?.emailVerified || auth?.currentUser?.emailVerified || false);

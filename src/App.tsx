@@ -2249,11 +2249,7 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
   }
 
   // Restrict dashboard access if email is unverified for email users (bypassed in Sandbox Mode)
-  const sandboxMode = 
-    import.meta.env.VITE_SANDBOX_MODE === "true" || 
-    import.meta.env.APP_ENV === "sandbox" || 
-    import.meta.env.VITE_SANDBOX === "true" || 
-    IS_SANDBOX;
+  const sandboxMode = IS_SANDBOX;
 
   const verified = sandboxMode ? true : (currentUser?.emailVerified || false);
   const isEmailUnverified = currentUser && 
