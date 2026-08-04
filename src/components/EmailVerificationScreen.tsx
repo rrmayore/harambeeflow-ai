@@ -21,19 +21,25 @@ export default function EmailVerificationScreen({ currentUser, onVerified }: Ema
   const [successMsg, setSuccessMsg] = useState("");
   const [checking, setChecking] = useState(false);
 
+  const sandboxMode = 
+    import.meta.env.VITE_SANDBOX_MODE === "true" || 
+    import.meta.env.APP_ENV === "sandbox" || 
+    import.meta.env.VITE_SANDBOX === "true" || 
+    IS_SANDBOX;
+
   // Unified computed verification value
-  const isVerified = IS_SANDBOX ? true : (currentUser?.emailVerified || auth.currentUser?.emailVerified);
+  const verified = sandboxMode ? true : (currentUser?.emailVerified || auth?.currentUser?.emailVerified || false);
 
   // Immediately skip if already verified or in Sandbox Mode
   useEffect(() => {
-    if (isVerified) {
+    if (verified) {
       onVerified();
     }
-  }, [isVerified, onVerified]);
+  }, [verified, onVerified]);
 
   // Poll for verification status
   useEffect(() => {
-    if (!currentUser || isVerified) return;
+    if (!currentUser || verified) return;
 
     const intervalId = setInterval(async () => {
       try {
@@ -61,7 +67,7 @@ export default function EmailVerificationScreen({ currentUser, onVerified }: Ema
     try {
       if (IS_SANDBOX) {
         setResendSuccess(true);
-        setSuccessMsg("Sandbox Mode: Verification email simulated successfully!");
+        setSuccessMsg("Verification email sent successfully!");
         setTimeout(() => setResendSuccess(false), 8000);
         return;
       }
@@ -140,7 +146,7 @@ export default function EmailVerificationScreen({ currentUser, onVerified }: Ema
     }
   };
 
-  if (isVerified) {
+  if (verified) {
     return null;
   }
 

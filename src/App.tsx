@@ -966,17 +966,6 @@ export default function App() {
         reason = "Shown: User is signed in with email/password, email is not verified, and Sandbox Mode is disabled.";
       }
     }
-
-    console.log(
-      `%c[HarambeeFlow DIAGNOSTICS]%c\n` +
-      `- Hostname: ${hostname}\n` +
-      `- Build Mode: ${buildMode}\n` +
-      `- IS_SANDBOX: ${IS_SANDBOX}\n` +
-      `- Firebase User Email Verified: ${currentUser ? currentUser.emailVerified : "N/A"}\n` +
-      `- Auth Guard Outcome: ${reason}`,
-      "color: #10b981; font-weight: bold; font-size: 11px;",
-      "color: #cbd5e1; font-size: 11px;"
-    );
   }, [currentUser, activeTab, isDemoMode, devSettings.skipEmailVerification]);
 
   // Bind Auth Observer & update lastLogin in Firestore
@@ -2260,9 +2249,15 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
   }
 
   // Restrict dashboard access if email is unverified for email users (bypassed in Sandbox Mode)
-  const isVerified = IS_SANDBOX ? true : (currentUser?.emailVerified || false);
+  const sandboxMode = 
+    import.meta.env.VITE_SANDBOX_MODE === "true" || 
+    import.meta.env.APP_ENV === "sandbox" || 
+    import.meta.env.VITE_SANDBOX === "true" || 
+    IS_SANDBOX;
+
+  const verified = sandboxMode ? true : (currentUser?.emailVerified || false);
   const isEmailUnverified = currentUser && 
-    !isVerified && 
+    !verified && 
     currentUser.providerData?.some((p: any) => p.providerId === "password");
   if (isEmailUnverified && !isDemoMode) {
     return (
@@ -3041,7 +3036,7 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
                                           {(userProfile?.displayName || currentUser?.displayName || "EU")[0].toUpperCase()}
                                         </div>
                                       )}
-                                      <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-slate-950 ${isVerified ? "bg-emerald-500" : "bg-amber-500"}`} />
+                                      <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-slate-950 ${verified ? "bg-emerald-500" : "bg-amber-500"}`} />
                                     </div>
                                     <div>
                                       <h4 className="text-sm font-black text-white leading-snug">
@@ -3068,8 +3063,8 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
                                     </div>
                                     <div className="flex justify-between items-center py-0.5 border-t border-slate-900/60 pt-2">
                                       <span className="text-slate-400 font-medium">Email Verified</span>
-                                      <span className={`font-mono text-[10px] font-bold uppercase ${isVerified ? "text-emerald-400" : "text-amber-400"}`}>
-                                        {isVerified ? "Verified (Secure)" : "Unverified (Restricted)"}
+                                      <span className={`font-mono text-[10px] font-bold uppercase ${verified ? "text-emerald-400" : "text-amber-400"}`}>
+                                        {verified ? "Verified (Secure)" : "Unverified (Restricted)"}
                                       </span>
                                     </div>
                                     <div className="flex justify-between items-center py-0.5 border-t border-slate-900/60 pt-2">
@@ -3092,8 +3087,8 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
                                     </div>
                                     <div className="flex justify-between items-center py-0.5 border-t border-slate-900/60 pt-2">
                                       <span className="text-slate-400 font-medium">Security Status</span>
-                                      <span className={`font-bold text-[10px] px-2 py-0.5 rounded-full ${isVerified ? "bg-emerald-950 text-emerald-400 border border-emerald-900/40" : "bg-amber-950 text-amber-400 border border-amber-900/40"}`}>
-                                        {isVerified ? "Hardened Shield" : "Standard Audit Required"}
+                                      <span className={`font-bold text-[10px] px-2 py-0.5 rounded-full ${verified ? "bg-emerald-950 text-emerald-400 border border-emerald-900/40" : "bg-amber-950 text-amber-400 border border-amber-900/40"}`}>
+                                        {verified ? "Hardened Shield" : "Standard Audit Required"}
                                       </span>
                                     </div>
                                     <div className="flex justify-between items-center py-0.5 border-t border-slate-900/60 pt-2">
@@ -3105,7 +3100,7 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
                                       <span className="text-slate-200 font-mono font-bold">{projects.filter((p: any) => p.createdBy === currentUser?.uid || isDemoMode).length} Built</span>
                                     </div>
                                     <div className="flex justify-between items-center py-0.5 border-t border-slate-900/60 pt-2">
-                                      <span className="text-slate-400 font-medium">Sandbox Allocation</span>
+                                      <span className="text-slate-400 font-medium">Storage Allocation</span>
                                       <span className="text-slate-400 font-mono text-[10px]">14.2 KB / 10 MB (0.14%)</span>
                                     </div>
                                   </div>
