@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { IS_SANDBOX, getRuntimeEnvironmentInfo } from "./utils/env";
+import { REQUIRE_EMAIL_VERIFICATION } from "./config/authConfig";
 import Sidebar from "./components/Sidebar";
 import DashboardView from "./components/DashboardView";
 import FOSHomeView from "./components/FOSHomeView";
@@ -40,6 +41,8 @@ import CampaignSwitcherModal from "./components/CampaignSwitcherModal";
 import CampaignBreadcrumbs from "./components/CampaignBreadcrumbs";
 import DuplicateCampaignPromptModal from "./components/DuplicateCampaignPromptModal";
 import EmailVerificationScreen from "./components/EmailVerificationScreen";
+import DebugHUD from "./components/DebugHUD";
+import DebugAuthView from "./components/DebugAuthView";
 import { getLocalAuthAnalytics } from "./lib/analytics";
 import CampaignActivationWizard from "./components/CampaignActivationWizard";
 import CommandCenterView from "./components/CommandCenterView";
@@ -174,8 +177,13 @@ const PWAFrameWrapper = ({ isSimulated, children, handleExit }: { isSimulated: b
 export default function App() {
   const [activeTab, setActiveTab] = useState(() => {
     try {
-      if (typeof window !== "undefined" && window.location.hash.includes("#/f/")) {
-        return "public";
+      if (typeof window !== "undefined") {
+        if (window.location.pathname === "/debug/auth" || window.location.hash.includes("debug/auth")) {
+          return "debug-auth";
+        }
+        if (window.location.hash.includes("#/f/")) {
+          return "public";
+        }
       }
     } catch (e) {}
     return "landing";
@@ -954,6 +962,8 @@ export default function App() {
       const isEmailProvider = currentUser.providerData?.some((p: any) => p.providerId === "password");
       if (!isEmailProvider) {
         reason = "Skipped: User is logged in via a non-password provider (e.g., Google or OAuth) which does not require email verification.";
+      } else if (!REQUIRE_EMAIL_VERIFICATION) {
+        reason = "Skipped: REQUIRE_EMAIL_VERIFICATION is set to false (Development/Testing Mode).";
       } else if (currentUser.emailVerified) {
         reason = "Skipped: User's email is verified in Firebase.";
       } else if (IS_SANDBOX) {
@@ -965,6 +975,18 @@ export default function App() {
       } else {
         reason = "Shown: User is signed in with email/password, email is not verified, and Sandbox Mode is disabled.";
       }
+    }
+
+    if (import.meta.env.DEV) {
+      console.log(
+        `%c[HarambeeFlow AUTH DIAGNOSTICS]%c\n` +
+        `- Hostname: ${window.location.hostname}\n` +
+        `- IS_SANDBOX: ${IS_SANDBOX}\n` +
+        `- Firebase User Email Verified: ${currentUser ? currentUser.emailVerified : "N/A"}\n` +
+        `- Auth Guard Outcome: ${reason}`,
+        "color: #10b981; font-weight: bold; font-size: 11px;",
+        "color: #cbd5e1; font-size: 11px;"
+      );
     }
   }, [currentUser, activeTab, isDemoMode, devSettings.skipEmailVerification]);
 
@@ -2197,6 +2219,19 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
     );
   }
 
+  if (activeTab === "debug-auth") {
+    return (
+      <DebugAuthView
+        currentUser={currentUser}
+        userProfile={userProfile}
+        activeTab={activeTab}
+        isDemoMode={isDemoMode}
+        devSettings={devSettings}
+        onReturnToDashboard={() => handleSetActiveTab("dashboard")}
+      />
+    );
+  }
+
   if (activeTab === "public" || activeTab === "public-pages") {
     return (
       <PublicCampaignPageView 
@@ -2248,14 +2283,15 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
     );
   }
 
-  // Restrict dashboard access if email is unverified for email users (bypassed in Sandbox Mode)
+  // Restrict dashboard access if email is unverified for email users (bypassed in Sandbox Mode or when REQUIRE_EMAIL_VERIFICATION = false)
   const sandboxMode = IS_SANDBOX;
 
-  const verified = sandboxMode ? true : (currentUser?.emailVerified || false);
-  const isEmailUnverified = currentUser && 
+  const verified = REQUIRE_EMAIL_VERIFICATION ? (sandboxMode ? true : (currentUser?.emailVerified || false)) : true;
+  const isEmailUnverified = REQUIRE_EMAIL_VERIFICATION && 
+    currentUser && 
     !verified && 
     currentUser.providerData?.some((p: any) => p.providerId === "password");
-  if (isEmailUnverified && !isDemoMode) {
+  if (REQUIRE_EMAIL_VERIFICATION && isEmailUnverified && !isDemoMode) {
     return (
       <EmailVerificationScreen 
         currentUser={currentUser}
@@ -2343,6 +2379,14 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
 
   return (
     <PWAFrameWrapper isSimulated={isSimulatedStandalone} handleExit={() => setIsSimulatedStandalone(false)}>
+      <DebugHUD 
+        currentUser={currentUser}
+        userProfile={userProfile}
+        activeTab={activeTab}
+        isDemoMode={isDemoMode}
+        devSettings={devSettings}
+        onOpenDebugPage={() => setActiveTab("debug-auth")}
+      />
       <div className={`min-h-screen bg-slate-950 flex flex-col font-sans leading-normal relative ${
         projects.length === 0 && wizardOpen ? "w-full overflow-y-auto" : "overflow-hidden h-screen w-screen"
       }`}>

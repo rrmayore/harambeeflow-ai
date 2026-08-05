@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { IS_SANDBOX } from "../utils/env";
+import { REQUIRE_EMAIL_VERIFICATION } from "../config/authConfig";
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
@@ -106,7 +107,7 @@ export default function AuthScreen({ onSuccess }: AuthScreenProps) {
 
         if (!userProfileSnap.exists()) {
           // First login: Create user profile document
-          const verifiedStatus = IS_SANDBOX ? true : user.emailVerified;
+          const verifiedStatus = REQUIRE_EMAIL_VERIFICATION ? (IS_SANDBOX ? true : user.emailVerified) : true;
 
           const profileData = {
             id: user.uid,
@@ -156,7 +157,7 @@ export default function AuthScreen({ onSuccess }: AuthScreenProps) {
         } else {
           // Returning Google user: Only update specific lastLogin, photoURL, displayName, and provider metadata
           const existingData = userProfileSnap.data();
-          const verifiedStatus = IS_SANDBOX ? true : user.emailVerified;
+          const verifiedStatus = REQUIRE_EMAIL_VERIFICATION ? (IS_SANDBOX ? true : user.emailVerified) : true;
 
           await setDoc(userProfileRef, {
             lastLogin: now,
@@ -274,7 +275,7 @@ export default function AuthScreen({ onSuccess }: AuthScreenProps) {
 
         // Save doc to legacy users collection
         try {
-          const verifiedStatus = IS_SANDBOX ? true : user.emailVerified;
+          const verifiedStatus = REQUIRE_EMAIL_VERIFICATION ? (IS_SANDBOX ? true : user.emailVerified) : true;
 
           await setDoc(doc(db, "users", user.uid), {
             uid: user.uid,
@@ -404,7 +405,7 @@ export default function AuthScreen({ onSuccess }: AuthScreenProps) {
               createdAt: now,
               lastLogin: now,
               provider: "email",
-              emailVerified: user.emailVerified,
+              emailVerified: REQUIRE_EMAIL_VERIFICATION ? (IS_SANDBOX ? true : user.emailVerified) : true,
               role: "organizer",
               language: "en",
               country: "KE",
@@ -414,8 +415,10 @@ export default function AuthScreen({ onSuccess }: AuthScreenProps) {
               updatedAt: now
             }, { merge: true });
 
-            // Send verification email
-            await sendEmailVerification(user);
+            // Send verification email only if REQUIRE_EMAIL_VERIFICATION is enabled and not in Sandbox Mode
+            if (REQUIRE_EMAIL_VERIFICATION && !IS_SANDBOX) {
+              await sendEmailVerification(user);
+            }
           }
 
           await trackAuthEvent("registration", "email", user.uid, user.email || "");
@@ -431,7 +434,7 @@ export default function AuthScreen({ onSuccess }: AuthScreenProps) {
         
         // Update last login
         try {
-          const verifiedStatus = IS_SANDBOX ? true : user.emailVerified;
+          const verifiedStatus = REQUIRE_EMAIL_VERIFICATION ? (IS_SANDBOX ? true : user.emailVerified) : true;
 
           await setDoc(doc(db, "userProfiles", user.uid), {
             lastLogin: new Date().toISOString(),

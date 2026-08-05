@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { IS_SANDBOX } from "../utils/env";
+import { REQUIRE_EMAIL_VERIFICATION } from "../config/authConfig";
 import { motion } from "motion/react";
 import { sendEmailVerification, updateEmail, signOut } from "firebase/auth";
 import { auth } from "../firebase";
@@ -24,7 +25,7 @@ export default function EmailVerificationScreen({ currentUser, onVerified }: Ema
   const sandboxMode = IS_SANDBOX;
 
   // Unified computed verification value
-  const verified = sandboxMode ? true : (currentUser?.emailVerified || auth?.currentUser?.emailVerified || false);
+  const verified = !REQUIRE_EMAIL_VERIFICATION || sandboxMode ? true : (currentUser?.emailVerified || auth?.currentUser?.emailVerified || false);
 
   // Immediately skip if already verified or in Sandbox Mode
   useEffect(() => {

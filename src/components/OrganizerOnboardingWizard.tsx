@@ -157,7 +157,7 @@ export default function OrganizerOnboardingWizard({
   }, [step, currentUser]);
 
   useEffect(() => {
-    if (process.env.NODE_ENV !== "production") {
+    if (import.meta.env.DEV) {
       console.log("🛠️ HarambeeFlow Onboarding Regression Shield: Running checks...");
       if (STEPS.length !== 6) {
         console.error("❌ Regression Shield Error: STEPS array must contain exactly 6 steps.");
