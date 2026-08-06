@@ -4,7 +4,9 @@ import {
   HelpCircle, Clock, AlertCircle, Phone, Mail, Lock, CheckCircle2, Copy, 
   BarChart3, HardDrive, Cpu, Users, Target, X, ExternalLink, RefreshCw,
   FileText, Heart, Layers, MessageSquare, FileSpreadsheet, Building2,
-  Edit3, Globe, Shield, Database, Cloud, Award, CheckCircle, Tag, User, LockKeyhole
+  Edit3, Globe, Shield, Database, Cloud, Award, CheckCircle, Tag, User, 
+  LockKeyhole, ChevronDown, ChevronUp, Server, CheckSquare, TrendingUp,
+  DollarSign, ShieldAlert, FileCheck, Landmark, Key, Users2
 } from "lucide-react";
 
 interface BillingSubscriptionViewProps {
@@ -19,12 +21,13 @@ export default function BillingSubscriptionView({
   activeProject 
 }: BillingSubscriptionViewProps) {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [selectedPlanForUpgrade, setSelectedPlanForUpgrade] = useState<string>("Professional");
+  const [selectedPlanForUpgrade, setSelectedPlanForUpgrade] = useState<string>("Standard");
   const [billingCycle, setBillingCycle] = useState<"monthly" | "annual">("monthly");
   const [mpesaPhone, setMpesaPhone] = useState(currentUser?.phoneNumber || "0712345678");
   const [upgradeSubmitted, setUpgradeSubmitted] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState("");
   const [copiedEmail, setCopiedEmail] = useState(false);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   // Organization Information local state
   const [orgInfo, setOrgInfo] = useState({
@@ -51,7 +54,7 @@ export default function BillingSubscriptionView({
     setTimeout(() => setCopiedEmail(false), 3000);
   };
 
-  const handleOpenUpgradeModal = (planName: string = "Professional") => {
+  const handleOpenUpgradeModal = (planName: string = "Standard") => {
     setSelectedPlanForUpgrade(planName);
     setShowUpgradeModal(true);
     setUpgradeSubmitted(false);
@@ -60,7 +63,7 @@ export default function BillingSubscriptionView({
   const handleConfirmUpgrade = (e: React.FormEvent) => {
     e.preventDefault();
     setUpgradeSubmitted(true);
-    setFeedbackMsg(`Upgrade request for ${selectedPlanForUpgrade} Plan (${billingCycle}) submitted! M-PESA confirmation will be sent to ${mpesaPhone} when automated billing activates.`);
+    setFeedbackMsg(`Upgrade request for ${selectedPlanForUpgrade} Plan (${billingCycle}) submitted! M-PESA confirmation prompt will be sent to ${mpesaPhone}.`);
     setTimeout(() => {
       setShowUpgradeModal(false);
       setUpgradeSubmitted(false);
@@ -83,58 +86,171 @@ export default function BillingSubscriptionView({
     setFeedbackMsg("Organization Information updated successfully!");
   };
 
+  const toggleFaq = (index: number) => {
+    setOpenFaq(openFaq === index ? null : index);
+  };
+
   // Feature matrix rows for Compare Plans
   const featureMatrix = [
     {
       feature: "Active Campaigns",
       icon: Target,
-      community: "Up to 3",
-      professional: "Unlimited",
-      enterprise: "Unlimited"
+      community: "1 Campaign",
+      standard: "Unlimited",
+      professional: "Unlimited"
     },
     {
-      feature: "Contributors & Pledges",
+      feature: "Contributions & Pledges",
       icon: Users,
-      community: "Up to 250",
-      professional: "Unlimited",
-      enterprise: "Unlimited"
+      community: "Up to KES 100k",
+      standard: "Unlimited",
+      professional: "Unlimited"
     },
     {
-      feature: "AI Assistant & Agent",
+      feature: "M-PESA Reconciliation",
+      icon: Phone,
+      community: "Manual Entry",
+      standard: "Automatic Daraja Sync",
+      professional: "Multi-Till & Paybill API"
+    },
+    {
+      feature: "AI Treasurer Assistant",
       icon: Sparkles,
-      community: "Basic Campaign Generator",
-      professional: "Full HarambeeFlow AI Agent",
-      enterprise: "Custom Dedicated Models"
+      community: "Basic Generator",
+      standard: "Full AI Treasurer Assistant",
+      professional: "Custom Dedicated Models"
     },
     {
-      feature: "WhatsApp Notifications",
+      feature: "WhatsApp Receipts & Group Alerts",
       icon: MessageSquare,
-      community: "Shareable Campaign Links",
-      professional: "Automated Group Broadcasts",
-      enterprise: "Custom WhatsApp Business API"
+      community: "Shareable Links",
+      standard: "Instant Group Receipts",
+      professional: "Custom WhatsApp Business API"
     },
     {
-      feature: "Reports & Certificates",
+      feature: "Reports & Financial Ledger",
       icon: FileSpreadsheet,
-      community: "Printable PDF Receipts",
-      professional: "Executive Ledger & PDF Vault",
-      enterprise: "Custom Audits & Automated Exports"
+      community: "Basic PDF Reports",
+      standard: "Excel & PDF Executive Vault",
+      professional: "Custom Audits & Automated Exports"
     },
     {
-      feature: "Multi-Organization Support",
+      feature: "Treasurers & Committee Roles",
       icon: Building2,
-      community: "1 Organization",
-      professional: "Multi-User Roles & Audit Trail",
-      enterprise: "Multi-Tenant Enterprise Dashboard"
+      community: "1 Treasurer",
+      standard: "Multiple Treasurers",
+      professional: "Multi-Branch Roles & Audit Trail"
+    }
+  ];
+
+  const valueProps = [
+    { title: "No Setup Fees", desc: "Get started immediately with zero onboarding fees or surprise charges.", icon: CheckSquare },
+    { title: "Cancel Anytime", desc: "Full flexibility with month-to-month subscriptions and no lock-in contracts.", icon: Clock },
+    { title: "Secure Cloud Backups", desc: "Automatic real-time backups protecting all treasurer records and donor ledgers.", icon: Cloud },
+    { title: "AI Treasurer Automation", desc: "Instant M-PESA STK reconciliation and automated WhatsApp receipts.", icon: Cpu },
+    { title: "Built Specifically for Kenya", desc: "Custom-tailored for churches, schools, chamas, and community Harambees.", icon: Globe },
+    { title: "Dedicated Customer Support", desc: "Local phone, email, and WhatsApp support from our Kenya-based team.", icon: HelpCircle }
+  ];
+
+  const roiBenefits = [
+    {
+      title: "Save Hours Every Week",
+      desc: "Eliminate manual bookkeeping, cross-checking spreadsheets, and chasing unassigned payments.",
+      icon: Clock,
+      color: "text-amber-400 bg-amber-500/10 border-amber-500/20"
+    },
+    {
+      title: "Automatic M-PESA Reconciliation",
+      desc: "Match incoming Daraja transactions instantly to contributors without human error.",
+      icon: RefreshCw,
+      color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+    },
+    {
+      title: "Instant Reports",
+      desc: "Generate audit-ready Excel ledgers and PDF executive summaries for committee meetings in seconds.",
+      icon: FileCheck,
+      color: "text-blue-400 bg-blue-500/10 border-blue-500/20"
+    },
+    {
+      title: "AI Treasurer Assistance",
+      desc: "Smart prompt tools draft donor appreciation notes, analyze pledge drop-offs, and track fundraising milestones.",
+      icon: Sparkles,
+      color: "text-indigo-400 bg-indigo-500/10 border-indigo-500/20"
+    }
+  ];
+
+  const trustCards = [
+    {
+      title: "Churches",
+      desc: "Tithing, Thanksgiving & Cathedral Building Drives",
+      detail: "Automate weekly giving tracking and send digital WhatsApp receipts to congregation members.",
+      icon: Landmark,
+      color: "text-emerald-400 border-emerald-500/30"
+    },
+    {
+      title: "Schools",
+      desc: "Alumni Welfare, Bus Projects & Infrastructure",
+      detail: "Transparent multi-class pledge tracking with downloadable PDF reports for board members.",
+      icon: Building2,
+      color: "text-teal-400 border-teal-500/30"
+    },
+    {
+      title: "NGOs",
+      desc: "Multi-Donor Grant Operations & Field Relief",
+      detail: "Bank-grade audit trails, strict role permissions, and enterprise multi-branch visibility.",
+      icon: Globe,
+      color: "text-indigo-400 border-indigo-500/30"
+    },
+    {
+      title: "Chamas & Welfare Groups",
+      desc: "Merry-Go-Rounds, Bereavement & Emergency Funds",
+      detail: "Member contribution statements, instant M-PESA reconciliation, and automated alerts.",
+      icon: Users2,
+      color: "text-blue-400 border-blue-500/30"
+    }
+  ];
+
+  const guaranteeItems = [
+    { title: "No setup fees", desc: "Start in 60 seconds with zero onboarding cost.", icon: CheckCircle2 },
+    { title: "Cancel anytime", desc: "Pause or cancel with 1-click whenever needed.", icon: Clock },
+    { title: "Your data always belongs to you", desc: "You maintain 100% ownership of your member records.", icon: Key },
+    { title: "Export your data whenever you wish", desc: "Download raw CSVs, Excel files, and PDF statements anytime.", icon: Download },
+    { title: "Secure encrypted cloud storage", desc: "Bank-grade SSL encryption with Firebase security rules.", icon: ShieldCheck }
+  ];
+
+  const faqs = [
+    {
+      q: "Do I need a contract?",
+      a: "No long-term contracts are required! HarambeeFlow operates on a flexible month-to-month or annual subscription. You can upgrade, downgrade, or pause your plan at any time with complete transparency."
+    },
+    {
+      q: "Can I cancel anytime?",
+      a: "Yes, absolutely. You can cancel your subscription at any time directly from your billing dashboard with zero cancellation fees or penalties."
+    },
+    {
+      q: "Can I upgrade later?",
+      a: "Yes! As your church, school, or community project grows, you can instantly upgrade from Community to Standard or Professional with a single click. Your existing data, campaigns, and donor records are preserved."
+    },
+    {
+      q: "Is my data secure?",
+      a: "HarambeeFlow uses bank-grade SSL encryption, secure Firebase authentication, and encrypted cloud backups. Your campaign records and treasurer financial logs are protected under Kenyan Data Protection regulations."
+    },
+    {
+      q: "Does HarambeeFlow support M-PESA?",
+      a: "Yes! HarambeeFlow features native Safaricom Daraja M-PESA reconciliation for automated STK pushes, Till numbers, and Paybills with instant WhatsApp receipt generation."
+    },
+    {
+      q: "Can multiple treasurers use one account?",
+      a: "Yes, on Standard and Professional plans you can invite multiple treasurers, committee members, and auditors with role-based access control and detailed audit trail logs."
     }
   ];
 
   return (
-    <div className="flex-1 overflow-y-auto bg-slate-950 p-4 md:p-6 text-slate-100 min-h-full space-y-8" id="billing-subscription-container">
+    <div className="flex-1 overflow-y-auto bg-slate-950 p-4 sm:p-6 md:p-8 text-slate-100 min-h-full space-y-12" id="billing-subscription-container">
       
       {/* Toast Feedback Notification */}
       {feedbackMsg && (
-        <div className="p-4 bg-emerald-950/80 border border-emerald-500/30 rounded-2xl flex items-center justify-between text-xs text-emerald-300 shadow-xl animate-scale-up sticky top-2 z-40">
+        <div className="p-4 bg-emerald-950/90 border border-emerald-500/40 rounded-2xl flex items-center justify-between text-xs text-emerald-300 shadow-xl animate-scale-up sticky top-2 z-40 backdrop-blur-md">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
             <span>{feedbackMsg}</span>
@@ -149,22 +265,25 @@ export default function BillingSubscriptionView({
       )}
 
       {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
         <div>
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono bg-emerald-950 text-emerald-400 border border-emerald-800/40 uppercase tracking-widest">
-              Settings & Account
+            <span className="px-3 py-1 rounded-full text-[10px] font-bold font-mono bg-emerald-950 text-emerald-400 border border-emerald-800/60 uppercase tracking-widest shadow-sm">
+              Pricing & Subscriptions
+            </span>
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-800/80 text-slate-300 border border-slate-700">
+              Kenya&apos;s AI Treasurer
             </span>
           </div>
-          <h1 className="text-xl md:text-2xl font-black text-white mt-1" id="billing-page-header-title">
-            Billing & Subscription
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white mt-2 tracking-tight" id="billing-page-header-title">
+            Simple, Transparent Pricing for Kenya
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Manage your organization profile, subscription tier, resource quotas, invoices, and M-PESA payment options.
+          <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-2xl leading-relaxed">
+            Empower your church, school, chama, or NGO with Kenya&apos;s AI Treasurer. Choose a plan that fits your fundraising scale.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0">
           {onBackToSettings && (
             <button
               onClick={onBackToSettings}
@@ -175,26 +294,585 @@ export default function BillingSubscriptionView({
             </button>
           )}
           <button
-            onClick={() => handleOpenUpgradeModal("Professional")}
+            onClick={() => handleOpenUpgradeModal("Standard")}
             className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-emerald-500/10 flex items-center gap-2 transition cursor-pointer active:scale-95"
             id="billing-upgrade-pro-top-btn"
           >
             <Sparkles className="w-4 h-4 fill-slate-950" />
-            Upgrade to Professional
+            Start 14-Day Free Trial
           </button>
         </div>
       </div>
 
-      {/* Informational Banner */}
-      <div className="p-3.5 bg-gradient-to-r from-emerald-950/80 via-slate-900 to-teal-950/80 border border-emerald-500/30 rounded-2xl flex items-center gap-3 text-xs text-emerald-300 shadow-md" id="billing-mpesa-info-banner">
-        <span className="text-base shrink-0">🚀</span>
-        <span className="font-semibold">Live M-PESA subscription payments are coming soon.</span>
+      {/* PRICING TOGGLE & TIERS SECTION */}
+      <div className="space-y-8" id="billing-plans-section">
+        
+        {/* Segmented Billing Selector Toggle */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/90 border border-slate-800 p-4 rounded-3xl backdrop-blur-md shadow-lg">
+          <div>
+            <span className="text-xs font-bold text-white block">Select Billing Frequency</span>
+            <p className="text-[11px] text-slate-400">Save 20% on annual subscriptions for churches, schools, and non-profits.</p>
+          </div>
+
+          <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 p-1.5 rounded-2xl shrink-0 self-start sm:self-auto shadow-inner relative" id="billing-cycle-toggle-container">
+            <button
+              onClick={() => setBillingCycle("monthly")}
+              className={`relative z-10 px-5 py-2 rounded-xl text-xs font-bold transition-all duration-300 cursor-pointer ${
+                billingCycle === "monthly" 
+                  ? "bg-emerald-500 text-slate-950 shadow-md font-black" 
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+              id="billing-cycle-monthly-btn"
+            >
+              Monthly
+            </button>
+            <button
+              onClick={() => setBillingCycle("annual")}
+              className={`relative z-10 px-5 py-2 rounded-xl text-xs font-bold transition-all duration-300 cursor-pointer flex items-center gap-2 ${
+                billingCycle === "annual" 
+                  ? "bg-emerald-500 text-slate-950 shadow-md font-black" 
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+              id="billing-cycle-annual-btn"
+            >
+              <span>Annual (Save 20%)</span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black font-mono tracking-tight transition-colors ${
+                billingCycle === "annual" 
+                  ? "bg-slate-950 text-emerald-400" 
+                  : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+              }`}>
+                20% OFF
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* PRICING CARDS GRID */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 items-stretch">
+          
+          {/* COMMUNITY CARD */}
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-7 flex flex-col justify-between space-y-6 relative hover:border-slate-700 transition shadow-xl" id="billing-plan-community">
+            <div className="space-y-5">
+              <div className="flex items-center justify-between">
+                <span className="px-3 py-1 rounded-full text-[10px] font-bold font-mono bg-slate-800 text-slate-300 border border-slate-700 uppercase tracking-wider">
+                  FREE
+                </span>
+                <Building2 className="w-5 h-5 text-slate-500" />
+              </div>
+
+              <div>
+                <h2 className="text-2xl font-black text-white">Community</h2>
+                <p className="text-xs text-slate-400 mt-1.5 leading-relaxed min-h-[36px]">
+                  Perfect for first-time fundraisers and small community projects.
+                </p>
+              </div>
+
+              <div className="py-3 border-y border-slate-800/80 space-y-1">
+                <div className="text-3xl font-black text-white font-mono">
+                  {billingCycle === "monthly" ? "KES 0" : "KES 0"}
+                  <span className="text-xs text-slate-400 font-normal"> / {billingCycle === "monthly" ? "month" : "year"}</span>
+                </div>
+                <p className="text-[11px] text-slate-500 font-medium">Free forever for grassroots drives</p>
+              </div>
+
+              <div className="space-y-2.5 text-xs text-slate-300 pt-1">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">What&apos;s included:</p>
+                <ul className="space-y-2.5">
+                  <li className="flex items-start gap-2.5">
+                    <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span>Up to KES 100,000 Raised</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span>1 Campaign</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span>1 Treasurer</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span>Manual Contributions</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span>Basic Dashboard</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span>Basic Reports</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span>Community Support</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="space-y-2 pt-4">
+              <button
+                onClick={() => handleOpenUpgradeModal("Community")}
+                className="w-full py-3 bg-slate-800 hover:bg-slate-750 text-slate-200 hover:text-white font-bold text-xs rounded-xl border border-slate-700 transition cursor-pointer text-center"
+                id="billing-btn-select-community"
+              >
+                Start Free
+              </button>
+              <p className="text-[10px] text-slate-500 text-center font-medium">No credit card required.</p>
+            </div>
+          </div>
+
+          {/* STANDARD CARD (MOST POPULAR) */}
+          <div className="bg-slate-900 border-2 border-emerald-500 rounded-3xl p-6 sm:p-7 flex flex-col justify-between space-y-6 relative shadow-2xl shadow-emerald-500/10 md:-translate-y-2" id="billing-plan-standard">
+            
+            {/* Most Popular Badge */}
+            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black text-[10px] uppercase tracking-wider rounded-full shadow-lg font-mono flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 fill-slate-950" />
+              <span>MOST POPULAR</span>
+            </div>
+
+            <div className="space-y-5 pt-1">
+              <div className="flex items-center justify-between">
+                <span className="px-3 py-1 rounded-full text-[10px] font-bold font-mono bg-emerald-950 text-emerald-300 border border-emerald-800/60 uppercase tracking-wider">
+                  INSTITUTIONAL FAVORITE
+                </span>
+                <Sparkles className="w-5 h-5 text-emerald-400" />
+              </div>
+
+              <div>
+                <h2 className="text-2xl font-black text-white">Standard</h2>
+                <p className="text-xs text-slate-300 mt-1.5 leading-relaxed min-h-[36px]">
+                  Ideal for churches, schools, chamas and welfare groups.
+                </p>
+              </div>
+
+              <div className="py-3 border-y border-slate-800/80 space-y-1">
+                <div className="text-3xl sm:text-4xl font-black text-emerald-400 font-mono">
+                  {billingCycle === "monthly" ? "KES 1,500" : "KES 14,400"}
+                  <span className="text-xs text-slate-400 font-normal"> / {billingCycle === "monthly" ? "month" : "year"}</span>
+                </div>
+                
+                <div className="space-y-0.5">
+                  {billingCycle === "annual" ? (
+                    <p className="text-[11px] font-bold font-mono text-emerald-300">
+                      Equivalent to KES 1,200/month
+                    </p>
+                  ) : (
+                    <p className="text-[11px] font-bold font-mono text-emerald-300">
+                      Approximately KES 50/day
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2.5 text-xs text-slate-200 pt-1">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 font-mono">Everything in Community, plus:</p>
+                <ul className="space-y-2.5">
+                  <li className="flex items-start gap-2.5 font-semibold">
+                    <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span>Unlimited Campaigns</span>
+                  </li>
+                  <li className="flex items-start gap-2.5 font-semibold">
+                    <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span>Unlimited Contributions</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span>Automatic M-PESA Reconciliation</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span>AI Treasurer Assistant</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span>Instant WhatsApp Receipts</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span>Excel & PDF Reports</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span>Multiple Treasurers</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span>Donor Management</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span>Priority Email Support</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="space-y-3 pt-4">
+              <button
+                onClick={() => handleOpenUpgradeModal("Standard")}
+                className="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-emerald-500/20 transition cursor-pointer flex items-center justify-center gap-2 active:scale-98"
+                id="billing-btn-upgrade-standard"
+              >
+                <Sparkles className="w-4 h-4 fill-slate-950" />
+                <span>Start 14-Day Free Trial</span>
+              </button>
+
+              <div className="flex items-center justify-center gap-3 text-[11px] text-slate-300 font-semibold">
+                <span>No setup fees</span>
+                <span>•</span>
+                <span>Cancel anytime</span>
+              </div>
+
+              <div className="p-2.5 bg-emerald-950/40 border border-emerald-800/40 rounded-xl text-[10px] text-emerald-300 text-center leading-tight">
+                <span className="font-bold block text-emerald-400 mb-0.5">Founding Member Pricing</span>
+                Lock in this subscription price while you remain continuously subscribed.
+              </div>
+            </div>
+          </div>
+
+          {/* PROFESSIONAL CARD */}
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-7 flex flex-col justify-between space-y-6 relative hover:border-slate-700 transition shadow-xl" id="billing-plan-professional">
+            <div className="space-y-5">
+              <div className="flex items-center justify-between">
+                <span className="px-3 py-1 rounded-full text-[10px] font-bold font-mono bg-indigo-950 text-indigo-300 border border-indigo-800/50 uppercase tracking-wider">
+                  ENTERPRISE & NGOS
+                </span>
+                <Layers className="w-5 h-5 text-indigo-400" />
+              </div>
+
+              <div>
+                <h2 className="text-2xl font-black text-white">Professional</h2>
+                <p className="text-xs text-slate-400 mt-1.5 leading-relaxed min-h-[36px]">
+                  Built for large churches, NGOs and multi-branch organizations.
+                </p>
+              </div>
+
+              <div className="py-3 border-y border-slate-800/80 space-y-1">
+                <div className="text-3xl font-black text-white font-mono">
+                  {billingCycle === "monthly" ? "KES 3,500" : "KES 33,600"}
+                  <span className="text-xs text-slate-400 font-normal"> / {billingCycle === "monthly" ? "month" : "year"}</span>
+                </div>
+                
+                <div className="space-y-0.5">
+                  {billingCycle === "annual" ? (
+                    <p className="text-[11px] font-bold font-mono text-indigo-300">
+                      Equivalent to KES 2,800/month
+                    </p>
+                  ) : (
+                    <p className="text-[11px] font-bold font-mono text-indigo-300">
+                      Approximately KES 117/day
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2.5 text-xs text-slate-300 pt-1">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 font-mono">Everything in Standard, plus:</p>
+                <ul className="space-y-2.5">
+                  <li className="flex items-start gap-2.5 font-semibold text-white">
+                    <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+                    <span>Everything in Standard</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+                    <span>Unlimited Organizations</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+                    <span>Multi-Branch Management</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+                    <span>Committee Roles & Permissions</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+                    <span>Advanced Analytics</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+                    <span>Custom Branding</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+                    <span>API Integrations</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+                    <span>Audit Logs</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+                    <span>Priority Support</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+                    <span>Dedicated Onboarding</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="space-y-2 pt-4">
+              <button
+                onClick={() => handleOpenUpgradeModal("Professional")}
+                className="w-full py-3 bg-slate-800 hover:bg-slate-750 text-slate-200 hover:text-white font-bold text-xs rounded-xl border border-slate-700 transition cursor-pointer text-center"
+                id="billing-btn-contact-professional"
+              >
+                Contact Sales
+              </button>
+              <p className="text-[10px] text-slate-500 text-center font-medium">Custom volume billing & dedicated setup.</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* VALUE SECTION */}
+      <div className="bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl" id="billing-value-section">
+        <div className="text-center space-y-2 max-w-2xl mx-auto">
+          <span className="px-3 py-1 rounded-full text-[10px] font-bold font-mono bg-emerald-950 text-emerald-400 border border-emerald-800/40 uppercase tracking-widest">
+            Unmatched Value
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-black text-white">
+            Why Organizations Choose HarambeeFlow
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-400">
+            Engineered specifically to eliminate treasurer friction, streamline M-PESA audit trails, and give committees full financial confidence.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 pt-2">
+          {valueProps.map((vp, idx) => {
+            const IconComp = vp.icon;
+            return (
+              <div key={idx} className="p-5 bg-slate-950/80 border border-slate-800/80 rounded-2xl space-y-2.5 hover:border-slate-700 transition shadow-sm">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                  <IconComp className="w-5 h-5" />
+                </div>
+                <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>{vp.title}</span>
+                </h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  {vp.desc}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ROI SECTION */}
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl" id="billing-roi-section">
+        <div className="text-center space-y-2 max-w-3xl mx-auto">
+          <span className="px-3 py-1 rounded-full text-[10px] font-bold font-mono bg-emerald-950 text-emerald-400 border border-emerald-800/40 uppercase tracking-widest">
+            Return On Investment
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-black text-white">
+            Save More Than Your Subscription Costs
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-2xl mx-auto">
+            Most organizations spend many hours every month manually reconciling M-PESA contributions, preparing reports and answering payment questions. HarambeeFlow automates these tasks so treasurers spend less time on administration and more time serving their organizations.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 pt-2">
+          {roiBenefits.map((item, idx) => {
+            const IconComp = item.icon;
+            return (
+              <div key={idx} className="p-5 bg-slate-950/80 border border-slate-800/80 rounded-2xl space-y-3 hover:border-slate-700 transition flex flex-col justify-between">
+                <div className="space-y-3">
+                  <div className={`w-10 h-10 rounded-xl border flex items-center justify-center ${item.color}`}>
+                    <IconComp className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-sm font-black text-white">
+                    {item.title}
+                  </h3>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    {item.desc}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* TRUST SECTION */}
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl" id="billing-trust-section">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+          <div>
+            <div className="flex items-center gap-2">
+              <Award className="w-5 h-5 text-emerald-400" />
+              <h2 className="text-xl font-black text-white">Built for Kenyan Community Organizations</h2>
+            </div>
+            <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-2xl">
+              Trusted by organizations that need transparency, accountability and simple fundraising management.
+            </p>
+          </div>
+          <span className="px-3 py-1 bg-emerald-950/80 border border-emerald-800/50 text-emerald-300 font-mono text-xs font-bold rounded-full self-start md:self-auto">
+            100% Kenya Compliant
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 pt-1">
+          {trustCards.map((card, idx) => {
+            const IconComp = card.icon;
+            return (
+              <div key={idx} className={`p-5 bg-slate-950/80 border rounded-2xl space-y-2.5 transition ${card.color}`}>
+                <div className="flex items-center gap-2">
+                  <IconComp className="w-5 h-5 shrink-0" />
+                  <h3 className="text-base font-black text-white">{card.title}</h3>
+                </div>
+                <p className="text-xs font-bold text-slate-300">{card.desc}</p>
+                <p className="text-[11px] text-slate-400 leading-relaxed">{card.detail}</p>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="p-4 bg-slate-950/60 border border-slate-800/80 rounded-2xl text-center">
+          <p className="text-xs font-bold text-slate-300">
+            Trusted by organizations that need transparency, accountability and simple fundraising management.
+          </p>
+        </div>
+      </div>
+
+      {/* RISK-FREE GUARANTEE SECTION */}
+      <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-emerald-950/30 border border-emerald-500/30 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl" id="billing-guarantee-section">
+        <div className="text-center space-y-2 max-w-2xl mx-auto">
+          <span className="px-3 py-1 rounded-full text-[10px] font-bold font-mono bg-emerald-950 text-emerald-400 border border-emerald-800/40 uppercase tracking-widest">
+            100% Peace of Mind
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-black text-white">
+            Try HarambeeFlow Risk-Free
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-400">
+            Everything is designed to protect your organization&apos;s records and privacy without lock-in.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 pt-2">
+          {guaranteeItems.map((g, idx) => {
+            const IconComp = g.icon;
+            return (
+              <div key={idx} className="p-4 bg-slate-950/90 border border-slate-800/80 rounded-2xl space-y-2 text-center flex flex-col items-center justify-center">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                  <IconComp className="w-4 h-4" />
+                </div>
+                <h3 className="text-xs font-black text-white">{g.title}</h3>
+                <p className="text-[10px] text-slate-400 leading-tight">{g.desc}</p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* FAQ SECTION */}
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl" id="billing-faq-section">
+        <div className="border-b border-slate-800 pb-4">
+          <span className="text-[10px] font-bold font-mono text-emerald-400 uppercase tracking-widest block">
+            Got Questions?
+          </span>
+          <h2 className="text-xl sm:text-2xl font-black text-white mt-1">
+            Frequently Asked Questions
+          </h2>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Everything you need to know about HarambeeFlow pricing, billing, and subscription management.
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          {faqs.map((faq, idx) => {
+            const isOpen = openFaq === idx;
+            return (
+              <div 
+                key={idx}
+                className="bg-slate-950/80 border border-slate-800/80 rounded-2xl overflow-hidden transition"
+              >
+                <button
+                  onClick={() => toggleFaq(idx)}
+                  className="w-full p-4 sm:p-5 text-left flex items-center justify-between gap-4 font-bold text-xs sm:text-sm text-white hover:text-emerald-400 transition cursor-pointer"
+                  id={`faq-btn-${idx}`}
+                >
+                  <span className="flex items-center gap-2.5">
+                    <HelpCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>{faq.q}</span>
+                  </span>
+                  {isOpen ? (
+                    <ChevronUp className="w-4 h-4 text-emerald-400 shrink-0" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+                  )}
+                </button>
+
+                {isOpen && (
+                  <div className="px-4 pb-5 pt-1 sm:px-5 text-xs text-slate-300 leading-relaxed border-t border-slate-800/60 animate-fade-in">
+                    {faq.a}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* SECTION: COMPARE PLANS FEATURE MATRIX */}
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-6" id="billing-feature-matrix-card">
+        <div className="border-b border-slate-800 pb-3">
+          <h2 className="text-base font-black text-white flex items-center gap-2">
+            <Layers className="w-5 h-5 text-emerald-400" />
+            Compare Plans Feature Matrix
+          </h2>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Detailed breakdown of features across Community, Standard, and Professional plans.
+          </p>
+        </div>
+
+        <div className="overflow-x-auto" id="billing-feature-matrix-table-container">
+          <table className="w-full text-left text-xs border-collapse" id="billing-feature-matrix-table">
+            <thead>
+              <tr className="border-b border-slate-800 text-[11px] font-mono text-slate-400 uppercase tracking-wider bg-slate-950/50">
+                <th className="py-3 px-4 rounded-l-xl w-1/3">Feature</th>
+                <th className="py-3 px-4 text-center">Community</th>
+                <th className="py-3 px-4 text-center bg-emerald-950/40 text-emerald-400 border-x border-emerald-500/20">
+                  Standard ⭐
+                </th>
+                <th className="py-3 px-4 text-center rounded-r-xl">Professional</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/60 text-slate-300">
+              {featureMatrix.map((item, idx) => {
+                const ItemIcon = item.icon;
+                return (
+                  <tr key={idx} className="hover:bg-slate-850/60 transition">
+                    <td className="py-3.5 px-4 font-bold text-white flex items-center gap-2.5">
+                      <ItemIcon className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span>{item.feature}</span>
+                    </td>
+                    <td className="py-3.5 px-4 text-center text-slate-400 font-medium">
+                      {item.community}
+                    </td>
+                    <td className="py-3.5 px-4 text-center bg-emerald-950/20 font-bold text-emerald-300 border-x border-emerald-500/10">
+                      {item.standard}
+                    </td>
+                    <td className="py-3.5 px-4 text-center text-indigo-300 font-medium">
+                      {item.professional}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* SECTION: ORGANIZATION INFORMATION & BILLING SUMMARY PANEL */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" id="billing-org-and-summary-grid">
         
-        {/* REQUIREMENT 1, 2, 3: Organization Information Card */}
+        {/* Organization Information Card */}
         <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-6 shadow-xl" id="billing-org-info-card">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
             <div>
@@ -213,7 +891,7 @@ export default function BillingSubscriptionView({
               id="btn-edit-org-info"
             >
               <Edit3 className="w-3.5 h-3.5" />
-              <span>Edit Organization Information</span>
+              <span>Edit Organization Profile</span>
             </button>
           </div>
 
@@ -282,7 +960,7 @@ export default function BillingSubscriptionView({
           </div>
         </div>
 
-        {/* REQUIREMENT 4: Billing Summary Panel */}
+        {/* Billing Summary Panel */}
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-5 shadow-xl flex flex-col justify-between" id="billing-summary-panel">
           <div className="space-y-4">
             <div className="border-b border-slate-800 pb-3 flex items-center justify-between">
@@ -291,14 +969,14 @@ export default function BillingSubscriptionView({
                 <h2 className="text-base font-black text-white">Billing Summary</h2>
               </div>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono bg-emerald-950 text-emerald-400 border border-emerald-800/40">
-                Live Overview
+                Active Overview
               </span>
             </div>
 
             <div className="space-y-3 text-xs">
               <div className="flex justify-between items-center p-2.5 bg-slate-950/60 rounded-xl border border-slate-800/60">
                 <span className="text-slate-400">Current Plan:</span>
-                <span className="font-black text-emerald-400 font-mono">Community Edition</span>
+                <span className="font-black text-emerald-400 font-mono">Community Tier</span>
               </div>
 
               <div className="flex justify-between items-center p-2.5 bg-slate-950/60 rounded-xl border border-slate-800/60">
@@ -327,372 +1005,22 @@ export default function BillingSubscriptionView({
               <div className="flex justify-between items-center p-2.5 bg-emerald-950/30 rounded-xl border border-emerald-500/20">
                 <span className="text-emerald-300/80">Annual Savings:</span>
                 <span className="font-mono font-bold text-emerald-400 text-[11px]">
-                  {billingCycle === "annual" ? "Save 20% (KES 1,200/yr)" : "20% off on Annual switch"}
+                  {billingCycle === "annual" ? "20% Discount Applied" : "Save 20% on Annual Plan"}
                 </span>
               </div>
             </div>
           </div>
 
           <button
-            onClick={() => handleOpenUpgradeModal("Professional")}
-            className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition cursor-pointer flex items-center justify-center gap-2"
+            onClick={() => handleOpenUpgradeModal("Standard")}
+            className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition cursor-pointer flex items-center justify-center gap-2"
             id="billing-summary-upgrade-btn"
           >
             <Sparkles className="w-4 h-4 fill-slate-950" />
-            <span>Upgrade Subscription</span>
+            <span>Start 14-Day Free Trial</span>
           </button>
         </div>
 
-      </div>
-
-      {/* SECTION: CURRENT PLAN */}
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 relative overflow-hidden shadow-xl" id="billing-current-plan-card">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
-        
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-          <div className="space-y-3 max-w-2xl">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 font-mono">
-                <Sparkles className="w-3.5 h-3.5" />
-                Community Edition
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium font-mono bg-emerald-950/80 text-emerald-300 border border-emerald-800/50">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]" />
-                Active Status
-              </span>
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono bg-indigo-950/80 text-indigo-300 border border-indigo-800/40">
-                Grassroots Plan
-              </span>
-            </div>
-
-            <h2 className="text-2xl font-black text-white tracking-tight">
-              HarambeeFlow Community Edition
-            </h2>
-
-            <p className="text-xs text-slate-300 leading-relaxed">
-              You are currently using the Community Edition with access to HarambeeFlow AI Ecosystem features, Safaricom Daraja M-PESA STK Push callbacks, WhatsApp automations, and executive PDF reporting for community fundraising.
-            </p>
-
-            <div className="pt-2 flex flex-wrap items-center gap-6 text-xs text-slate-400 border-t border-slate-800/80">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-slate-500" />
-                <span>Renewal Date: <strong className="text-slate-200 font-mono">Aug 31, 2026</strong></span>
-              </div>
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>CBK Fintech & Data Protection Compliant</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between gap-4 shrink-0 md:w-72">
-            <div className="space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Current Cost</span>
-              <div className="text-3xl font-black text-emerald-400 font-mono">
-                KES 0<span className="text-xs text-slate-400 font-normal"> / month</span>
-              </div>
-              <p className="text-[11px] text-slate-400">Community Edition for grassroots campaigns</p>
-            </div>
-
-            <button
-              onClick={() => handleOpenUpgradeModal("Professional")}
-              className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition cursor-pointer flex items-center justify-center gap-2"
-              id="billing-upgrade-pro-card-btn"
-            >
-              <span>Upgrade to Professional</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* SECTION: AVAILABLE PLANS */}
-      <div className="space-y-6" id="billing-plans-section">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
-          <div>
-            <h2 className="text-lg font-black text-white flex items-center gap-2">
-              <Zap className="w-5 h-5 text-amber-400" />
-              Available Subscription Plans
-            </h2>
-            <p className="text-xs text-slate-400 mt-1">
-              Choose a plan tailored for your church Harambee, medical emergency, welfare group, or organizational foundation.
-            </p>
-          </div>
-
-          {/* Monthly / Annual Toggle with "Save 20%" */}
-          <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 p-1.5 rounded-2xl shrink-0 self-start sm:self-auto" id="billing-cycle-toggle-container">
-            <button
-              onClick={() => setBillingCycle("monthly")}
-              className={`px-4 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                billingCycle === "monthly" 
-                  ? "bg-emerald-500 text-slate-950 shadow-md" 
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-              id="billing-cycle-monthly-btn"
-            >
-              Monthly
-            </button>
-            <button
-              onClick={() => setBillingCycle("annual")}
-              className={`px-4 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2 ${
-                billingCycle === "annual" 
-                  ? "bg-emerald-500 text-slate-950 shadow-md" 
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-              id="billing-cycle-annual-btn"
-            >
-              <span>Annual</span>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black font-mono tracking-tight ${
-                billingCycle === "annual" 
-                  ? "bg-slate-950 text-emerald-400" 
-                  : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-              }`}>
-                Save 20%
-              </span>
-            </button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          
-          {/* COMMUNITY PLAN */}
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 flex flex-col justify-between space-y-6 relative hover:border-slate-700 transition" id="billing-plan-community">
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono bg-slate-800 text-slate-300 uppercase">
-                  Grassroots & Individuals
-                </span>
-                <h3 className="text-xl font-black text-white mt-2">Community</h3>
-                <p className="text-xs text-slate-400">Ideal for small family Harambees and urgent medical emergency appeals.</p>
-              </div>
-
-              <div className="py-2 border-y border-slate-800/80">
-                <div className="text-2xl font-black text-white font-mono">
-                  {billingCycle === "monthly" ? "KES 500" : "KES 400"}{" "}
-                  <span className="text-xs text-slate-400 font-normal">/ month</span>
-                </div>
-                <span className="text-[10px] text-slate-500">
-                  {billingCycle === "monthly" ? "Billed monthly via M-PESA" : "Billed annually (KES 4,800/yr)"}
-                </span>
-              </div>
-
-              <ul className="space-y-2.5 text-xs text-slate-300">
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <span>Up to <strong>3 Active Campaigns</strong></span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <span>Up to 250 Contributors</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <span>Basic M-PESA STK Push logging</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <span>Printable PDF Receipts</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <span>WhatsApp shareable campaign links</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <span>Standard Email Support</span>
-                </li>
-              </ul>
-            </div>
-
-            <button
-              onClick={() => handleOpenUpgradeModal("Community")}
-              className="w-full py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-200 font-bold text-xs rounded-xl border border-slate-700 transition cursor-pointer"
-              id="billing-btn-select-community"
-            >
-              Select Community
-            </button>
-          </div>
-
-          {/* PROFESSIONAL PLAN */}
-          <div className="bg-slate-900 border-2 border-emerald-500/80 rounded-3xl p-6 flex flex-col justify-between space-y-6 relative shadow-2xl shadow-emerald-500/10 scale-102" id="billing-plan-professional">
-            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black text-[10px] uppercase tracking-wider rounded-full shadow-md font-mono">
-              ⭐ RECOMMENDED
-            </div>
-
-            <div className="space-y-4 pt-1">
-              <div className="space-y-1">
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono bg-emerald-950 text-emerald-300 border border-emerald-800/40 uppercase">
-                  Churches & Institutions
-                </span>
-                <h3 className="text-xl font-black text-white mt-2 flex items-center justify-between">
-                  <span>Professional</span>
-                  <Sparkles className="w-5 h-5 text-emerald-400" />
-                </h3>
-                <p className="text-xs text-slate-300">Complete suite for active church committees, wedding boards & welfare funds.</p>
-              </div>
-
-              <div className="py-2 border-y border-slate-800/80">
-                <div className="text-3xl font-black text-emerald-400 font-mono">
-                  {billingCycle === "monthly" ? "KES 2,000" : "KES 1,600"}{" "}
-                  <span className="text-xs text-slate-400 font-normal">/ month</span>
-                </div>
-                <span className="text-[10px] text-emerald-300/80 font-medium">
-                  {billingCycle === "monthly" ? "Billed monthly via M-PESA Express" : "Billed annually (KES 19,200/yr)"}
-                </span>
-              </div>
-
-              <ul className="space-y-2.5 text-xs text-slate-200">
-                <li className="flex items-start gap-2 font-semibold">
-                  <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <span><strong>Unlimited Active Campaigns</strong></span>
-                </li>
-                <li className="flex items-start gap-2 font-semibold">
-                  <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <span><strong>Unlimited Contributors & Pledges</strong></span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <span>Real-time M-PESA Daraja Callbacks & Till Sync</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <span><strong>HarambeeFlow AI Agent & Autopilot</strong></span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <span>Automated WhatsApp Group Broadcasts</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <span>Executive Ledger & PDF Certificate Vault</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <span>Multi-User Committee Roles & Audit Trail</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <span>Priority 24/7 Dedicated Support</span>
-                </li>
-              </ul>
-            </div>
-
-            <button
-              onClick={() => handleOpenUpgradeModal("Professional")}
-              className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-emerald-500/20 transition cursor-pointer flex items-center justify-center gap-2 active:scale-98"
-              id="billing-btn-upgrade-professional"
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>Upgrade to Professional</span>
-            </button>
-          </div>
-
-          {/* ENTERPRISE PLAN */}
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 flex flex-col justify-between space-y-6 relative hover:border-slate-700 transition" id="billing-plan-enterprise">
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono bg-indigo-950 text-indigo-300 border border-indigo-800/40 uppercase">
-                  Foundations & NGOs
-                </span>
-                <h3 className="text-xl font-black text-white mt-2">Enterprise</h3>
-                <p className="text-xs text-slate-400">For national welfare foundations, multi-diocese churches & corporate CSRs.</p>
-              </div>
-
-              <div className="py-2 border-y border-slate-800/80">
-                <div className="text-2xl font-black text-white font-mono">
-                  Contact Sales
-                </div>
-                <span className="text-[10px] text-slate-500">Custom volume billing & annual SLAs</span>
-              </div>
-
-              <ul className="space-y-2.5 text-xs text-slate-300">
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
-                  <span>Everything in Professional</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
-                  <span>Dedicated M-PESA Paybill / Till Numbers</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
-                  <span>Custom CBK Fintech & Audit Compliance</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
-                  <span>Dedicated Account Manager & Onboarding</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
-                  <span>On-premises data export & API Webhooks</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
-                  <span>Multi-Tenant Organization Dashboard</span>
-                </li>
-              </ul>
-            </div>
-
-            <button
-              onClick={() => handleOpenUpgradeModal("Enterprise")}
-              className="w-full py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-200 font-bold text-xs rounded-xl border border-slate-700 transition cursor-pointer"
-              id="billing-btn-contact-enterprise"
-            >
-              Contact Sales
-            </button>
-          </div>
-
-        </div>
-      </div>
-
-      {/* SECTION: COMPARE PLANS FEATURE MATRIX */}
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-6" id="billing-feature-matrix-card">
-        <div className="border-b border-slate-800 pb-3">
-          <h2 className="text-base font-black text-white flex items-center gap-2">
-            <Layers className="w-5 h-5 text-emerald-400" />
-            Compare Plans Feature Matrix
-          </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Detailed breakdown of features across Community, Professional, and Enterprise plans.
-          </p>
-        </div>
-
-        <div className="overflow-x-auto" id="billing-feature-matrix-table-container">
-          <table className="w-full text-left text-xs border-collapse" id="billing-feature-matrix-table">
-            <thead>
-              <tr className="border-b border-slate-800 text-[11px] font-mono text-slate-400 uppercase tracking-wider bg-slate-950/50">
-                <th className="py-3 px-4 rounded-l-xl w-1/3">Feature</th>
-                <th className="py-3 px-4 text-center">Community</th>
-                <th className="py-3 px-4 text-center bg-emerald-950/30 text-emerald-400 border-x border-emerald-500/20">
-                  Professional ⭐
-                </th>
-                <th className="py-3 px-4 text-center rounded-r-xl">Enterprise</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60 text-slate-300">
-              {featureMatrix.map((item, idx) => {
-                const ItemIcon = item.icon;
-                return (
-                  <tr key={idx} className="hover:bg-slate-850/60 transition">
-                    <td className="py-3.5 px-4 font-bold text-white flex items-center gap-2.5">
-                      <ItemIcon className="w-4 h-4 text-emerald-400 shrink-0" />
-                      <span>{item.feature}</span>
-                    </td>
-                    <td className="py-3.5 px-4 text-center text-slate-400 font-medium">
-                      {item.community}
-                    </td>
-                    <td className="py-3.5 px-4 text-center bg-emerald-950/20 font-bold text-emerald-300 border-x border-emerald-500/10">
-                      {item.professional}
-                    </td>
-                    <td className="py-3.5 px-4 text-center text-indigo-300 font-medium">
-                      {item.enterprise}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
       </div>
 
       {/* SECTION: USAGE STATISTICS */}
@@ -704,47 +1032,44 @@ export default function BillingSubscriptionView({
               Resource Usage Statistics & Quotas
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              Current usage metrics monitored against your Community Edition subscription tier.
+              Current usage metrics monitored against your Community tier subscription limit.
             </p>
           </div>
           <span className="px-3 py-1 bg-emerald-950/60 border border-emerald-500/30 text-emerald-400 font-mono text-[11px] font-bold rounded-full self-start md:self-auto">
-            65% Remaining Quota
+            Quota Active
           </span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           
-          {/* Active Campaigns */}
           <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-2xl space-y-2">
             <div className="flex items-center justify-between text-xs text-slate-400">
               <span className="flex items-center gap-1.5 font-medium">
                 <Target className="w-4 h-4 text-emerald-400" />
                 Active Campaigns
               </span>
-              <span className="font-mono font-bold text-white">2 / 3</span>
+              <span className="font-mono font-bold text-white">1 / 1</span>
             </div>
             <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-              <div className="bg-emerald-500 h-full rounded-full" style={{ width: "66.6%" }} />
+              <div className="bg-emerald-500 h-full rounded-full" style={{ width: "100%" }} />
             </div>
-            <span className="text-[10px] text-slate-500 block">66.6% of campaign slot limit</span>
+            <span className="text-[10px] text-slate-500 block">Upgrade to Standard for Unlimited Campaigns</span>
           </div>
 
-          {/* Contributors Logged */}
           <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-2xl space-y-2">
             <div className="flex items-center justify-between text-xs text-slate-400">
               <span className="flex items-center gap-1.5 font-medium">
                 <Users className="w-4 h-4 text-blue-400" />
                 Contributors Logged
               </span>
-              <span className="font-mono font-bold text-white">148 / 250</span>
+              <span className="font-mono font-bold text-white">148 / Unlimited</span>
             </div>
             <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-              <div className="bg-blue-500 h-full rounded-full" style={{ width: "59.2%" }} />
+              <div className="bg-blue-500 h-full rounded-full" style={{ width: "45%" }} />
             </div>
-            <span className="text-[10px] text-slate-500 block">59.2% of supporter profile limit</span>
+            <span className="text-[10px] text-slate-500 block">Unlimited on Standard & Pro</span>
           </div>
 
-          {/* Storage Usage */}
           <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-2xl space-y-2">
             <div className="flex items-center justify-between text-xs text-slate-400">
               <span className="flex items-center gap-1.5 font-medium">
@@ -759,7 +1084,6 @@ export default function BillingSubscriptionView({
             <span className="text-[10px] text-slate-500 block">PDF receipts, vouchers & media</span>
           </div>
 
-          {/* API & Automation Requests */}
           <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-2xl space-y-2">
             <div className="flex items-center justify-between text-xs text-slate-400">
               <span className="flex items-center gap-1.5 font-medium">
@@ -771,112 +1095,10 @@ export default function BillingSubscriptionView({
             <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
               <div className="bg-amber-500 h-full rounded-full" style={{ width: "42.5%" }} />
             </div>
-            <span className="text-[10px] text-slate-500 block">AI prompts & M-PESA STK callbacks</span>
+            <span className="text-[10px] text-slate-500 block">AI prompts & M-PESA callbacks</span>
           </div>
 
         </div>
-      </div>
-
-      {/* SECTION: PROFESSIONAL SECURITY & TRUST / COMPLIANCE GRID (REQUIREMENTS 5 & 6) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6" id="billing-security-trust-grid">
-        
-        {/* REQUIREMENT 5: Professional Security Section */}
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-5 shadow-xl" id="billing-security-section">
-          <div className="border-b border-slate-800 pb-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-emerald-400" />
-              <h2 className="text-base font-black text-white">Professional Security</h2>
-            </div>
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono bg-emerald-950 text-emerald-300 border border-emerald-800/40">
-              Enterprise Grade
-            </span>
-          </div>
-
-          <ul className="space-y-3 text-xs text-slate-200">
-            <li className="flex items-center gap-3 p-2.5 bg-slate-950/60 rounded-2xl border border-slate-800/60">
-              <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0">
-                <Check className="w-4 h-4" />
-              </div>
-              <span className="font-bold text-slate-200">SSL Protected</span>
-            </li>
-
-            <li className="flex items-center gap-3 p-2.5 bg-slate-950/60 rounded-2xl border border-slate-800/60">
-              <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0">
-                <Check className="w-4 h-4" />
-              </div>
-              <span className="font-bold text-slate-200">Secure Firebase Authentication</span>
-            </li>
-
-            <li className="flex items-center gap-3 p-2.5 bg-slate-950/60 rounded-2xl border border-slate-800/60">
-              <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0">
-                <Check className="w-4 h-4" />
-              </div>
-              <span className="font-bold text-slate-200">Encrypted Payment Processing</span>
-            </li>
-
-            <li className="flex items-center gap-3 p-2.5 bg-slate-950/60 rounded-2xl border border-slate-800/60">
-              <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0">
-                <Check className="w-4 h-4" />
-              </div>
-              <span className="font-bold text-slate-200">GDPR & Privacy Ready</span>
-            </li>
-
-            <li className="flex items-center gap-3 p-2.5 bg-slate-950/60 rounded-2xl border border-slate-800/60">
-              <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0">
-                <Check className="w-4 h-4" />
-              </div>
-              <span className="font-bold text-slate-200">Audit Logging Enabled</span>
-            </li>
-          </ul>
-        </div>
-
-        {/* REQUIREMENT 6: Trust & Compliance Section */}
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-5 shadow-xl" id="billing-trust-section">
-          <div className="border-b border-slate-800 pb-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Award className="w-5 h-5 text-indigo-400" />
-              <h2 className="text-base font-black text-white">Trust & Compliance</h2>
-            </div>
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono bg-indigo-950 text-indigo-300 border border-indigo-800/40">
-              Verified Stack
-            </span>
-          </div>
-
-          <div className="flex flex-wrap gap-2.5 pt-1">
-            <div className="flex items-center gap-2 px-3.5 py-2 bg-slate-950/80 border border-emerald-500/30 rounded-2xl text-xs font-bold text-emerald-300 shadow-sm">
-              <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>Safaricom Daraja Ready</span>
-            </div>
-
-            <div className="flex items-center gap-2 px-3.5 py-2 bg-slate-950/80 border border-amber-500/30 rounded-2xl text-xs font-bold text-amber-300 shadow-sm">
-              <CheckCircle className="w-4 h-4 text-amber-400 shrink-0" />
-              <span>Firebase Hosted</span>
-            </div>
-
-            <div className="flex items-center gap-2 px-3.5 py-2 bg-slate-950/80 border border-blue-500/30 rounded-2xl text-xs font-bold text-blue-300 shadow-sm">
-              <CheckCircle className="w-4 h-4 text-blue-400 shrink-0" />
-              <span>Secure Cloud Infrastructure</span>
-            </div>
-
-            <div className="flex items-center gap-2 px-3.5 py-2 bg-slate-950/80 border border-indigo-500/30 rounded-2xl text-xs font-bold text-indigo-300 shadow-sm">
-              <CheckCircle className="w-4 h-4 text-indigo-400 shrink-0" />
-              <span>Automatic Backups</span>
-            </div>
-
-            <div className="flex items-center gap-2 px-3.5 py-2 bg-slate-950/80 border border-teal-500/30 rounded-2xl text-xs font-bold text-teal-300 shadow-sm">
-              <CheckCircle className="w-4 h-4 text-teal-400 shrink-0" />
-              <span>AI Powered</span>
-            </div>
-          </div>
-
-          <div className="p-3 bg-slate-950/60 border border-slate-800 rounded-2xl text-[11px] text-slate-400 space-y-1">
-            <span className="font-bold text-slate-300 block">Bank-Grade Infrastructure:</span>
-            <p className="leading-relaxed">
-              All transaction records are dual-validated through Safaricom API webhooks and cryptographically signed audit ledger logs.
-            </p>
-          </div>
-        </div>
-
       </div>
 
       {/* SECTION: BILLING HISTORY & INVOICES */}
@@ -893,13 +1115,12 @@ export default function BillingSubscriptionView({
           </div>
         </div>
 
-        {/* Empty state */}
         <div className="p-8 bg-slate-950/60 border border-slate-800/80 rounded-2xl text-center space-y-3" id="billing-invoices-empty-state">
           <div className="w-12 h-12 rounded-2xl bg-slate-800/80 border border-slate-700 flex items-center justify-center mx-auto text-slate-400">
             <FileText className="w-6 h-6" />
           </div>
           <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed" id="billing-empty-invoices-text">
-            No invoices available yet. Your invoices will appear after your first successful subscription payment.
+            No invoices available yet. Your official invoices will appear here following your first subscription settlement.
           </p>
         </div>
       </div>
@@ -909,10 +1130,10 @@ export default function BillingSubscriptionView({
         <div className="border-b border-slate-800 pb-3">
           <h2 className="text-base font-black text-white flex items-center gap-2">
             <Phone className="w-5 h-5 text-emerald-400" />
-            Payment Method
+            Payment Method & M-PESA Settlement
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            Configure default M-PESA settlement account for automated STK Push subscription billing.
+            Configure default M-PESA settlement line for automated STK Push subscription renewal.
           </p>
         </div>
 
@@ -934,21 +1155,16 @@ export default function BillingSubscriptionView({
           </div>
 
           <div className="flex flex-col gap-3">
-            <div className="relative">
-              <button
-                disabled
-                className="w-full py-3 px-4 bg-slate-800/50 text-slate-500 font-bold text-xs rounded-xl border border-slate-800/80 cursor-not-allowed flex items-center justify-center gap-2"
-                id="billing-pay-mpesa-btn-disabled"
-              >
-                <Lock className="w-3.5 h-3.5 text-slate-500" />
-                <span>Pay with M-PESA</span>
-                <span className="px-2 py-0.5 bg-amber-950/80 text-amber-400 border border-amber-800/50 text-[10px] font-mono font-bold rounded-full ml-1">
-                  Coming Soon
-                </span>
-              </button>
-            </div>
+            <button
+              onClick={() => handleOpenUpgradeModal("Standard")}
+              className="w-full py-3 px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition cursor-pointer flex items-center justify-center gap-2"
+              id="billing-pay-mpesa-btn"
+            >
+              <Sparkles className="w-4 h-4 fill-slate-950" />
+              <span>Activate Standard Plan via M-PESA</span>
+            </button>
             <p className="text-[11px] text-slate-500 text-center">
-              Direct automated M-PESA subscription checkout will activate following standard Safaricom Daraja merchant clearance.
+              Direct automated M-PESA STK Push checkout takes under 5 seconds.
             </p>
           </div>
         </div>
@@ -1002,7 +1218,7 @@ export default function BillingSubscriptionView({
         </div>
       </div>
 
-      {/* REQUIREMENT 7: FOOTER NOTE */}
+      {/* FOOTER NOTE */}
       <div className="pt-2 pb-6 text-center border-t border-slate-800/60" id="billing-footer-note">
         <p className="text-xs text-slate-400 max-w-3xl mx-auto leading-relaxed">
           HarambeeFlow is designed to provide secure, transparent and accountable fundraising for churches, schools, charities, welfare groups and community organizations across Africa.
@@ -1048,10 +1264,10 @@ export default function BillingSubscriptionView({
                 <span className="text-slate-400">Billing Amount:</span>
                 <span className="font-bold text-emerald-400 font-mono">
                   {selectedPlanForUpgrade === "Community"
-                    ? billingCycle === "monthly" ? "KES 500 / month" : "KES 400 / month (KES 4,800/yr)"
-                    : selectedPlanForUpgrade === "Enterprise"
-                    ? "Custom Quote"
-                    : billingCycle === "monthly" ? "KES 2,000 / month" : "KES 1,600 / month (KES 19,200/yr)"}
+                    ? "KES 0 / month"
+                    : selectedPlanForUpgrade === "Standard"
+                    ? billingCycle === "monthly" ? "KES 1,500 / month" : "KES 14,400 / year"
+                    : billingCycle === "monthly" ? "KES 3,500 / month" : "KES 33,600 / year"}
                 </span>
               </div>
               <div className="flex justify-between items-center">
@@ -1078,14 +1294,14 @@ export default function BillingSubscriptionView({
                   />
                 </div>
                 <span className="text-[10px] text-slate-500 block">
-                  You will receive an automated M-PESA PIN prompt on this phone line once subscription billing goes live.
+                  You will receive an automated M-PESA PIN prompt on this phone line to confirm your trial/subscription.
                 </span>
               </div>
 
-              <div className="p-3 bg-amber-950/40 border border-amber-800/40 rounded-xl text-[11px] text-amber-300 flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <div className="p-3 bg-emerald-950/40 border border-emerald-800/40 rounded-xl text-[11px] text-emerald-300 flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                 <span>
-                  No immediate charge will be made today. Submitting registers your priority spot for automated M-PESA billing.
+                  Includes 14-day full free trial. You can cancel at any time with zero penalty.
                 </span>
               </div>
 
@@ -1143,7 +1359,6 @@ export default function BillingSubscriptionView({
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 
-                {/* Organization Name */}
                 <div className="space-y-1">
                   <label className="font-bold text-slate-300 block">Organization Name</label>
                   <input
@@ -1156,7 +1371,6 @@ export default function BillingSubscriptionView({
                   />
                 </div>
 
-                {/* Organization Type */}
                 <div className="space-y-1">
                   <label className="font-bold text-slate-300 block">Organization Type</label>
                   <select
@@ -1173,7 +1387,6 @@ export default function BillingSubscriptionView({
                   </select>
                 </div>
 
-                {/* Subscription Owner */}
                 <div className="space-y-1">
                   <label className="font-bold text-slate-300 block">Subscription Owner</label>
                   <input
@@ -1186,7 +1399,6 @@ export default function BillingSubscriptionView({
                   />
                 </div>
 
-                {/* Billing Contact Email */}
                 <div className="space-y-1">
                   <label className="font-bold text-slate-300 block">Billing Contact Email</label>
                   <input
@@ -1199,7 +1411,6 @@ export default function BillingSubscriptionView({
                   />
                 </div>
 
-                {/* Billing Contact Phone */}
                 <div className="space-y-1">
                   <label className="font-bold text-slate-300 block">Billing Contact Phone</label>
                   <input
@@ -1212,7 +1423,6 @@ export default function BillingSubscriptionView({
                   />
                 </div>
 
-                {/* Country */}
                 <div className="space-y-1">
                   <label className="font-bold text-slate-300 block">Country</label>
                   <input
@@ -1225,7 +1435,6 @@ export default function BillingSubscriptionView({
                   />
                 </div>
 
-                {/* Currency */}
                 <div className="space-y-1">
                   <label className="font-bold text-slate-300 block">Currency</label>
                   <input
@@ -1238,7 +1447,6 @@ export default function BillingSubscriptionView({
                   />
                 </div>
 
-                {/* Time Zone */}
                 <div className="space-y-1">
                   <label className="font-bold text-slate-300 block">Time Zone</label>
                   <input
@@ -1251,7 +1459,6 @@ export default function BillingSubscriptionView({
                   />
                 </div>
 
-                {/* Tax Status */}
                 <div className="space-y-1 md:col-span-2">
                   <label className="font-bold text-slate-300 block">Tax Status</label>
                   <input
@@ -1264,7 +1471,6 @@ export default function BillingSubscriptionView({
                   />
                 </div>
 
-                {/* Readonly Organization ID */}
                 <div className="space-y-1">
                   <label className="font-bold text-slate-400 block">Organization ID (System Auto-generated)</label>
                   <input
@@ -1276,7 +1482,6 @@ export default function BillingSubscriptionView({
                   />
                 </div>
 
-                {/* Readonly Date Registered */}
                 <div className="space-y-1">
                   <label className="font-bold text-slate-400 block">Date Registered</label>
                   <input

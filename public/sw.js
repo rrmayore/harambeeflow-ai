@@ -1,73 +1,99 @@
-const CACHE_NAME = "harambeeflow-cache-v1";
-const ASSETS = [
+// HarambeeFlow Service Worker v2 (Android 15+ & PWA Compliant)
+const CACHE_NAME = "harambeeflow-pwa-v2";
+
+const CORE_ASSETS = [
   "/",
   "/index.html",
-  "/src/main.tsx",
-  "/src/App.tsx",
-  "/src/index.css"
+  "/manifest.json",
+  "/icon-192.png",
+  "/icon-512.png",
+  "/icon.svg"
 ];
 
-// Install Service Worker
-self.addEventListener("install", (e) => {
-  e.waitUntil(
+// Install Event: Pre-cache App Shell
+self.addEventListener("install", (event) => {
+  event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log("[Service Worker] Caching app shell assets");
-      return cache.addAll(ASSETS).catch((err) => {
-        console.warn("[Service Worker] Prefetch cache error:", err);
+      console.log("[Service Worker] Pre-caching core app shell");
+      return cache.addAll(CORE_ASSETS).catch((err) => {
+        console.warn("[Service Worker] Core asset pre-cache warning:", err);
       });
     })
   );
   self.skipWaiting();
 });
 
-// Activate Service Worker
-self.addEventListener("activate", (e) => {
-  e.waitUntil(
+// Activate Event: Clean up legacy caches & claim clients
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
           if (key !== CACHE_NAME) {
-            console.log("[Service Worker] Removing old cache:", key);
+            console.log("[Service Worker] Purging legacy cache:", key);
             return caches.delete(key);
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
-// Fetch Interceptor
-self.addEventListener("fetch", (e) => {
-  // Only handle GET requests and local requests
-  if (e.request.method !== "GET" || !e.request.url.startsWith(self.location.origin)) {
+// Fetch Event: Network-first for navigation, stale-while-revalidate for static assets
+self.addEventListener("fetch", (event) => {
+  const { request } = event;
+
+  // Bypass non-GET requests or requests from unsupported schemes (extensions, firebase auth, etc.)
+  if (request.method !== "GET" || !request.url.startsWith("http")) {
     return;
   }
 
-  // Skip chrome-extension or other non-http requests
-  if (e.request.url.startsWith("chrome-extension://") || e.request.url.includes("extension")) {
+  // Skip browser extensions
+  if (request.url.startsWith("chrome-extension://") || request.url.includes("extension")) {
     return;
   }
 
-  e.respondWith(
-    caches.match(e.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        // Fetch fresh copy in background to update cache (stale-while-revalidate)
-        fetch(e.request).then((networkResponse) => {
-          if (networkResponse.status === 200) {
-            caches.open(CACHE_NAME).then((cache) => cache.put(e.request, networkResponse));
+  // Handle SPA HTML Navigation Requests (Network-First)
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put("/", responseClone));
           }
-        }).catch(() => {/* Ignore network errors */});
-        
-        return cachedResponse;
-      }
+          return networkResponse;
+        })
+        .catch(() => {
+          // Offline fallback to cached index.html
+          return caches.match("/index.html").then((cachedIndex) => {
+            return cachedIndex || caches.match("/");
+          });
+        })
+    );
+    return;
+  }
 
-      return fetch(e.request).catch(() => {
-        // Fallback for offline page or index.html
-        if (e.request.mode === "navigate") {
-          return caches.match("/");
-        }
-      });
+  // Handle Static Assets (Stale-While-Revalidate)
+  event.respondWith(
+    caches.match(request).then((cachedResponse) => {
+      const fetchPromise = fetch(request)
+        .then((networkResponse) => {
+          if (
+            networkResponse &&
+            networkResponse.status === 200 &&
+            request.url.startsWith(self.location.origin)
+          ) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          /* Ignore offline fetch errors for background revalidation */
+        });
+
+      return cachedResponse || fetchPromise;
     })
   );
 });

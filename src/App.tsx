@@ -41,8 +41,6 @@ import CampaignSwitcherModal from "./components/CampaignSwitcherModal";
 import CampaignBreadcrumbs from "./components/CampaignBreadcrumbs";
 import DuplicateCampaignPromptModal from "./components/DuplicateCampaignPromptModal";
 import EmailVerificationScreen from "./components/EmailVerificationScreen";
-import DebugHUD from "./components/DebugHUD";
-import DebugAuthView from "./components/DebugAuthView";
 import { getLocalAuthAnalytics } from "./lib/analytics";
 import CampaignActivationWizard from "./components/CampaignActivationWizard";
 import CommandCenterView from "./components/CommandCenterView";
@@ -196,7 +194,7 @@ export default function App() {
   const [activeProject, setActiveProject] = useState<Project | null>(null);
 
   const handleSetActiveTab = (tab: string) => {
-    if (tab === "billing") {
+    if (tab === "billing" || tab === "pricing") {
       setActiveTab("billing");
       setSettingsSubTab("billing");
     } else if (tab === "settings") {
@@ -943,52 +941,6 @@ export default function App() {
       }
     }
   };
-
-  // Diagnostic logging for authentication and sandbox detection in development
-  useEffect(() => {
-    const hostname = typeof window !== "undefined" && window.location ? window.location.hostname : "unknown";
-    const metaEnv = import.meta.env;
-    const buildMode = metaEnv.MODE || "unknown";
-    
-    // Evaluate exact reason why EmailVerificationScreen is shown or skipped
-    let reason = "Skipped: Unknown";
-    if (!currentUser) {
-      reason = "Skipped: No user is currently logged in.";
-    } else if (isDemoMode) {
-      reason = "Skipped: Operating in Demo Mode.";
-    } else if (activeTab === "landing" || activeTab === "trust" || activeTab === "public" || activeTab === "public-pages") {
-      reason = `Skipped: Active tab is "${activeTab}" which is a public/unprotected route.`;
-    } else {
-      const isEmailProvider = currentUser.providerData?.some((p: any) => p.providerId === "password");
-      if (!isEmailProvider) {
-        reason = "Skipped: User is logged in via a non-password provider (e.g., Google or OAuth) which does not require email verification.";
-      } else if (!REQUIRE_EMAIL_VERIFICATION) {
-        reason = "Skipped: REQUIRE_EMAIL_VERIFICATION is set to false (Development/Testing Mode).";
-      } else if (currentUser.emailVerified) {
-        reason = "Skipped: User's email is verified in Firebase.";
-      } else if (IS_SANDBOX) {
-        if (devSettings.skipEmailVerification) {
-          reason = "Skipped: Application is in Sandbox Mode and 'Skip Email Verification' dev setting is enabled.";
-        } else {
-          reason = "Skipped: Application is in Sandbox Mode.";
-        }
-      } else {
-        reason = "Shown: User is signed in with email/password, email is not verified, and Sandbox Mode is disabled.";
-      }
-    }
-
-    if (import.meta.env.DEV) {
-      console.log(
-        `%c[HarambeeFlow AUTH DIAGNOSTICS]%c\n` +
-        `- Hostname: ${window.location.hostname}\n` +
-        `- IS_SANDBOX: ${IS_SANDBOX}\n` +
-        `- Firebase User Email Verified: ${currentUser ? currentUser.emailVerified : "N/A"}\n` +
-        `- Auth Guard Outcome: ${reason}`,
-        "color: #10b981; font-weight: bold; font-size: 11px;",
-        "color: #cbd5e1; font-size: 11px;"
-      );
-    }
-  }, [currentUser, activeTab, isDemoMode, devSettings.skipEmailVerification]);
 
   // Bind Auth Observer & update lastLogin in Firestore
   useEffect(() => {
@@ -2219,19 +2171,6 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
     );
   }
 
-  if (activeTab === "debug-auth") {
-    return (
-      <DebugAuthView
-        currentUser={currentUser}
-        userProfile={userProfile}
-        activeTab={activeTab}
-        isDemoMode={isDemoMode}
-        devSettings={devSettings}
-        onReturnToDashboard={() => handleSetActiveTab("dashboard")}
-      />
-    );
-  }
-
   if (activeTab === "public" || activeTab === "public-pages") {
     return (
       <PublicCampaignPageView 
@@ -2379,14 +2318,6 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
 
   return (
     <PWAFrameWrapper isSimulated={isSimulatedStandalone} handleExit={() => setIsSimulatedStandalone(false)}>
-      <DebugHUD 
-        currentUser={currentUser}
-        userProfile={userProfile}
-        activeTab={activeTab}
-        isDemoMode={isDemoMode}
-        devSettings={devSettings}
-        onOpenDebugPage={() => setActiveTab("debug-auth")}
-      />
       <div className={`min-h-screen bg-slate-950 flex flex-col font-sans leading-normal relative ${
         projects.length === 0 && wizardOpen ? "w-full overflow-y-auto" : "overflow-hidden h-screen w-screen"
       }`}>
