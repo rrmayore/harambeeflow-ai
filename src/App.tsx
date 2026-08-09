@@ -2367,7 +2367,7 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
         projects.length === 0 && wizardOpen ? "min-h-screen" : "h-screen overflow-hidden"
       }`}>
         {activeTab !== "landing" && activeTab !== "trust" && (
-          <header className="bg-slate-900 border-b border-slate-800 px-3 sm:px-4 py-2 shrink-0 flex items-center justify-between gap-2 md:hidden sticky top-0 z-30 shadow-md min-h-[56px]">
+          <header className="bg-slate-900 border-b border-slate-800 px-3.5 sm:px-4 py-2.5 shrink-0 flex items-center justify-between gap-2 md:hidden sticky top-0 z-30 shadow-md min-h-[56px]">
           {/* HF Logo */}
           <div 
             className="flex items-center gap-2 text-white cursor-pointer active:opacity-80 transition-opacity min-w-0 shrink-0"
@@ -2383,28 +2383,20 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
           {activeProject && (
             <button
               onClick={() => setShowCampaignSwitcher(true)}
-              className="flex items-center justify-center gap-1.5 px-3 py-2 min-h-[48px] bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 hover:border-emerald-500/50 rounded-xl transition cursor-pointer shadow-sm min-w-0 max-w-[200px] active:scale-95"
+              className="flex items-center justify-center gap-1.5 px-3 py-1.5 min-h-[42px] bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 hover:border-emerald-500/50 rounded-xl transition cursor-pointer shadow-sm min-w-0 max-w-[190px] xs:max-w-[220px] sm:max-w-[260px] active:scale-95"
               id="mobile-campaign-switcher-btn"
               aria-label="Switch Active Campaign"
             >
               <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
-              <span className="text-xs font-bold text-white truncate max-w-[130px]">
+              <span className="text-xs font-bold text-white truncate max-w-[125px] xs:max-w-[155px] sm:max-w-[190px]">
                 {activeProject.name}
               </span>
               <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             </button>
           )}
 
-          {/* Right Controls: Search, Notifications & Menu/Profile */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              onClick={() => handleSetActiveTab("dashboard")}
-              className="p-2.5 min-h-[44px] min-w-[44px] bg-slate-800 hover:bg-slate-750 border border-slate-700/60 rounded-xl text-slate-300 transition flex items-center justify-center cursor-pointer active:scale-95"
-              aria-label="Search"
-            >
-              <Search className="w-4.5 h-4.5 text-slate-300" />
-            </button>
-
+          {/* Right Controls: Notifications & Menu */}
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => handleSetActiveTab("dashboard")}
               className="p-2.5 min-h-[44px] min-w-[44px] bg-slate-800 hover:bg-slate-750 border border-slate-700/60 rounded-xl text-slate-300 transition flex items-center justify-center cursor-pointer active:scale-95 relative"

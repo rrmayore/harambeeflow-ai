@@ -5,7 +5,7 @@ import {
   Smartphone, Bot, FileText, ArrowRight, Plus, Share2, Copy, Check, 
   ChevronRight, Calendar, Activity, Zap, ThumbsUp, Flame, Play, AlertCircle,
   Bell, Search, Trash2, ShieldAlert, Archive, ClipboardCheck, ArrowUpRight,
-  Info, RefreshCw, X, UserCheck, ChevronDown, Settings, Coins
+  Info, RefreshCw, X, UserCheck, ChevronDown, Settings, Coins, ArrowLeft, Building2, CheckCircle2
 } from "lucide-react";
 import { getTheme, getCampaignLogo, getCampaignMotto, getCampaignBanner } from "../utils/branding";
 import { collection, onSnapshot, doc, setDoc, addDoc, getDocs, deleteDoc } from "firebase/firestore";
@@ -49,7 +49,14 @@ export default function CommandCenterView({
 }: CommandCenterViewProps) {
   // Global States
   const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedWhatsApp, setCopiedWhatsApp] = useState(false);
   const [showAddContribution, setShowAddContribution] = useState(false);
+  const [contributionMethod, setContributionMethod] = useState<"stk" | "mpesa_existing" | "cash" | "bank" | null>(null);
+  const [showInviteCommitteeModal, setShowInviteCommitteeModal] = useState(false);
+  const [inviteName, setInviteName] = useState("");
+  const [inviteContact, setInviteContact] = useState("");
+  const [inviteRole, setInviteRole] = useState("Co-Treasurer");
+  const [copiedInviteLink, setCopiedInviteLink] = useState(false);
   const [simulatedRole, setSimulatedRole] = useState<SimulatedRole>("Treasurer");
   const [searchQuery, setSearchQuery] = useState("");
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -195,14 +202,14 @@ export default function CommandCenterView({
     const donationCount = projectContributions.length;
     if (donationCount === 0) {
       return {
-        task: "Verify Lipa Na M-PESA collection connection",
-        reason: "Test with a simulated 10 KES STK Push contribution before sharing with committee members."
+        task: "Invite co-treasurers and committee chairs",
+        reason: "Adding committee members can improve accountability, transparency, and collaboration when managing your campaign."
       };
     }
     if (donationCount < 5) {
       return {
         task: "Invite co-treasurers and committee chairs",
-        reason: "Adding at least 2 committee members boosts donor transparency score by 15%."
+        reason: "Adding committee members can improve accountability, transparency, and collaboration when managing your campaign."
       };
     }
     return {
@@ -830,7 +837,7 @@ Thank you for your generous support!`;
   }
 
   return (
-    <div className="flex-1 bg-slate-950 p-3 sm:p-6 pb-28 sm:pb-32 md:pb-6 text-slate-100 min-h-full font-sans select-none relative">
+    <div className="flex-1 bg-slate-950 p-4 sm:p-6 pb-28 sm:pb-32 md:pb-6 text-slate-100 min-h-full font-sans select-none relative">
       
       {/* Toast Alert Banner */}
       {toastMessage && (
@@ -923,39 +930,29 @@ Thank you for your generous support!`;
         )}
 
         {/* ====================================================
-            3. HERO CARD (ONE Campaign Card Immediately Below Header)
+            1. HERO CARD (Clean & Streamlined)
             ==================================================== */}
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-7 shadow-2xl space-y-5 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-emerald-500/10 via-emerald-500/5 to-transparent pointer-events-none" />
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-l from-emerald-500/10 via-transparent to-transparent pointer-events-none" />
 
-          {/* Top Row: Badge, Campaign Name, Verse/Purpose */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <span className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] font-mono font-bold uppercase tracking-wider rounded-lg">
-                🇰🇪 Kenya's Trusted • {activeProject.category || "Fundraiser"}
-              </span>
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-bold font-mono">
-                Active
-              </span>
-            </div>
-
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">
+          {/* Top Row: Campaign Name & Status Badge */}
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight leading-tight">
               {activeProject.name}
             </h1>
-
-            <p className="text-xs sm:text-sm text-slate-400 italic">
-              "{activeProject.motto || "Each of you should give what you have decided in your heart to give, not reluctantly or under compulsion. - 2 Cor 9:7"}"
-            </p>
+            <span className="px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-bold font-mono shrink-0">
+              Active
+            </span>
           </div>
 
-          {/* Large Progress Bar */}
-          <div className="space-y-2">
+          {/* Progress Bar */}
+          <div className="space-y-1.5">
             <div className="flex items-center justify-between text-xs font-mono font-bold">
-              <span className="text-slate-400">Fundraising Progress</span>
+              <span className="text-slate-400">Progress</span>
               <span className="text-emerald-400 font-extrabold">{percentComplete}% Raised</span>
             </div>
 
-            <div className="h-4 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+            <div className="h-3.5 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800">
               <div 
                 className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-700 shadow-[0_0_12px_#10b981]"
                 style={{ width: `${percentComplete}%` }}
@@ -964,36 +961,37 @@ Thank you for your generous support!`;
           </div>
 
           {/* Metrics Line: Amount Raised | Target | Days Remaining */}
-          <div className="grid grid-cols-3 gap-3 pt-1 border-t border-slate-800/80 text-center sm:text-left">
+          <div className="grid grid-cols-3 gap-3 pt-3 border-t border-slate-800/80 text-center sm:text-left">
             <div>
-              <span className="text-[10px] font-mono font-bold text-slate-500 uppercase block">Amount Raised</span>
-              <p className="text-base sm:text-xl font-black font-mono text-emerald-400">
+              <span className="text-[10px] font-mono font-bold text-slate-400 uppercase block">Amount Raised</span>
+              <p className="text-lg sm:text-2xl font-black font-mono text-emerald-400">
                 KES {totalRaised.toLocaleString()}
               </p>
             </div>
             <div>
-              <span className="text-[10px] font-mono font-bold text-slate-500 uppercase block">Target</span>
-              <p className="text-base sm:text-xl font-black font-mono text-slate-200">
+              <span className="text-[10px] font-mono font-bold text-slate-400 uppercase block">Target</span>
+              <p className="text-lg sm:text-2xl font-black font-mono text-slate-200">
                 KES {activeProject.targetAmount.toLocaleString()}
               </p>
             </div>
             <div>
-              <span className="text-[10px] font-mono font-bold text-slate-500 uppercase block">Days Remaining</span>
-              <p className="text-base sm:text-xl font-black font-mono text-indigo-300">
+              <span className="text-[10px] font-mono font-bold text-slate-400 uppercase block">Days Remaining</span>
+              <p className="text-lg sm:text-2xl font-black font-mono text-indigo-300">
                 {daysRemaining} Days
               </p>
             </div>
           </div>
 
-          {/* Two Primary Buttons (Min 48px Height for Mobile Accessibility) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+          {/* Primary Action Buttons */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
             <button
               onClick={() => {
                 if (checkPermission("Log manual payments", ["Treasurer"])) {
+                  setContributionMethod(null);
                   setShowAddContribution(true);
                 }
               }}
-              className="w-full min-h-[48px] px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 text-slate-950 font-black text-sm rounded-2xl flex items-center justify-center gap-2 transition shadow-xl shadow-emerald-500/15 cursor-pointer active:scale-98"
+              className="w-full min-h-[48px] px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-400 hover:from-emerald-400 hover:to-emerald-300 text-slate-950 font-black text-sm rounded-2xl flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-500/15 cursor-pointer active:scale-98"
               id="hero-receive-contribution-btn"
             >
               <Plus className="w-5 h-5 stroke-[2.5]" />
@@ -1012,61 +1010,52 @@ Thank you for your generous support!`;
         </div>
 
         {/* ====================================================
-            4. DASHBOARD SUMMARY (4 KPI Cards)
+            2. FUNDRAISING SUMMARY (4 KPI Cards)
             ==================================================== */}
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-400">Fundraising Summary</h2>
-          
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             
-            {/* Raised Today */}
-            <div className="p-4 sm:p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-2 shadow-lg">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Raised Today</span>
-                <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl">
-                  <TrendingUp className="w-4 h-4" />
-                </div>
+            {/* Today's Raised */}
+            <div className="p-4 sm:p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-1.5 shadow-md">
+              <div className="flex items-center justify-between text-slate-400">
+                <span className="text-[11px] font-bold uppercase tracking-wider">Today's Raised</span>
+                <TrendingUp className="w-4 h-4 text-emerald-400" />
               </div>
-              <p className="text-xl sm:text-2xl font-black font-mono text-emerald-400">
+              <p className="text-2xl sm:text-3xl font-black font-mono text-emerald-400">
                 KES {todayRaised.toLocaleString()}
               </p>
             </div>
 
             {/* Total Raised */}
-            <div className="p-4 sm:p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-2 shadow-lg">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Total Raised</span>
-                <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl">
-                  <Coins className="w-4 h-4" />
-                </div>
+            <div className="p-4 sm:p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-1.5 shadow-md">
+              <div className="flex items-center justify-between text-slate-400">
+                <span className="text-[11px] font-bold uppercase tracking-wider">Total Raised</span>
+                <Coins className="w-4 h-4 text-white" />
               </div>
-              <p className="text-xl sm:text-2xl font-black font-mono text-white">
+              <p className="text-2xl sm:text-3xl font-black font-mono text-white">
                 KES {totalRaised.toLocaleString()}
               </p>
             </div>
 
             {/* Supporters */}
-            <div className="p-4 sm:p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-2 shadow-lg">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Supporters</span>
-                <div className="p-2 bg-indigo-500/10 text-indigo-400 rounded-xl">
-                  <Users className="w-4 h-4" />
-                </div>
+            <div className="p-4 sm:p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-1.5 shadow-md">
+              <div className="flex items-center justify-between text-slate-400">
+                <span className="text-[11px] font-bold uppercase tracking-wider">Supporters</span>
+                <Users className="w-4 h-4 text-indigo-400" />
               </div>
-              <p className="text-xl sm:text-2xl font-black font-mono text-slate-100">
+              <p className="text-2xl sm:text-3xl font-black font-mono text-slate-100">
                 {projectContributions.length}
               </p>
             </div>
 
-            {/* Remaining to Target */}
-            <div className="p-4 sm:p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-2 shadow-lg">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Remaining Gap</span>
-                <div className="p-2 bg-amber-500/10 text-amber-400 rounded-xl">
-                  <Target className="w-4 h-4" />
-                </div>
+            {/* Remaining Target */}
+            <div className="p-4 sm:p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-1.5 shadow-md">
+              <div className="flex items-center justify-between text-slate-400">
+                <span className="text-[11px] font-bold uppercase tracking-wider">Remaining Target</span>
+                <Target className="w-4 h-4 text-amber-400" />
               </div>
-              <p className="text-xl sm:text-2xl font-black font-mono text-amber-400">
+              <p className="text-2xl sm:text-3xl font-black font-mono text-amber-400">
                 KES {remainingAmount.toLocaleString()}
               </p>
             </div>
@@ -1075,199 +1064,192 @@ Thank you for your generous support!`;
         </div>
 
         {/* ====================================================
-            5. QUICK ACTIONS (Clean Rounded Tile Grid)
+            3. QUICK ACTIONS
             ==================================================== */}
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-400">Quick Actions</h2>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             
-            {/* Tile 1: Receive Contribution */}
+            {/* 1. Receive Contribution */}
             <button
               onClick={() => {
                 if (checkPermission("Log manual payments", ["Treasurer"])) {
+                  setContributionMethod(null);
                   setShowAddContribution(true);
                 }
               }}
-              className="p-4 min-h-[56px] bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/40 rounded-2xl flex flex-col items-start gap-2.5 transition cursor-pointer active:scale-98 group text-left"
+              className="p-3.5 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/40 rounded-2xl flex flex-col items-center text-center gap-2 transition cursor-pointer active:scale-98 group"
             >
-              <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl group-hover:bg-emerald-500 group-hover:text-slate-950 transition-colors">
+              <div className="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-xl group-hover:bg-emerald-500 group-hover:text-slate-950 transition-colors">
                 <Plus className="w-5 h-5 stroke-[2.5]" />
               </div>
-              <div>
-                <p className="text-xs font-black text-white group-hover:text-emerald-400 transition-colors">Receive Contribution</p>
-                <p className="text-[10px] text-slate-500">M-PESA STK or Cash</p>
-              </div>
+              <span className="text-xs font-bold text-white group-hover:text-emerald-400 transition-colors">Receive Contribution</span>
             </button>
 
-            {/* Tile 2: Manual Cash */}
+            {/* 2. Manual Cash Entry */}
             <button
               onClick={() => {
                 if (checkPermission("Log manual payments", ["Treasurer"])) {
+                  setContributionMethod("cash");
                   setShowAddContribution(true);
                 }
               }}
-              className="p-4 min-h-[56px] bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/40 rounded-2xl flex flex-col items-start gap-2.5 transition cursor-pointer active:scale-98 group text-left"
+              className="p-3.5 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/40 rounded-2xl flex flex-col items-center text-center gap-2 transition cursor-pointer active:scale-98 group"
             >
-              <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl group-hover:bg-emerald-500 group-hover:text-slate-950 transition-colors">
+              <div className="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-xl group-hover:bg-emerald-500 group-hover:text-slate-950 transition-colors">
                 <Landmark className="w-5 h-5" />
               </div>
-              <div>
-                <p className="text-xs font-black text-white group-hover:text-emerald-400 transition-colors">Manual Cash</p>
-                <p className="text-[10px] text-slate-500">Log physical notes</p>
-              </div>
+              <span className="text-xs font-bold text-white group-hover:text-emerald-400 transition-colors">Manual Cash Entry</span>
             </button>
 
-            {/* Tile 3: Share Campaign */}
+            {/* 3. Share Campaign */}
             <button
               onClick={handleCopyLinkAction}
-              className="p-4 min-h-[56px] bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/40 rounded-2xl flex flex-col items-start gap-2.5 transition cursor-pointer active:scale-98 group text-left"
+              className="p-3.5 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/40 rounded-2xl flex flex-col items-center text-center gap-2 transition cursor-pointer active:scale-98 group"
             >
-              <div className="p-2 bg-sky-500/10 text-sky-400 rounded-xl group-hover:bg-sky-500 group-hover:text-slate-950 transition-colors">
+              <div className="p-2.5 bg-sky-500/10 text-sky-400 rounded-xl group-hover:bg-sky-500 group-hover:text-slate-950 transition-colors">
                 <Share2 className="w-5 h-5" />
               </div>
-              <div>
-                <p className="text-xs font-black text-white group-hover:text-sky-400 transition-colors">Share Campaign</p>
-                <p className="text-[10px] text-slate-500">Copy public link</p>
-              </div>
+              <span className="text-xs font-bold text-white group-hover:text-sky-400 transition-colors">Share Campaign</span>
             </button>
 
-            {/* Tile 4: Reports */}
+            {/* 4. Reports */}
             <button
               onClick={() => onNavigateToTab("report")}
-              className="p-4 min-h-[56px] bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/40 rounded-2xl flex flex-col items-start gap-2.5 transition cursor-pointer active:scale-98 group text-left"
+              className="p-3.5 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/40 rounded-2xl flex flex-col items-center text-center gap-2 transition cursor-pointer active:scale-98 group"
             >
-              <div className="p-2 bg-purple-500/10 text-purple-400 rounded-xl group-hover:bg-purple-500 group-hover:text-slate-950 transition-colors">
+              <div className="p-2.5 bg-purple-500/10 text-purple-400 rounded-xl group-hover:bg-purple-500 group-hover:text-slate-950 transition-colors">
                 <FileText className="w-5 h-5" />
               </div>
-              <div>
-                <p className="text-xs font-black text-white group-hover:text-purple-400 transition-colors">Reports & Docs</p>
-                <p className="text-[10px] text-slate-500">Reconciliation audit</p>
-              </div>
+              <span className="text-xs font-bold text-white group-hover:text-purple-400 transition-colors">Reports</span>
             </button>
 
-            {/* Tile 5: Supporters */}
+            {/* 5. Supporters */}
             <button
               onClick={() => onNavigateToTab("supporters")}
-              className="p-4 min-h-[56px] bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/40 rounded-2xl flex flex-col items-start gap-2.5 transition cursor-pointer active:scale-98 group text-left"
+              className="p-3.5 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/40 rounded-2xl flex flex-col items-center text-center gap-2 transition cursor-pointer active:scale-98 group"
             >
-              <div className="p-2 bg-indigo-500/10 text-indigo-400 rounded-xl group-hover:bg-indigo-500 group-hover:text-slate-950 transition-colors">
+              <div className="p-2.5 bg-indigo-500/10 text-indigo-400 rounded-xl group-hover:bg-indigo-500 group-hover:text-slate-950 transition-colors">
                 <Users className="w-5 h-5" />
               </div>
-              <div>
-                <p className="text-xs font-black text-white group-hover:text-indigo-400 transition-colors">Supporters</p>
-                <p className="text-[10px] text-slate-500">Donor list & directory</p>
-              </div>
+              <span className="text-xs font-bold text-white group-hover:text-indigo-400 transition-colors">Supporters</span>
             </button>
 
-            {/* Tile 6: Settings */}
+            {/* 6. Settings */}
             <button
               onClick={() => onNavigateToTab("settings")}
-              className="p-4 min-h-[56px] bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/40 rounded-2xl flex flex-col items-start gap-2.5 transition cursor-pointer active:scale-98 group text-left"
+              className="p-3.5 bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/40 rounded-2xl flex flex-col items-center text-center gap-2 transition cursor-pointer active:scale-98 group"
             >
-              <div className="p-2 bg-amber-500/10 text-amber-400 rounded-xl group-hover:bg-amber-500 group-hover:text-slate-950 transition-colors">
+              <div className="p-2.5 bg-amber-500/10 text-amber-400 rounded-xl group-hover:bg-amber-500 group-hover:text-slate-950 transition-colors">
                 <Settings className="w-5 h-5" />
               </div>
-              <div>
-                <p className="text-xs font-black text-white group-hover:text-amber-400 transition-colors">Settings</p>
-                <p className="text-[10px] text-slate-500">Target, rules & roles</p>
-              </div>
+              <span className="text-xs font-bold text-white group-hover:text-amber-400 transition-colors">Settings</span>
             </button>
 
           </div>
         </div>
 
-        {/* --- AI DAILY BRIEFING PANEL ("What should I do next?") --- */}
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-3 gap-2">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl shrink-0">
-                <Bot className="w-4.5 h-4.5" />
-              </div>
-              <div>
-                <h2 className="text-xs font-mono font-bold tracking-wider uppercase text-emerald-400 block">AI DAILY BRIEFING</h2>
-                <p className="text-xs font-bold text-slate-300">Action Plan for {simulatedRole}</p>
-              </div>
-            </div>
-            {onTriggerTour && (
-              <button
-                onClick={onTriggerTour}
-                className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 hover:underline cursor-pointer transition"
-              >
-                <Sparkles className="w-3.5 h-3.5 animate-pulse text-amber-400" />
-                Quick Tour
-              </button>
-            )}
+        {/* ====================================================
+            4. DAILY BRIEFING
+            ==================================================== */}
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-lg space-y-4">
+          <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
+            <Bot className="w-4 h-4 text-emerald-400" />
+            <h2 className="text-xs font-mono font-bold tracking-wider uppercase text-emerald-400">Daily AI Briefing</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
-            <div className="md:col-span-8 space-y-3">
-              <p className="text-slate-300 text-xs leading-relaxed">
-                Summary for <strong className="text-white">{activeProject.name}</strong> as analyzed today:
-              </p>
-
-              <div className="p-3 bg-indigo-950/30 border border-indigo-500/25 rounded-xl space-y-1 flex items-start gap-2.5">
-                <Sparkles className="w-4 h-4 text-amber-400 shrink-0 mt-0.5 animate-pulse" />
-                <div className="space-y-0.5 text-xs">
-                  <span className="text-[9px] font-bold text-amber-400 font-mono block uppercase">RECOMMENDED ACTION TODAY</span>
-                  {projectContributions.length === 0 ? (
-                    <p className="text-slate-200 font-semibold">Log your first contribution or perform an STK push dry run to initialize models.</p>
-                  ) : (
-                    <>
-                      <p className="text-slate-200 font-semibold">{todayPriority.task}</p>
-                      <p className="text-slate-400 text-[11px] leading-relaxed">{todayPriority.reason}</p>
-                    </>
-                  )}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
+            {/* Today's Recommendation */}
+            <div className="md:col-span-7 p-4 bg-indigo-950/30 border border-indigo-500/20 rounded-2xl flex flex-col justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <Sparkles className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-bold text-amber-400 font-mono block uppercase tracking-wider">TODAY'S RECOMMENDATION</span>
+                  <h3 className="text-sm font-black text-white tracking-tight">Invite your committee</h3>
+                  <p className="text-xs text-slate-300 font-medium leading-relaxed">
+                    Adding committee members can improve accountability, transparency, and collaboration when managing your campaign.
+                  </p>
                 </div>
+              </div>
+
+              <div className="pl-7 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInviteName("");
+                    setInviteContact("");
+                    setInviteRole("Co-Treasurer");
+                    setShowInviteCommitteeModal(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer group"
+                  id="invite-committee-cta-btn"
+                >
+                  <span>Invite Committee Members</span>
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                </button>
               </div>
             </div>
 
-            {/* Broadcast Copy Block */}
-            <div className="md:col-span-4 bg-slate-950 border border-slate-850 rounded-2xl p-3.5 space-y-2.5">
-              <span className="text-[10px] font-mono font-bold uppercase text-slate-400 block">Suggested WhatsApp Broadcast</span>
-              <p className="text-[10px] font-mono text-slate-400 line-clamp-3 bg-slate-900 p-2 rounded-lg border border-slate-800">
-                {suggestedMsg}
-              </p>
+            {/* WhatsApp Message & Copy Button */}
+            <div className="md:col-span-5 bg-slate-950 border border-slate-800 rounded-2xl p-3.5 flex flex-col justify-between gap-3">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono font-bold uppercase text-slate-400 tracking-wider">Suggested WhatsApp Message</span>
+                  <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                    Ready to Share
+                  </span>
+                </div>
+                
+                {/* Scrollable Message Box */}
+                <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3 max-h-28 overflow-y-auto text-xs font-mono text-slate-300 leading-relaxed whitespace-pre-wrap select-text">
+                  {suggestedMsg}
+                </div>
+              </div>
+
               <button
+                type="button"
                 onClick={() => {
                   navigator.clipboard.writeText(suggestedMsg);
-                  showToast("WhatsApp message copied to clipboard!");
+                  setCopiedWhatsApp(true);
+                  showToast("WhatsApp message copied to clipboard!", "success");
+                  setTimeout(() => setCopiedWhatsApp(false), 2500);
                 }}
-                className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 border border-slate-800 cursor-pointer transition"
+                className="w-full py-2 bg-slate-900 hover:bg-slate-850 active:bg-slate-800 text-slate-200 hover:text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 border border-slate-800 cursor-pointer transition active:scale-98"
+                id="copy-whatsapp-msg-btn"
               >
-                <Copy className="w-3.5 h-3.5" />
-                <span>Copy Message</span>
+                {copiedWhatsApp ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-emerald-400 font-extrabold">✓ Copied to clipboard</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Copy WhatsApp Message</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
         </div>
 
         {/* ====================================================
-            LIVE CONTRIBUTIONS PANEL (Receiving donations in real time)
+            5. LIVE CONTRIBUTIONS
             ==================================================== */}
-        <div className="bg-slate-900 border border-slate-800/90 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 relative overflow-hidden" id="live-contributions-feed">
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4" id="live-contributions-feed">
           
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-4 gap-3">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2.5">
-                <span className="relative flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
-                </span>
-                <h2 className="text-base sm:text-lg font-black text-white tracking-tight">
-                  ● Live Contributions
-                </h2>
-                <span className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-mono font-bold rounded-md">
-                  Real-time
-                </span>
-              </div>
-              <p className="text-xs text-slate-400 font-medium">
-                Receiving donations in real time • Auto-synced via Firestore
-              </p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-3.5 gap-3">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+              </span>
+              <h2 className="text-base font-bold text-white tracking-tight">
+                Live Contributions
+              </h2>
             </div>
 
-            {/* Smart Filters (Requirement 6) */}
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 shrink-0 no-scrollbar">
               {(["All", "Today", "M-PESA", "Cash", "Bank"] as const).map((filter) => {
                 const isActive = liveFilter === filter;
@@ -1278,48 +1260,44 @@ Thank you for your generous support!`;
                       setLiveFilter(filter);
                       setVisibleContributionsCount(12);
                     }}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer whitespace-nowrap ${
+                    className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                       isActive
-                        ? "bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20 font-black scale-105"
-                        : "bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800"
+                        ? "bg-emerald-500 text-slate-950 font-black"
+                        : "bg-slate-950 text-slate-400 hover:text-white border border-slate-800"
                     }`}
                   >
-                    {filter === "All" && `All (${projectContributions.length})`}
-                    {filter === "Today" && `Today (${todayContributionsCount})`}
-                    {filter === "M-PESA" && `M-PESA`}
-                    {filter === "Cash" && `Cash`}
-                    {filter === "Bank" && `Bank`}
+                    {filter === "All" ? `All (${projectContributions.length})` : filter === "Today" ? `Today (${todayContributionsCount})` : filter}
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Feed Content */}
           {filteredLiveContributions.length === 0 ? (
-            <div className="py-12 text-center space-y-3 border border-dashed border-slate-800/80 rounded-2xl bg-slate-950/40">
+            <div className="py-10 text-center space-y-3 border border-dashed border-slate-800/80 rounded-2xl bg-slate-950/40 p-6">
               <div className="w-10 h-10 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mx-auto">
-                <Coins className="w-5 h-5 animate-pulse" />
+                <Coins className="w-5 h-5" />
               </div>
-              <p className="text-xs font-bold text-slate-300">
-                No {liveFilter !== "All" ? liveFilter : ""} contributions recorded yet.
-              </p>
-              <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
-                New incoming M-PESA STK payments, bank transfers, or cash receipts will instantly appear here.
-              </p>
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-slate-200">No contributions recorded yet</p>
+                <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
+                  Incoming M-PESA payments, bank transfers, or cash deposits will appear here in real time.
+                </p>
+              </div>
               <button
                 onClick={() => {
                   if (checkPermission("Log manual payments", ["Treasurer"])) {
+                    setContributionMethod(null);
                     setShowAddContribution(true);
                   }
                 }}
-                className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black rounded-xl transition cursor-pointer shadow-lg shadow-emerald-500/10"
+                className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black rounded-xl transition cursor-pointer shadow-md"
               >
-                + Receive First Contribution
+                Receive First Contribution
               </button>
             </div>
           ) : (
-            <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1 custom-scrollbar">
+            <div className="space-y-2.5 max-h-[480px] overflow-y-auto pr-1 custom-scrollbar">
               {filteredLiveContributions.slice(0, visibleContributionsCount).map((c, index) => {
                 const method = c.category?.toUpperCase().includes("CASH") || c.transactionCode?.startsWith("CASH")
                   ? "Cash"
@@ -1327,82 +1305,54 @@ Thank you for your generous support!`;
                   ? "Bank"
                   : "M-PESA";
 
-                const isNewest = index === 0;
-
                 return (
                   <div
                     key={c.id || `cont-${index}`}
-                    className={`bg-slate-950 border rounded-2xl p-3.5 space-y-2.5 transition-all duration-300 shadow-sm hover:shadow-md ${
-                      isNewest
-                        ? "border-emerald-500/50 shadow-emerald-500/10 bg-gradient-to-r from-emerald-950/30 via-slate-950 to-slate-950 animate-fade-in"
-                        : "border-slate-850 hover:border-slate-750"
-                    }`}
+                    className="bg-slate-950 border border-slate-850 hover:border-slate-750 rounded-2xl p-3.5 space-y-2 transition shadow-sm"
                   >
-                    {/* Top Badges Row */}
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center justify-between gap-2 text-[10px] font-mono">
                       <div className="flex items-center gap-2">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[10px] font-mono font-bold ${
-                          isNewest
-                            ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                            : "bg-slate-900 text-slate-400 border border-slate-800"
-                        }`}>
+                        <span className="text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800 font-bold">
                           {getRelativeTimeLabel(c.timestamp)}
                         </span>
-                        <span className="text-[10px] font-mono font-extrabold text-slate-400 px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800">
+                        <span className="text-slate-300 font-bold">
                           {c.transactionCode || "MPESA-DIRECT"}
                         </span>
                       </div>
-
-                      <div className="flex items-center gap-1.5">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-800/60 text-[10px] font-bold text-emerald-300">
-                          <Check className="w-3 h-3 text-emerald-400" />
-                          Verified
-                        </span>
-                      </div>
+                      <span className="inline-flex items-center gap-1 text-emerald-400 font-bold">
+                        <Check className="w-3 h-3" /> Verified
+                      </span>
                     </div>
 
-                    {/* Donor Details & Amount */}
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
-                        <h4 className="text-sm font-extrabold text-white truncate">
+                        <h4 className="text-xs font-bold text-white truncate">
                           {c.senderName || c.cleanedName || "Anonymous Well-wisher"}
                         </h4>
-                        <p className="text-[11px] text-slate-400 font-mono truncate">
+                        <p className="text-[10px] text-slate-500 font-mono truncate">
                           {c.senderPhone || "M-PESA Registered Number"}
                         </p>
                       </div>
 
                       <div className="text-right shrink-0">
-                        <span className="text-base sm:text-lg font-black font-mono text-emerald-400 block">
+                        <span className="text-sm font-black font-mono text-emerald-400 block">
                           KES {Number(c.amount).toLocaleString()}
                         </span>
-                        <span className="text-[10px] font-mono text-slate-400 uppercase font-bold">
-                          Method: {method}
+                        <span className="text-[9px] font-mono text-slate-500 uppercase font-bold">
+                          {method}
                         </span>
                       </div>
-                    </div>
-
-                    {/* Receipt Status & Footer */}
-                    <div className="flex items-center justify-between border-t border-slate-900 pt-2 text-[10px] text-slate-400 font-mono">
-                      <div className="flex items-center gap-1.5 text-emerald-400 font-bold">
-                        <Check className="w-3 h-3" />
-                        <span>Receipt Generated ✓</span>
-                      </div>
-                      <span>
-                        {new Date(c.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
                     </div>
                   </div>
                 );
               })}
 
-              {/* Lazy Loading Pagination Button (Requirement 7) */}
               {visibleContributionsCount < filteredLiveContributions.length && (
                 <button
                   onClick={() => setVisibleContributionsCount(prev => prev + 12)}
-                  className="w-full py-3 bg-slate-950 hover:bg-slate-850 text-slate-300 text-xs font-bold rounded-xl border border-slate-800 transition cursor-pointer flex items-center justify-center gap-2 mt-2"
+                  className="w-full py-2.5 bg-slate-950 hover:bg-slate-850 text-slate-400 hover:text-white text-xs font-bold rounded-xl border border-slate-800 transition cursor-pointer flex items-center justify-center gap-1.5 mt-2"
                 >
-                  <span>Load Older Contributions ({filteredLiveContributions.length - visibleContributionsCount} remaining)</span>
+                  <span>Load More ({filteredLiveContributions.length - visibleContributionsCount} remaining)</span>
                   <ChevronDown className="w-3.5 h-3.5" />
                 </button>
               )}
@@ -1410,206 +1360,375 @@ Thank you for your generous support!`;
           )}
         </div>
 
-        {/* --- DUAL GRID: RECONCILED LEDGER & ACTIVITY LOGS --- */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          
-          {/* Recent Ledger */}
-          <div className="lg:col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div>
-                <h3 className="text-xs font-extrabold text-slate-200">Reconciled Contribution Ledger</h3>
-                <p className="text-[10px] text-slate-500 font-mono">Real-time M-PESA and physical logs</p>
-              </div>
-              <button
-                onClick={() => onNavigateToTab("collect")}
-                className="text-[10px] font-mono font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-0.5 uppercase cursor-pointer"
-              >
-                Open Ledger Desk <ChevronRight className="w-3 h-3" />
-              </button>
-            </div>
+        {/* ====================================================
+            6. ADVANCED CAMPAIGN MANAGEMENT & AUDIT LOGS (Collapsible)
+            ==================================================== */}
+        <details className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden group">
+          <summary className="p-4 sm:p-5 flex items-center justify-between cursor-pointer select-none text-xs font-bold text-slate-400 hover:text-white transition">
+            <span className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-slate-400" />
+              <span>Advanced Campaign Management & Audit Trail</span>
+            </span>
+            <ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" />
+          </summary>
 
-            <div className="space-y-2 max-h-[280px] overflow-y-auto">
-              {projectContributions.length === 0 ? (
-                <div className="py-8 text-center space-y-2 border border-dashed border-slate-800 rounded-xl">
-                  <p className="text-xs font-bold text-slate-400">No donations received yet.</p>
-                  <button
-                    onClick={() => setShowAddContribution(true)}
-                    className="px-3 py-1.5 bg-emerald-500 text-slate-950 text-xs font-bold rounded-lg cursor-pointer"
-                  >
-                    Receive First Contribution
-                  </button>
-                </div>
-              ) : (
-                projectContributions.slice(0, 5).map((c) => (
-                  <div key={c.id} className="p-3 bg-slate-950 border border-slate-850 rounded-xl flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <p className="text-xs font-bold text-slate-200">{c.senderName || c.cleanedName}</p>
-                      <p className="text-[10px] text-slate-500 font-mono">{c.transactionCode} • {c.senderPhone || "M-PESA"}</p>
-                    </div>
-                    <span className="text-xs font-bold text-emerald-400 font-mono">+ KES {Number(c.amount).toLocaleString()}</span>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Committee Audit Trail */}
-          <div className="lg:col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div>
+          <div className="p-5 pt-0 border-t border-slate-800/60 space-y-6 mt-3">
+            {/* Committee Activity Logs */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
                 <h3 className="text-xs font-extrabold text-slate-200">Committee Activity Logs</h3>
-                <p className="text-[10px] text-slate-500 font-mono">Immutable audit history</p>
+                <span className="text-[10px] font-mono text-slate-500">Immutable Audit Trail</span>
               </div>
-              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-            </div>
 
-            <div className="space-y-2 max-h-[280px] overflow-y-auto">
-              {activityLogs.length === 0 ? (
-                <p className="py-8 text-center text-xs text-slate-500 font-mono">No audit trail logs recorded yet.</p>
-              ) : (
-                activityLogs.map((log) => (
-                  <div key={log.id} className="p-2.5 bg-slate-950 border border-slate-850 rounded-xl space-y-1">
-                    <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono">
-                      <span className="text-emerald-400 font-bold">{log.user}</span>
-                      <span>{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                {activityLogs.length === 0 ? (
+                  <p className="py-4 text-center text-xs text-slate-500 font-mono">No audit trail logs recorded yet.</p>
+                ) : (
+                  activityLogs.map((log) => (
+                    <div key={log.id} className="p-2.5 bg-slate-950 border border-slate-850 rounded-xl space-y-1">
+                      <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono">
+                        <span className="text-emerald-400 font-bold">{log.user}</span>
+                        <span>{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                      <p className="text-xs text-slate-300 font-medium">{log.action}</p>
                     </div>
-                    <p className="text-xs text-slate-300 font-medium">{log.action}</p>
-                  </div>
-                ))
-              )}
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Campaign Lifecycle Controls */}
+            <div className="p-4 bg-slate-950 border border-slate-850 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="space-y-0.5 text-center sm:text-left">
+                <h4 className="text-xs font-bold text-slate-200">Advanced Campaign Controls</h4>
+                <p className="text-[11px] text-slate-500">Clone presets or begin the multi-step Reconciliation Archive protocol.</p>
+              </div>
+
+              <div className="flex gap-2.5 w-full sm:w-auto shrink-0">
+                <button
+                  onClick={handleCloneCampaign}
+                  className="flex-1 sm:flex-none px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer"
+                  id="clone-campaign-settings-btn"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Clone Campaign</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    if (checkPermission("Archive Campaign", ["Chairperson"])) {
+                      setArchiveStep(1);
+                      setIsArchiveModalOpen(true);
+                    }
+                  }}
+                  className="flex-1 sm:flex-none px-3.5 py-2 bg-rose-950/30 hover:bg-rose-950/50 border border-rose-500/20 text-rose-300 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer"
+                  id="archive-protocol-trigger-btn"
+                >
+                  <Archive className="w-3.5 h-3.5 text-rose-400" />
+                  <span>Archive Protocol</span>
+                </button>
+              </div>
             </div>
           </div>
-
-        </div>
-
-        {/* --- CLONING & ARCHIVING ADVANCED CONTROLS --- */}
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="space-y-1 text-center sm:text-left">
-            <h4 className="text-sm font-bold text-slate-200">Advanced Campaign Lifecycle Controls</h4>
-            <p className="text-xs text-slate-400">Clone current campaign presets to start fresh, or complete the 5-step Reconciliation Archive protocol.</p>
-          </div>
-
-          <div className="flex gap-3 w-full sm:w-auto shrink-0">
-            <button
-              onClick={handleCloneCampaign}
-              className="flex-1 sm:flex-none px-4 py-2.5 bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition cursor-pointer"
-              id="clone-campaign-settings-btn"
-            >
-              <RefreshCw className="w-3.5 h-3.5 text-indigo-400" />
-              Clone Campaign Settings
-            </button>
-
-            <button
-              onClick={() => {
-                if (checkPermission("Archive Campaign", ["Chairperson"])) {
-                  setArchiveStep(1);
-                  setIsArchiveModalOpen(true);
-                }
-              }}
-              className="flex-1 sm:flex-none px-4 py-2.5 bg-rose-950/30 hover:bg-rose-950/50 border border-rose-500/20 text-rose-300 text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition cursor-pointer"
-              id="archive-protocol-trigger-btn"
-            >
-              <Archive className="w-3.5 h-3.5 text-rose-400" />
-              Reconciliation Archive Protocol
-            </button>
-          </div>
-        </div>
+        </details>
 
       </div>
 
-      {/* --- ADD MANUAL CONTRIBUTION DIALOG MODAL --- */}
+      {/* --- ADD/RECEIVE CONTRIBUTION WORKFLOW MODAL --- */}
       {showAddContribution && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in-overlay">
-          <div className="bg-slate-900 border border-slate-800 max-w-md w-full rounded-2xl p-6 relative shadow-2xl animate-scale-up">
-            <h3 className="text-base font-bold text-white mb-4">Log Manual Cash Deposit</h3>
-            
-            {formError && (
-              <div className="p-2.5 bg-rose-950/25 border border-rose-500/20 text-rose-300 text-xs font-semibold rounded-lg mb-4">
-                {formError}
-              </div>
-            )}
+          {contributionMethod === null ? (
+            /* --- STEP 1: CONTRIBUTION METHOD SELECTION MODAL --- */
+            <div className="bg-slate-900 border border-slate-800 max-w-lg w-full rounded-3xl p-6 relative shadow-2xl animate-scale-up space-y-5">
+              <button
+                onClick={() => setShowAddContribution(false)}
+                className="absolute top-5 right-5 p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition cursor-pointer"
+                id="close-method-selection-modal-btn"
+              >
+                <X className="w-5 h-5" />
+              </button>
 
-            <form onSubmit={handleManualAddSubmit} className="space-y-4 text-xs font-sans">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <h3 className="text-xl font-black text-white tracking-tight">Receive Contribution</h3>
+                <p className="text-xs text-slate-400 font-medium">How was this contribution received?</p>
+              </div>
+
+              {/* 4 Large Clickable Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                
+                {/* Option 1: M-PESA STK Push */}
+                <div 
+                  onClick={() => {
+                    setContributionMethod("stk");
+                    setFormCategory("Well-wisher");
+                  }}
+                  className="p-4 bg-slate-950 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/50 rounded-2xl flex flex-col justify-between gap-3 transition cursor-pointer group active:scale-98 shadow-sm"
+                  id="method-card-stk-push"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-xl group-hover:bg-emerald-500 group-hover:text-slate-950 transition-colors">
+                        <Smartphone className="w-5 h-5 stroke-[2.5]" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                        Live Prompt
+                      </span>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-white group-hover:text-emerald-400 transition-colors">📱 M-PESA STK Push</h4>
+                      <p className="text-[11px] text-slate-400 leading-relaxed mt-1">Initiate an STK Push directly to the contributor's phone.</p>
+                    </div>
+                  </div>
+                  <button 
+                    type="button" 
+                    className="w-full py-2 bg-emerald-500/10 group-hover:bg-emerald-500 text-emerald-400 group-hover:text-slate-950 text-xs font-bold rounded-xl transition-colors border border-emerald-500/20 cursor-pointer"
+                  >
+                    Start STK Push
+                  </button>
+                </div>
+
+                {/* Option 2: Existing M-PESA Payment */}
+                <div 
+                  onClick={() => {
+                    setContributionMethod("mpesa_existing");
+                    setFormCategory("Well-wisher");
+                  }}
+                  className="p-4 bg-slate-950 hover:bg-slate-850 border border-slate-800 hover:border-sky-500/50 rounded-2xl flex flex-col justify-between gap-3 transition cursor-pointer group active:scale-98 shadow-sm"
+                  id="method-card-existing-mpesa"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="p-2.5 bg-sky-500/10 text-sky-400 rounded-xl group-hover:bg-sky-500 group-hover:text-slate-950 transition-colors">
+                        <CheckCircle2 className="w-5 h-5 stroke-[2.5]" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded-full border border-sky-500/20">
+                        Paybill / Till
+                      </span>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-white group-hover:text-sky-400 transition-colors">✅ Existing M-PESA Payment</h4>
+                      <p className="text-[11px] text-slate-400 leading-relaxed mt-1">Record a payment already completed through Paybill or Till Number.</p>
+                    </div>
+                  </div>
+                  <button 
+                    type="button" 
+                    className="w-full py-2 bg-sky-500/10 group-hover:bg-sky-500 text-sky-400 group-hover:text-slate-950 text-xs font-bold rounded-xl transition-colors border border-sky-500/20 cursor-pointer"
+                  >
+                    Record M-PESA Payment
+                  </button>
+                </div>
+
+                {/* Option 3: Cash Contribution */}
+                <div 
+                  onClick={() => {
+                    setContributionMethod("cash");
+                    setFormCategory("Well-wisher");
+                  }}
+                  className="p-4 bg-slate-950 hover:bg-slate-850 border border-slate-800 hover:border-amber-500/50 rounded-2xl flex flex-col justify-between gap-3 transition cursor-pointer group active:scale-98 shadow-sm"
+                  id="method-card-cash"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="p-2.5 bg-amber-500/10 text-amber-400 rounded-xl group-hover:bg-amber-500 group-hover:text-slate-950 transition-colors">
+                        <Coins className="w-5 h-5 stroke-[2.5]" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                        Physical Cash
+                      </span>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-white group-hover:text-amber-400 transition-colors">💵 Cash Contribution</h4>
+                      <p className="text-[11px] text-slate-400 leading-relaxed mt-1">Record cash received during church service, fundraiser or community event.</p>
+                    </div>
+                  </div>
+                  <button 
+                    type="button" 
+                    className="w-full py-2 bg-amber-500/10 group-hover:bg-amber-500 text-amber-400 group-hover:text-slate-950 text-xs font-bold rounded-xl transition-colors border border-amber-500/20 cursor-pointer"
+                  >
+                    Record Cash
+                  </button>
+                </div>
+
+                {/* Option 4: Bank Deposit */}
+                <div 
+                  onClick={() => {
+                    setContributionMethod("bank");
+                    setFormCategory("Well-wisher");
+                  }}
+                  className="p-4 bg-slate-950 hover:bg-slate-850 border border-slate-800 hover:border-indigo-500/50 rounded-2xl flex flex-col justify-between gap-3 transition cursor-pointer group active:scale-98 shadow-sm"
+                  id="method-card-bank-deposit"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="p-2.5 bg-indigo-500/10 text-indigo-400 rounded-xl group-hover:bg-indigo-500 group-hover:text-slate-950 transition-colors">
+                        <Building2 className="w-5 h-5 stroke-[2.5]" />
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/20">
+                        Direct Transfer
+                      </span>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-white group-hover:text-indigo-400 transition-colors">🏦 Bank Deposit</h4>
+                      <p className="text-[11px] text-slate-400 leading-relaxed mt-1">Record funds deposited directly into the campaign bank account.</p>
+                    </div>
+                  </div>
+                  <button 
+                    type="button" 
+                    className="w-full py-2 bg-indigo-500/10 group-hover:bg-indigo-500 text-indigo-400 group-hover:text-slate-950 text-xs font-bold rounded-xl transition-colors border border-indigo-500/20 cursor-pointer"
+                  >
+                    Record Bank Deposit
+                  </button>
+                </div>
+
+              </div>
+
+              {/* Future Expansion Placeholder Note */}
+              <div className="pt-2 border-t border-slate-800/80 text-[10px] text-slate-500 font-mono text-center">
+                Future Expansion Ready: QR Payments • Card • USSD • Agency Banking • International Transfers
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowAddContribution(false)}
+                className="w-full py-2.5 bg-slate-850 hover:bg-slate-800 text-slate-300 font-bold text-xs rounded-xl transition cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            /* --- STEP 2: CONTRIBUTION DATA ENTRY FORM --- */
+            <div className="bg-slate-900 border border-slate-800 max-w-md w-full rounded-2xl p-6 relative shadow-2xl animate-scale-up space-y-4">
+              
+              {/* Navigation Header */}
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <button
+                  type="button"
+                  onClick={() => setContributionMethod(null)}
+                  className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition cursor-pointer font-medium"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Back to Methods</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddContribution(false);
+                    setContributionMethod(null);
+                  }}
+                  className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <h3 className="text-base font-black text-white">
+                {contributionMethod === "cash" && "Record Cash Contribution"}
+                {contributionMethod === "stk" && "Initiate M-PESA STK Push"}
+                {contributionMethod === "mpesa_existing" && "Record M-PESA Payment"}
+                {contributionMethod === "bank" && "Record Bank Deposit"}
+              </h3>
+
+              {/* Campaign Display Badge */}
+              <div className="p-3 bg-slate-950 border border-slate-800/80 rounded-xl flex items-center justify-between text-xs">
+                <span className="text-slate-400 font-mono text-[11px]">Campaign</span>
+                <span className="font-extrabold text-emerald-400 font-mono text-xs">{activeProject.name}</span>
+              </div>
+              
+              {formError && (
+                <div className="p-2.5 bg-rose-950/25 border border-rose-500/20 text-rose-300 text-xs font-semibold rounded-lg">
+                  {formError}
+                </div>
+              )}
+
+              <form onSubmit={handleManualAddSubmit} className="space-y-4 text-xs font-sans">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-slate-400 block font-bold">Contributor Name:</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Alice Atieno"
+                      value={formName}
+                      onChange={(e) => setFormName(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-hidden"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-slate-400 block font-bold">Phone Number (Optional):</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 254711223344"
+                      value={formPhone}
+                      onChange={(e) => setFormPhone(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-hidden font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-slate-400 block font-bold">Amount (KES):</label>
+                    <input
+                      type="number"
+                      required
+                      placeholder="e.g. 5000"
+                      value={formAmount}
+                      onChange={(e) => setFormAmount(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-hidden font-mono font-bold text-emerald-400"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-slate-400 block font-bold">Category:</label>
+                    <select
+                      value={formCategory}
+                      onChange={(e) => setFormCategory(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-hidden cursor-pointer"
+                    >
+                      <option value="Well-wisher">Well-wisher</option>
+                      <option value="Church Member">Church Member</option>
+                      <option value="Visitor">Visitor</option>
+                      <option value="Committee Member">Committee Member</option>
+                      <option value="Corporate Sponsor">Corporate Sponsor</option>
+                      <option value="Anonymous">Anonymous</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                </div>
+
                 <div className="space-y-1">
-                  <label className="text-slate-400 block font-bold">Sender Name:</label>
+                  <label className="text-slate-400 block font-bold">Notes (Optional):</label>
                   <input
                     type="text"
-                    required
-                    placeholder="e.g. Alice Atieno"
-                    value={formName}
-                    onChange={(e) => setFormName(e.target.value)}
+                    placeholder="e.g. Reconciled cash from physical envelope"
+                    value={formNotes}
+                    onChange={(e) => setFormNotes(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-hidden"
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-slate-400 block font-bold">Sender Phone:</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 254711223344"
-                    value={formPhone}
-                    onChange={(e) => setFormPhone(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-hidden font-mono"
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-slate-400 block font-bold">Amount (KES):</label>
-                  <input
-                    type="number"
-                    required
-                    placeholder="e.g. 5000"
-                    value={formAmount}
-                    onChange={(e) => setFormAmount(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-hidden font-mono font-bold text-emerald-400"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-slate-400 block font-bold">Category:</label>
-                  <select
-                    value={formCategory}
-                    onChange={(e) => setFormCategory(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-hidden cursor-pointer"
+                <div className="flex gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddContribution(false);
+                      setContributionMethod(null);
+                    }}
+                    className="flex-1 py-2.5 bg-slate-850 hover:bg-slate-800 text-slate-300 font-bold rounded-xl cursor-pointer transition"
                   >
-                    <option value="Well-wisher">Well-wisher</option>
-                    <option value="Family/Friends">Family/Friends</option>
-                    <option value="Committee Member">Committee Member</option>
-                    <option value="Sponsor">Sponsor</option>
-                  </select>
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl transition cursor-pointer active:scale-98"
+                  >
+                    {isSubmitting ? "Processing..." : (contributionMethod === "stk" ? "Start STK Push" : "Record Contribution")}
+                  </button>
                 </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-slate-400 block font-bold">Notes / Description / Receipt Ref:</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Reconciled cash from physical envelope"
-                  value={formNotes}
-                  onChange={(e) => setFormNotes(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-hidden"
-                />
-              </div>
-
-              <div className="flex gap-2.5 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddContribution(false)}
-                  className="flex-1 py-2.5 bg-slate-850 hover:bg-slate-800 text-slate-300 font-bold rounded-xl cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl transition cursor-pointer"
-                >
-                  {isSubmitting ? "Logging..." : "Confirm Ledger Receipt"}
-                </button>
-              </div>
-            </form>
-          </div>
+              </form>
+            </div>
+          )}
         </div>
       )}
 
@@ -1765,6 +1884,149 @@ Thank you for your generous support!`;
                 )}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- INVITE COMMITTEE MEMBERS MODAL --- */}
+      {showInviteCommitteeModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in-overlay">
+          <div className="bg-slate-900 border border-slate-800 max-w-md w-full rounded-2xl p-6 relative shadow-2xl animate-scale-up space-y-4">
+            
+            <button
+              type="button"
+              onClick={() => setShowInviteCommitteeModal(false)}
+              className="absolute top-5 right-5 p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition cursor-pointer"
+              id="close-invite-committee-modal-btn"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl">
+                  <Users className="w-5 h-5" />
+                </div>
+                <h3 className="text-lg font-black text-white tracking-tight">Invite Committee Members</h3>
+              </div>
+              <p className="text-xs text-slate-400 font-medium leading-relaxed pt-1">
+                Invite trusted people to help manage this campaign.
+              </p>
+            </div>
+
+            {/* Campaign info badge */}
+            <div className="p-3 bg-slate-950 border border-slate-800/80 rounded-xl flex items-center justify-between text-xs">
+              <span className="text-slate-400 font-mono text-[11px]">Campaign</span>
+              <span className="font-extrabold text-emerald-400 font-mono text-xs">{activeProject.name}</span>
+            </div>
+
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                showToast(`Invitation created for ${inviteName || "committee member"} as ${inviteRole}!`, "success");
+                setShowInviteCommitteeModal(false);
+              }} 
+              className="space-y-3.5 text-xs font-sans"
+            >
+              <div className="space-y-1">
+                <label className="text-slate-400 block font-bold">Name:</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Elder James Omondi"
+                  value={inviteName}
+                  onChange={(e) => setInviteName(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 focus:outline-hidden"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-slate-400 block font-bold">Phone or Email:</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="2547... or email"
+                    value={inviteContact}
+                    onChange={(e) => setInviteContact(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 focus:outline-hidden font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-slate-400 block font-bold">Role:</label>
+                  <select
+                    value={inviteRole}
+                    onChange={(e) => setInviteRole(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 focus:outline-hidden cursor-pointer"
+                  >
+                    <option value="Co-Treasurer">Co-Treasurer</option>
+                    <option value="Committee Member">Committee Member</option>
+                    <option value="Secretary">Secretary</option>
+                    <option value="Campaign Manager">Campaign Manager</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Action Buttons for Copying Link & WhatsApp Sharing */}
+              <div className="space-y-2 pt-2 border-t border-slate-800/80">
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const link = `${window.location.origin}?invite=${activeProject.id}&role=${encodeURIComponent(inviteRole)}`;
+                      navigator.clipboard.writeText(link);
+                      setCopiedInviteLink(true);
+                      showToast("Invitation link copied to clipboard!", "success");
+                      setTimeout(() => setCopiedInviteLink(false), 2500);
+                    }}
+                    className="py-2.5 bg-slate-950 hover:bg-slate-850 border border-slate-800 text-slate-200 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-98"
+                    id="copy-invite-link-btn"
+                  >
+                    {copiedInviteLink ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-emerald-400">Link Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Copy Link</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const msg = `Hello ${inviteName.trim() || "there"}! You have been invited to join the ${activeProject.name} campaign on HarambeeFlow as a ${inviteRole}. Join the campaign team here: ${window.location.origin}?invite=${activeProject.id}`;
+                      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+                    }}
+                    className="py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-98"
+                    id="share-whatsapp-invite-btn"
+                  >
+                    <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Share WhatsApp</span>
+                  </button>
+                </div>
+
+                <div className="flex gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowInviteCommitteeModal(false)}
+                    className="flex-1 py-2.5 bg-slate-850 hover:bg-slate-800 text-slate-300 font-bold rounded-xl cursor-pointer transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl transition cursor-pointer active:scale-98"
+                  >
+                    Record Invitation
+                  </button>
+                </div>
+              </div>
+            </form>
           </div>
         </div>
       )}
