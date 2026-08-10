@@ -74,6 +74,10 @@ export default function Sidebar({
     { id: "trust", label: "Trust & Security", icon: Shield, desc: "Fintech compliance, non-custodial money details" },
   ];
 
+  const commItems = [
+    { id: "whatsapp-logs", label: "WhatsApp Logs", icon: MessageSquare, desc: "Track delivery and read status of WhatsApp confirmations" },
+  ];
+
   const userItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, desc: "Treasurer Command Center & AI recommendations" },
     { id: "campaigns", label: "Campaigns", icon: Target, desc: "Plan, execute, monitor, automate, celebrate, and archive campaigns" },
@@ -278,6 +282,7 @@ export default function Sidebar({
             {renderSection("Campaign Actions", campaignActionItems)}
             {renderSection("Public Portal", publicItems)}
             {renderSection("Participant Desks", userItems)}
+            {renderSection("Communications", commItems)}
             {isDeveloperMode && (
               <>
                 {renderSection("System & Compliance", systemItems)}

@@ -54,10 +54,11 @@ import CampaignLifecycleCenter from "./components/CampaignLifecycleCenter";
 import InteractiveTour from "./components/InteractiveTour";
 import SupporterRelationshipCenter from "./components/SupporterRelationshipCenter";
 import CommunicationsAutomationCenter from "./components/CommunicationsAutomationCenter";
+import WhatsAppLogsView from "./components/WhatsAppLogsView";
 import PlatformIntelligenceDashboard from "./components/PlatformIntelligenceDashboard";
 import { EventBus } from "./utils/eventBus";
 import { Project, Contribution, WhatsAppMessage } from "./types";
-import { Sparkles, Menu, X, Plus, Calendar, Coins, Users, Smartphone, CheckCircle2, Download, ExternalLink, Wifi, Battery, LayoutDashboard, Landmark, Megaphone, FileText, Settings, HeartHandshake, Share2, Eye, TrendingUp, Layers, Cpu, Briefcase, CreditCard, ChevronDown, FolderOpen, Bell, Search } from "lucide-react";
+import { Sparkles, Menu, X, Plus, Calendar, Coins, Users, Smartphone, CheckCircle2, Download, ExternalLink, Wifi, Battery, LayoutDashboard, Landmark, Megaphone, FileText, Settings, HeartHandshake, Share2, Eye, TrendingUp, Layers, Cpu, Briefcase, CreditCard, ChevronDown, FolderOpen, Bell, Search, MessageSquare } from "lucide-react";
 import { onAuthStateChanged, signOut, User as FirebaseUser, GoogleAuthProvider, linkWithCredential, signInWithPopup } from "firebase/auth";
 import { 
   collection, 
@@ -2599,6 +2600,7 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
                             { id: "campaigns", label: "Campaigns", icon: Layers },
                             { id: "supporters", label: "Supporters ⭐", icon: Users },
                             { id: "communications", label: "Communications 💬", icon: Megaphone },
+                            { id: "whatsapp-logs", label: "WhatsApp Logs", icon: MessageSquare },
                             { id: "autopilot", label: "Autopilot AI 🧠", icon: Cpu },
                             { id: "committee", label: "Committee", icon: Landmark },
                             { id: "documents", label: "Documents 📂", icon: Briefcase },
@@ -2695,7 +2697,7 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
                       />
                     ))}
 
-                    {activeTab === "campaigns" && activeProject && (
+                    {activeTab === "campaigns" && (
                       <CampaignLifecycleCenter
                         activeProject={activeProject}
                         projects={projects}
@@ -2705,6 +2707,7 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
                         isDemoMode={isDemoMode}
                         currentUser={currentUser}
                         onUpdateProject={handleUpdateProjectBranding}
+                        onCreateCampaign={handleTriggerCreateCampaign}
                         onPostWebhook={async (payload) => {
                           if (isDemoMode) {
                             const newMsg: WhatsAppMessage = {
@@ -2744,6 +2747,17 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
                         contributions={contributions}
                         isDemoMode={isDemoMode}
                         currentUser={currentUser}
+                      />
+                    )}
+
+                    {activeTab === "whatsapp-logs" && (
+                      <WhatsAppLogsView
+                        activeProject={activeProject}
+                        projects={projects}
+                        contributions={contributions}
+                        isDemoMode={isDemoMode}
+                        currentUser={currentUser}
+                        onNavigateToCampaign={(campId) => handleSetActiveTab("campaigns")}
                       />
                     )}
 

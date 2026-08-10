@@ -194,3 +194,22 @@ export interface CampaignArchiveRecord {
   ledgerChecksum: string;
 }
 
+export interface WhatsAppConfirmation {
+  id: string;
+  contributionId?: string;
+  donorName: string;
+  donorPhone: string;
+  campaignId: string;
+  campaignName: string;
+  amount: number;
+  mpesaRef: string;
+  whatsappStatus: "Read" | "Delivered" | "Pending" | "Failed";
+  sentAt: string;
+  deliveredAt?: string;
+  readAt?: string;
+  failedAt?: string;
+  failureReason?: string;
+  messageText?: string;
+}
+
+

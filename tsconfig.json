@@ -22,5 +22,11 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "exclude": [
+    "restore_points",
+    ".restore_points",
+    "node_modules",
+    "dist"
+  ]
 }
