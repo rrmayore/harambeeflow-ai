@@ -209,29 +209,45 @@ export default function CommunicationsAutomationCenter({
       setBroadcasts(defaultBroadcasts);
     } else {
       // Connect to Firestore collections
-      const unsubTemplates = onSnapshot(collection(db, "messageTemplates"), (snap) => {
-        const list: any[] = [];
-        snap.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
-        setLocalTemplates(list.length > 0 ? list : defaultTemplates);
-      });
+      const unsubTemplates = onSnapshot(
+        collection(db, "messageTemplates"),
+        (snap) => {
+          const list: any[] = [];
+          snap.forEach((doc) => list.push({ id: doc.id, ...doc.data() }));
+          setLocalTemplates(list.length > 0 ? list : defaultTemplates);
+        },
+        (err) => console.error("Error listening to messageTemplates:", err)
+      );
 
-      const unsubAutomations = onSnapshot(collection(db, "automationFlows"), (snap) => {
-        const list: any[] = [];
-        snap.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
-        setLocalAutomations(list.length > 0 ? list : defaultAutomations);
-      });
+      const unsubAutomations = onSnapshot(
+        collection(db, "automationFlows"),
+        (snap) => {
+          const list: any[] = [];
+          snap.forEach((doc) => list.push({ id: doc.id, ...doc.data() }));
+          setLocalAutomations(list.length > 0 ? list : defaultAutomations);
+        },
+        (err) => console.error("Error listening to automationFlows:", err)
+      );
 
-      const unsubLogs = onSnapshot(collection(db, "deliveryLogs"), (snap) => {
-        const list: any[] = [];
-        snap.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
-        setTimelineLogs(list.length > 0 ? list : defaultLogs);
-      });
+      const unsubLogs = onSnapshot(
+        collection(db, "deliveryLogs"),
+        (snap) => {
+          const list: any[] = [];
+          snap.forEach((doc) => list.push({ id: doc.id, ...doc.data() }));
+          setTimelineLogs(list.length > 0 ? list : defaultLogs);
+        },
+        (err) => console.error("Error listening to deliveryLogs:", err)
+      );
 
-      const unsubBroadcasts = onSnapshot(collection(db, "broadcasts"), (snap) => {
-        const list: any[] = [];
-        snap.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
-        setBroadcasts(list.length > 0 ? list : defaultBroadcasts);
-      });
+      const unsubBroadcasts = onSnapshot(
+        collection(db, "broadcasts"),
+        (snap) => {
+          const list: any[] = [];
+          snap.forEach((doc) => list.push({ id: doc.id, ...doc.data() }));
+          setBroadcasts(list.length > 0 ? list : defaultBroadcasts);
+        },
+        (err) => console.error("Error listening to broadcasts:", err)
+      );
 
       return () => {
         unsubTemplates();

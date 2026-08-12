@@ -2735,9 +2735,11 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
                     {activeTab === "supporters" && activeProject && (
                       <SupporterRelationshipCenter
                         activeProject={activeProject}
+                        projects={projects}
                         contributions={contributions}
                         isDemoMode={isDemoMode}
                         currentUser={currentUser}
+                        onNavigateToCampaign={(campId) => handleSetActiveTab("campaigns")}
                       />
                     )}
 

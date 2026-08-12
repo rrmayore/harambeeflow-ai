@@ -168,95 +168,8 @@ export default function CampaignLifecycleCenter({
   // Dynamic calculations for focused campaign
   const focusedContributions = useMemo(() => {
     if (!currentProjectId) return [];
-    return contributions.filter(c => (c.projectId === currentProjectId || c.campaignId === currentProjectId || c.fundraiserId === currentProjectId) && !c.hasDuplicates);
+    return contributions.filter(c => (c.projectId === currentProjectId || c.campaignId === currentProjectId) && !c.hasDuplicates);
   }, [contributions, currentProjectId]);
-
-  // All contribution records associated with the campaign (for timeline activity, including pending/failed)
-  const campaignContributionsForTimeline = useMemo(() => {
-    if (!currentProjectId) return [];
-    return contributions.filter(c => 
-      c.projectId === currentProjectId || 
-      c.campaignId === currentProjectId || 
-      c.fundraiserId === currentProjectId
-    );
-  }, [contributions, currentProjectId]);
-
-  // Unified timeline feed combining campaign lifecycle events and derived contribution activity
-  const combinedTimeline = useMemo(() => {
-    if (!currentProjectId) return [];
-
-    const baseTimeline = timeline.filter(ev => !ev.projectId || ev.projectId === currentProjectId);
-
-    const derivedEvents: (CampaignTimelineEvent & { contributionStatus?: "completed" | "pending" | "failed" | "cancelled" })[] = [];
-
-    for (const c of campaignContributionsForTimeline) {
-      const txCode = c.transactionCode || c.receiptNumber || "";
-      const contribId = c.id || txCode;
-
-      // Duplicate protection: Check if existing timeline already contains an event for this contribution
-      const isAlreadyInTimeline = baseTimeline.some(ev => {
-        if (ev.id === contribId || ev.id === `tl-${contribId}` || ev.id === `sys-${contribId}`) return true;
-        if (txCode && (ev.id.includes(txCode) || ev.title.includes(txCode) || ev.description.includes(txCode))) return true;
-        return false;
-      });
-
-      if (isAlreadyInTimeline) continue;
-
-      const rawStatus = (c.status || "").toLowerCase();
-      let statusLabel = "Contribution Received";
-      let statusBadge: "completed" | "pending" | "failed" | "cancelled" = "completed";
-
-      if (rawStatus === "pending" || rawStatus === "initiated") {
-        statusLabel = "Contribution Pending";
-        statusBadge = "pending";
-      } else if (rawStatus === "failed" || rawStatus === "error") {
-        statusLabel = "Contribution Failed";
-        statusBadge = "failed";
-      } else if (rawStatus === "cancelled") {
-        statusLabel = "Contribution Cancelled";
-        statusBadge = "cancelled";
-      } else {
-        statusLabel = "Contribution Received";
-        statusBadge = "completed";
-      }
-
-      const supporterName =
-        c.senderName ||
-        c.cleanedName ||
-        (c.firstName ? `${c.firstName} ${c.lastName || ""}`.trim() : "") ||
-        "M-PESA Supporter";
-
-      const phoneStr = c.senderPhone || c.phoneNumber || "";
-      const amountVal = Number(c.amount || 0);
-      const amountStr = `KES ${amountVal.toLocaleString()}`;
-
-      let desc = `${supporterName}${phoneStr ? ` (${phoneStr})` : ""} • ${amountStr}`;
-      if (txCode) desc += ` • Ref: ${txCode}`;
-      if (c.notes) desc += ` — ${c.notes}`;
-
-      const timestampIso = c.timestamp || c.transactionTime || new Date().toISOString();
-
-      derivedEvents.push({
-        id: `derived-${contribId}`,
-        projectId: currentProjectId,
-        title: `${statusLabel} — ${amountStr}`,
-        description: desc,
-        timestamp: timestampIso,
-        status: (statusBadge === "completed" ? "Active" : "Planning") as any,
-        type: "system",
-        contributionStatus: statusBadge
-      });
-    }
-
-    const merged = [...baseTimeline, ...derivedEvents];
-    merged.sort((a, b) => {
-      const timeA = new Date(a.timestamp).getTime();
-      const timeB = new Date(b.timestamp).getTime();
-      return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
-    });
-
-    return merged;
-  }, [currentProjectId, timeline, campaignContributionsForTimeline]);
 
   const focusedRaised = useMemo(() => {
     return focusedContributions.reduce((sum, c) => sum + c.amount, 0);
@@ -1551,54 +1464,22 @@ export default function CampaignLifecycleCenter({
               {/* SUB TAB 3: TIMELINE FEED */}
               {activeSubTab === "timeline" && (
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-slate-900">Campaign Activity Timeline</h3>
-                    <span className="text-xs font-mono font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
-                      {combinedTimeline.length} {combinedTimeline.length === 1 ? "Event" : "Events"}
-                    </span>
-                  </div>
+                  <h3 className="text-sm font-bold text-slate-900">Campaign Activity Timeline</h3>
                   <div className="space-y-3">
-                    {combinedTimeline.length === 0 ? (
+                    {timeline.length === 0 ? (
                       <p className="text-xs text-slate-400 text-center py-6">No activity recorded yet.</p>
                     ) : (
-                      combinedTimeline.map((ev: any) => {
-                        const contribStatus = ev.contributionStatus;
-                        const formattedDate = ev.timestamp ? (() => {
-                          try {
-                            const d = new Date(ev.timestamp);
-                            if (isNaN(d.getTime())) return ev.timestamp;
-                            return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                          } catch (e) {
-                            return ev.timestamp;
-                          }
-                        })() : "";
-
-                        return (
-                          <div key={ev.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1.5 break-words">
-                            <div className="flex items-center justify-between flex-wrap gap-2">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-bold text-slate-900">{ev.title}</span>
-                                {contribStatus === "completed" && (
-                                  <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">Received</span>
-                                )}
-                                {contribStatus === "pending" && (
-                                  <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-100 text-amber-800 border border-amber-200">Pending</span>
-                                )}
-                                {contribStatus === "failed" && (
-                                  <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-100 text-rose-800 border border-rose-200">Failed</span>
-                                )}
-                                {contribStatus === "cancelled" && (
-                                  <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-slate-100 text-slate-700 border border-slate-200">Cancelled</span>
-                                )}
-                              </div>
-                              <span className="text-[10px] text-slate-400 font-mono shrink-0">
-                                {formattedDate}
-                              </span>
-                            </div>
-                            <p className="text-slate-600 font-medium leading-relaxed">{ev.description}</p>
+                      timeline.map((ev) => (
+                        <div key={ev.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-slate-900">{ev.title}</span>
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              {new Date(ev.timestamp).toLocaleDateString()}
+                            </span>
                           </div>
-                        );
-                      })
+                          <p className="text-slate-600 font-medium">{ev.description}</p>
+                        </div>
+                      ))
                     )}
                   </div>
                 </div>

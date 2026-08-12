@@ -622,11 +622,11 @@ export default function PlatformIntelligenceDashboard({ isDemoMode = true }: Pla
         </div>
 
         {/* 4. Live Activity Section */}
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-6 shadow-xs space-y-5 max-w-full overflow-hidden" id="live-activity-section">
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-5 sm:p-6 shadow-xs space-y-5" id="live-activity-section">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
             <div>
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <Activity className="w-5 h-5 text-emerald-600 shrink-0" />
+                <Activity className="w-5 h-5 text-emerald-600" />
                 Live Activity Feed
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">Real-time operational events processed by HarambeeFlow Autopilot.</p>
@@ -637,12 +637,12 @@ export default function PlatformIntelligenceDashboard({ isDemoMode = true }: Pla
           </div>
 
           {/* Filter controls */}
-          <div className="flex flex-wrap items-center gap-1.5 max-w-full overflow-x-auto pb-0.5" id="event-filters-box">
+          <div className="flex flex-wrap gap-1.5" id="event-filters-box">
             {["ALL", "CONTRIBUTIONS", "PLEDGES", "CampaignMilestoneReached", "ReportGenerated"].map(f => (
               <button
                 key={f}
                 onClick={() => setFilterType(f)}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition cursor-pointer shrink-0 min-h-[36px] ${
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition cursor-pointer ${
                   filterType === f 
                     ? "bg-emerald-600 text-white border-emerald-600" 
                     : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
@@ -654,10 +654,10 @@ export default function PlatformIntelligenceDashboard({ isDemoMode = true }: Pla
           </div>
 
           {/* Events Grid / List */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full min-w-0">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Left list: events */}
-            <div className={`${selectedEvent ? "lg:col-span-6" : "lg:col-span-12"} space-y-3 min-w-0 w-full`}>
-              <div className="space-y-2.5 max-h-[520px] overflow-y-auto pr-1 min-w-0 w-full">
+            <div className={`${selectedEvent ? "lg:col-span-6" : "lg:col-span-12"} space-y-3`}>
+              <div className="space-y-2.5 max-h-[480px] overflow-y-auto pr-1">
                 {isLoadingEvents ? (
                   <div className="text-center font-sans text-slate-500 text-xs py-12 border border-dashed border-slate-200 rounded-xl flex items-center justify-center gap-2">
                     <RefreshCw className="w-4 h-4 animate-spin text-emerald-600" />
@@ -714,13 +714,13 @@ export default function PlatformIntelligenceDashboard({ isDemoMode = true }: Pla
                       <button
                         key={evt.id}
                         onClick={() => handleSelectEvent(evt)}
-                        className={`w-full min-w-0 text-left p-3 sm:p-3.5 rounded-xl border transition cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 ${
+                        className={`w-full text-left p-3.5 rounded-xl border transition cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                           isSelected 
                             ? "bg-emerald-50/60 border-emerald-500 ring-2 ring-emerald-500/20 shadow-xs" 
                             : "bg-white hover:bg-slate-50 border-slate-200"
                         }`}
                       >
-                        <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 w-full flex-1">
+                        <div className="flex items-start gap-3 min-w-0">
                           <div className={`p-2 rounded-xl shrink-0 mt-0.5 ${
                             evt.type === "ContributionReceived" ? "bg-emerald-100 text-emerald-700" :
                             evt.type === "PledgeCreated" ? "bg-indigo-100 text-indigo-700" :
@@ -733,29 +733,29 @@ export default function PlatformIntelligenceDashboard({ isDemoMode = true }: Pla
                              <Cpu className="w-4 h-4" />}
                           </div>
 
-                          <div className="min-w-0 flex-1 w-full overflow-hidden">
-                            <div className="flex items-center gap-1.5 flex-wrap min-w-0 w-full">
-                              <span className="font-bold text-xs text-slate-900 break-words min-w-0">{eventTitle}</span>
-                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${badgeStyle}`}>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-xs text-slate-900">{eventTitle}</span>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeStyle}`}>
                                 {badgeText}
                               </span>
                             </div>
 
-                            <p className="text-xs text-slate-600 font-medium mt-1 leading-snug break-words max-w-full min-w-0">
+                            <p className="text-xs text-slate-600 font-medium mt-1 leading-snug break-words">
                               {sender ? `${sender}${amtStr ? ` — ${amtStr}` : ""}` : detailsText || "System activity dispatch"}
                             </p>
 
-                            <p className="text-[10px] font-mono text-slate-400 mt-1 truncate max-w-full min-w-0 block">
+                            <p className="text-[10px] font-mono text-slate-400 mt-1">
                               ID: {evt.id}
                             </p>
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 w-full sm:w-auto border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100 min-w-0">
+                        <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100">
                           <span className="text-[10px] font-mono text-slate-500">
                             {formattedTime}
                           </span>
-                          <span className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 flex items-center gap-0.5 shrink-0">
+                          <span className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 flex items-center gap-0.5">
                             Details &rarr;
                           </span>
                         </div>
@@ -772,54 +772,54 @@ export default function PlatformIntelligenceDashboard({ isDemoMode = true }: Pla
 
             {/* Right panel: Expanded technical pipeline details for selected event */}
             {selectedEvent && (
-              <div className="lg:col-span-6 bg-slate-50 border border-slate-200/80 rounded-2xl p-4 sm:p-5 space-y-4 min-w-0 w-full overflow-hidden mt-2 lg:mt-0" id="event-detail-drawer">
-                <div className="flex items-center justify-between border-b border-slate-200 pb-3 gap-2 min-w-0">
-                  <div className="min-w-0 flex-1">
+              <div className="lg:col-span-6 bg-slate-50 border border-slate-200/80 rounded-2xl p-4 sm:p-5 space-y-4" id="event-detail-drawer">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                  <div>
                     <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Event Pipeline Inspection</span>
-                    <h4 className="text-sm font-bold text-slate-900 mt-0.5 truncate">{selectedEvent.type}</h4>
+                    <h4 className="text-sm font-bold text-slate-900 mt-0.5">{selectedEvent.type}</h4>
                   </div>
                   <button
                     onClick={() => setSelectedEvent(null)}
-                    className="text-xs text-slate-500 hover:text-slate-800 px-2.5 py-1 rounded-lg bg-slate-200/70 hover:bg-slate-200 font-medium transition cursor-pointer shrink-0 min-h-[32px] flex items-center justify-center"
+                    className="text-xs text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
                   >
                     Close ✕
                   </button>
                 </div>
 
                 {/* Technical Metadata Box */}
-                <div className="bg-white border border-slate-200 p-3.5 rounded-xl space-y-2 text-xs font-mono min-w-0 w-full overflow-hidden">
-                  <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-100 pb-1.5 gap-0.5 sm:gap-2 min-w-0">
-                    <span className="text-slate-500 font-medium shrink-0">Tracking ID:</span>
-                    <span className="text-slate-900 font-bold select-all break-all sm:text-right min-w-0 flex-1">{selectedEvent.id}</span>
+                <div className="bg-white border border-slate-200 p-3.5 rounded-xl space-y-2 text-xs font-mono">
+                  <div className="flex justify-between border-b border-slate-100 pb-1.5 flex-wrap gap-1">
+                    <span className="text-slate-500 font-medium">Tracking ID:</span>
+                    <span className="text-slate-900 font-bold select-all break-all">{selectedEvent.id}</span>
                   </div>
-                  <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-100 pb-1.5 gap-0.5 sm:gap-2 min-w-0">
-                    <span className="text-slate-500 font-medium shrink-0">Published:</span>
-                    <span className="text-slate-700 font-semibold sm:text-right min-w-0">{new Date(selectedEvent.timestamp).toLocaleString()}</span>
+                  <div className="flex justify-between border-b border-slate-100 pb-1.5 flex-wrap gap-1">
+                    <span className="text-slate-500 font-medium">Published:</span>
+                    <span className="text-slate-700 font-semibold">{new Date(selectedEvent.timestamp).toLocaleString()}</span>
                   </div>
-                  <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-100 pb-1.5 gap-0.5 sm:gap-2 min-w-0">
-                    <span className="text-slate-500 font-medium shrink-0">Source:</span>
-                    <span className="text-indigo-700 font-bold uppercase sm:text-right min-w-0">{selectedEvent.source === "client" ? "Fintech Endpoint" : "Cloud Run Processor"}</span>
+                  <div className="flex justify-between border-b border-slate-100 pb-1.5 flex-wrap gap-1">
+                    <span className="text-slate-500 font-medium">Source:</span>
+                    <span className="text-indigo-700 font-bold uppercase">{selectedEvent.source === "client" ? "Fintech Endpoint" : "Cloud Run Processor"}</span>
                   </div>
-                  <div className="flex flex-col sm:flex-row sm:justify-between border-b border-slate-100 pb-1.5 gap-0.5 sm:gap-2 min-w-0">
-                    <span className="text-slate-500 font-medium shrink-0">Pipeline Status:</span>
+                  <div className="flex justify-between flex-wrap gap-1">
+                    <span className="text-slate-500 font-medium">Pipeline Status:</span>
                     {selectedEventLogs.some(l => l.status === "failed") ? (
-                      <span className="text-rose-700 font-bold flex items-center gap-1 sm:justify-end shrink-0">
+                      <span className="text-rose-700 font-bold flex items-center gap-1">
                         <AlertTriangle className="w-3.5 h-3.5" /> FAILED
                       </span>
                     ) : selectedEventLogs.length > 0 ? (
-                      <span className="text-emerald-700 font-bold flex items-center gap-1 sm:justify-end shrink-0">
+                      <span className="text-emerald-700 font-bold flex items-center gap-1">
                         <CheckCircle2 className="w-3.5 h-3.5" /> ✓ AUTOMATED SUCCESS
                       </span>
                     ) : selectedEvent.processed ? (
-                      <span className="text-emerald-700 font-bold sm:text-right shrink-0">✓ PROCESSED</span>
+                      <span className="text-emerald-700 font-bold">✓ PROCESSED</span>
                     ) : (
-                      <span className="text-slate-500 font-medium italic sm:text-right shrink-0">NO EXECUTION RECORD</span>
+                      <span className="text-slate-500 font-medium italic">NO EXECUTION RECORD</span>
                     )}
                   </div>
                 </div>
 
                 {/* Execution Logs */}
-                <div className="space-y-2 bg-white border border-slate-200 rounded-xl p-3.5 max-h-[280px] overflow-y-auto min-w-0 w-full overflow-hidden">
+                <div className="space-y-2 bg-white border border-slate-200 rounded-xl p-3.5 max-h-[280px] overflow-y-auto">
                   <span className="text-[11px] font-bold text-slate-700 block mb-2">
                     Autopilot Execution Steps Log
                   </span>
@@ -831,22 +831,22 @@ export default function PlatformIntelligenceDashboard({ isDemoMode = true }: Pla
                   ) : selectedEventLogs.length > 0 ? (
                     <div className="space-y-2.5">
                       {selectedEventLogs.map((log) => (
-                        <div key={log.id} className="flex items-start gap-2.5 text-xs min-w-0 w-full border-b border-slate-50 last:border-0 pb-2 last:pb-0">
+                        <div key={log.id} className="flex items-start gap-2.5 text-xs">
                           {log.status === "failed" ? (
                             <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                           ) : (
                             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                           )}
-                          <div className="flex-1 min-w-0 overflow-hidden">
-                            <p className="font-semibold text-slate-800 leading-snug break-words max-w-full">{log.pipelineStep}</p>
-                            <span className="text-[10px] font-mono text-slate-400 block mt-0.5">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-slate-800 leading-snug">{log.pipelineStep}</p>
+                            <span className="text-[10px] font-mono text-slate-400">
                               Verified at {new Date(log.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", fractionalSecondDigits: 3 })}
                             </span>
                             {log.details && (
-                              <p className="text-[11px] text-slate-500 font-mono mt-0.5 break-words max-w-full">{log.details}</p>
+                              <p className="text-[11px] text-slate-500 font-mono mt-0.5">{log.details}</p>
                             )}
                           </div>
-                          <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md shrink-0 border ml-auto ${
+                          <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md shrink-0 border ${
                             log.status === "failed"
                               ? "bg-rose-50 text-rose-700 border-rose-200"
                               : "bg-emerald-50 text-emerald-700 border-emerald-200"

@@ -1,5 +1,5 @@
 import { db, auth } from "../firebase";
-import { doc, setDoc, addDoc, collection, getDocs, updateDoc, getDoc, query, where, limit } from "firebase/firestore";
+import { doc, setDoc, addDoc, collection, getDocs, updateDoc, getDoc } from "firebase/firestore";
 import { Project, Contribution, Pledge, Notification } from "../types";
 
 export type EventType =
@@ -126,8 +126,8 @@ export class EventBus {
       return event;
     }
 
-    // 2. Persist to Firestore eventBus and eventQueue if online & db is active
-    if (db) {
+    // 2. Persist to Firestore eventBus and eventQueue if online & live
+    if (!isDemoMode && db) {
       try {
         await setDoc(doc(db, "eventBus", eventId), event);
         await setDoc(doc(db, "eventQueue", eventId), {
@@ -197,13 +197,13 @@ export class EventBus {
       timestamp: new Date().toISOString(),
       status,
       durationMs,
-      error: error || null,
+      error,
     };
 
     // Update system health and metrics counters in local storage
     this.updateLocalMetrics(status === "success", durationMs);
 
-    if (db) {
+    if (!isDemoMode && db) {
       try {
         // Save to processedEvents
         await setDoc(doc(db, "processedEvents", processedRecord.id), processedRecord);
@@ -214,7 +214,7 @@ export class EventBus {
           status: status === "success" ? "processed" : "failed",
           processedAt: new Date().toISOString(),
           durationMs,
-          error: error || null,
+          error,
         });
 
         // Write system logs
@@ -296,73 +296,26 @@ export class EventBus {
   }
 
   /**
-   * Returns current count of queued offline events
+   * Attempts to synchronize offline queued events when internet connectivity is re-established
    */
-  static getOfflineQueueLength(): number {
-    return offlineQueue.length;
-  }
+  static async syncOfflineEvents(isDemoMode: boolean = false): Promise<void> {
+    if (!navigator.onLine || offlineQueue.length === 0) return;
+    console.log(`[EVENT BUS SYNC] Connection restored! Synchronizing ${offlineQueue.length} offline events.`);
 
-  /**
-   * Attempts to synchronize offline queued events when internet connectivity is re-established or manually triggered
-   */
-  static async syncOfflineEvents(isDemoMode: boolean = false): Promise<number> {
-    let syncedCount = 0;
+    const queueCopy = [...offlineQueue];
+    offlineQueue = [];
+    localStorage.setItem("harambeeflow_offline_events", JSON.stringify([]));
 
-    // 1. Process local memory / localStorage offline queue
-    if (offlineQueue.length > 0) {
-      console.log(`[EVENT BUS SYNC] Synchronizing ${offlineQueue.length} offline local events.`);
-      const queueCopy = [...offlineQueue];
-      offlineQueue = [];
-      localStorage.setItem("harambeeflow_offline_events", JSON.stringify([]));
-
-      for (const event of queueCopy) {
-        try {
-          await this.publish(event.type, event.payload, isDemoMode);
-          syncedCount++;
-        } catch (err) {
-          console.error(`Failed syncing offline event ${event.id}:`, err);
-          offlineQueue.push(event);
-          localStorage.setItem("harambeeflow_offline_events", JSON.stringify(offlineQueue));
-        }
-      }
-    }
-
-    // 2. Query Firestore eventQueue for any pending un-processed events
-    if (db) {
+    for (const event of queueCopy) {
       try {
-        const q = query(
-          collection(db, "eventQueue"),
-          where("status", "==", "pending"),
-          limit(50)
-        );
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-          for (const docSnap of snap.docs) {
-            const data = docSnap.data();
-            if (data && data.type) {
-              const evt: AppEvent = {
-                id: docSnap.id,
-                type: data.type,
-                timestamp: data.timestamp || new Date().toISOString(),
-                payload: data.payload || {},
-                userId: data.userId,
-                source: data.source || "client",
-                processed: false
-              };
-              await this.publish(evt.type, evt.payload, isDemoMode);
-              syncedCount++;
-            }
-          }
-        }
+        await this.publish(event.type, event.payload, isDemoMode);
       } catch (err) {
-        console.error("Error querying Firestore eventQueue during force sync:", err);
+        console.error(`Failed syncing offline event ${event.id}:`, err);
+        // Put back in queue if it completely failed to publish
+        offlineQueue.push(event);
+        localStorage.setItem("harambeeflow_offline_events", JSON.stringify(offlineQueue));
       }
     }
-
-    // Update local metrics after queue flush
-    this.updateLocalMetrics(true, 0);
-
-    return syncedCount;
   }
 
   /**
@@ -476,7 +429,7 @@ export class EventBus {
       console.error(e);
     }
 
-    if (db) {
+    if (!isDemoMode && db) {
       setDoc(doc(db, "automationExecutions", stepId), stepRecord).catch((e) =>
         console.error("Failed to log step to Firestore:", e)
       );

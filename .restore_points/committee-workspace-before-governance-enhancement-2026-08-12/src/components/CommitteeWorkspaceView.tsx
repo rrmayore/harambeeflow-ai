@@ -4,12 +4,11 @@ import {
   Users, UserPlus, Shield, MessageSquare, FileText, ClipboardList, 
   Send, Copy, Share2, Plus, Check, Trash2, ShieldAlert, ShieldCheck,
   Search, Filter, AlertTriangle, Play, CheckCircle2, UserCheck, Bell, Pin, Paperclip,
-  Activity, RefreshCw, Radio, Lock, HelpCircle, Eye, UserX, Clock, ChevronRight,
-  MoreVertical, Ban, Info, X, ExternalLink
+  Activity, RefreshCw, Radio, Lock, HelpCircle
 } from "lucide-react";
 import { 
   collection, doc, setDoc, addDoc, getDocs, onSnapshot, 
-  query, orderBy, limit, serverTimestamp, deleteDoc 
+  query, orderBy, limit, serverTimestamp 
 } from "firebase/firestore";
 import { db } from "../firebase";
 
@@ -23,18 +22,17 @@ export enum UserRole {
   VIEWER = "Viewer"
 }
 
-export interface Member {
+interface Member {
   id: string;
   name: string;
   email: string;
   phone: string;
   role: UserRole;
-  status: "Online" | "Away" | "Offline" | "Pending" | "Expired" | "Suspended";
+  status: "Online" | "Away" | "Offline" | "Pending";
   joinedAt: string;
-  lastActive?: string;
 }
 
-export interface AuditLog {
+interface AuditLog {
   id: string;
   user: string;
   role: string;
@@ -44,7 +42,7 @@ export interface AuditLog {
   timestamp: string;
 }
 
-export interface ChatMessage {
+interface ChatMessage {
   id: string;
   sender: string;
   role: string;
@@ -55,7 +53,7 @@ export interface ChatMessage {
   attachmentType?: string;
 }
 
-export interface CommitteeNotification {
+interface CommitteeNotification {
   id: string;
   text: string;
   type: "invite" | "role" | "milestone" | "review";
@@ -71,8 +69,8 @@ interface CommitteeWorkspaceViewProps {
 
 // Initial seed members if database is empty
 const SEED_MEMBERS: Member[] = [
-  { id: "seed-1", name: "Rev. Dr. Joseph Mwangi", email: "mwangi@harambeeflow.org", phone: "254711222333", role: UserRole.OWNER, status: "Online", joinedAt: "2026-06-01T08:00:00Z", lastActive: "2026-08-12T00:15:00Z" },
-  { id: "seed-2", name: "Mary Amina", email: "mary.amina@gmail.com", phone: "254722333444", role: UserRole.TREASURER, status: "Online", joinedAt: "2026-06-02T10:30:00Z", lastActive: "2026-08-11T22:30:00Z" },
+  { id: "seed-1", name: "Rev. Dr. Joseph Mwangi", email: "mwangi@harambeeflow.org", phone: "254711222333", role: UserRole.OWNER, status: "Online", joinedAt: "2026-06-01T08:00:00Z" },
+  { id: "seed-2", name: "Mary Amina", email: "mary.amina@gmail.com", phone: "254722333444", role: UserRole.TREASURER, status: "Online", joinedAt: "2026-06-02T10:30:00Z" },
   { id: "seed-3", name: "Grace Wambui", email: "grace.w@alumni.org", phone: "254733444555", role: UserRole.ADMIN, status: "Away", joinedAt: "2026-06-05T14:15:00Z" },
   { id: "seed-4", name: "David Omwamba", email: "david.o@chama.co.ke", phone: "254744555666", role: UserRole.ASSISTANT_TREASURER, status: "Offline", joinedAt: "2026-06-10T11:00:00Z" },
   { id: "seed-5", name: "Audrey Cherotich", email: "audrey.c@auditors.or.ke", phone: "254755666777", role: UserRole.AUDITOR, status: "Online", joinedAt: "2026-06-12T09:45:00Z" }
@@ -97,52 +95,12 @@ const SEED_NOTIFS: CommitteeNotification[] = [
   { id: "notif-2", text: "The primary fundraising target is 65% complete. Milestone alert!", type: "milestone", timestamp: new Date(Date.now() - 3600000 * 6).toISOString(), read: true }
 ];
 
-// Role descriptions matching actual application authorization logic
-const ROLE_PERMISSIONS_INFO = [
-  {
-    role: UserRole.OWNER,
-    badgeColor: "bg-indigo-950 text-indigo-400 border-indigo-800/40",
-    description: "Full committee and campaign administration. Can add/remove members, assign/change all roles, manage settings, and access financial logs.",
-    privileges: ["Add & remove members", "Modify member roles", "Full financial & settings management", "Access unalterable audit trail"]
-  },
-  {
-    role: UserRole.ADMIN,
-    badgeColor: "bg-emerald-950 text-emerald-400 border-emerald-800/40",
-    description: "Manage committee members and operational settings.",
-    privileges: ["Invite new committee members", "Manage campaign operational settings", "Create & publish updates", "View financial summaries"]
-  },
-  {
-    role: UserRole.TREASURER,
-    badgeColor: "bg-amber-950 text-amber-400 border-amber-800/40",
-    description: "Manage financial records and treasury operations.",
-    privileges: ["Record & reconcile manual cash payments", "Manage pledge tracking & reminders", "Export treasury reconciliation reports", "Query Safaricom statement webhooks"]
-  },
-  {
-    role: UserRole.ASSISTANT_TREASURER,
-    badgeColor: "bg-sky-950 text-sky-400 border-sky-800/40",
-    description: "Assist with assigned fundraising operations.",
-    privileges: ["Record manual contribution logs", "Track supporter pledge status", "Draft WhatsApp communication templates", "View workspace dashboard"]
-  },
-  {
-    role: UserRole.AUDITOR,
-    badgeColor: "bg-purple-950 text-purple-400 border-purple-800/40",
-    description: "Review financial records and audit activity.",
-    privileges: ["Read-only access to all financial ledgers", "Verify Safaricom transaction webhooks", "Download PDF audit statement certificates", "Inspect complete committee activity log"]
-  },
-  {
-    role: UserRole.VIEWER,
-    badgeColor: "bg-slate-900 text-slate-400 border-slate-700/40",
-    description: "Read-only access to campaign workspace dashboard.",
-    privileges: ["View high-level campaign stats", "Read announcements & updates", "No editing or financial modification rights"]
-  }
-];
-
 export default function CommitteeWorkspaceView({
   activeProject,
   currentUser,
   isDemoMode
 }: CommitteeWorkspaceViewProps) {
-  // Active viewing/testing role (Owner by default, customizable ONLY in sandbox/demo mode)
+  // Active viewing/testing role (Owner by default, but customizable for demo/sandbox experience)
   const [activeRole, setActiveRole] = useState<UserRole>(UserRole.OWNER);
 
   // States
@@ -152,15 +110,6 @@ export default function CommitteeWorkspaceView({
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(SEED_CHAT);
   const [notifications, setNotifications] = useState<CommitteeNotification[]>(SEED_NOTIFS);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-
-  // Modal / Drawer States
-  const [selectedMemberProfile, setSelectedMemberProfile] = useState<Member | null>(null);
-  const [confirmModal, setConfirmModal] = useState<{
-    type: "remove" | "suspend" | "reactivate" | "cancelInvite";
-    member: Member;
-  } | null>(null);
-  const [showRoleGuideModal, setShowRoleGuideModal] = useState<boolean>(false);
-  const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
 
   // Form states for invitation
   const [inviteName, setInviteName] = useState("");
@@ -363,81 +312,34 @@ export default function CommitteeWorkspaceView({
     setInvitePhone("");
     setInviteMsg("");
     
-    // Switch back to overview tab
+    // Switch back to overview tab to see pending member
     setSubTab("overview");
   };
 
-  // Confirm and Execute Destructive Actions
-  const executeConfirmedAction = async () => {
-    if (!confirmModal) return;
-    const { type, member } = confirmModal;
-
-    if (type === "remove") {
-      if (!checkPermission("Remove committee members", [UserRole.OWNER])) {
-        setConfirmModal(null);
-        return;
-      }
-      if (!isDemoMode && db) {
-        try {
-          await deleteDoc(doc(db, "organizations", orgId, "members", member.id));
-        } catch (e) {
-          console.error(e);
-        }
-      }
-      setMembers(prev => prev.filter(m => m.id !== member.id));
-      await logAuditAction("Member removed", member.name, "Success");
-    } else if (type === "suspend") {
-      if (!checkPermission("Suspend committee members", [UserRole.OWNER, UserRole.ADMIN])) {
-        setConfirmModal(null);
-        return;
-      }
-      const updatedStatus: Member["status"] = "Suspended";
-      if (!isDemoMode && db) {
-        try {
-          await setDoc(doc(db, "organizations", orgId, "members", member.id), { status: updatedStatus }, { merge: true });
-        } catch (e) {
-          console.error(e);
-        }
-      }
-      setMembers(prev => prev.map(m => m.id === member.id ? { ...m, status: updatedStatus } : m));
-      await logAuditAction("Member suspended", member.name, "Success");
-      await triggerNotification(`${member.name}'s account access was suspended`, "role");
-    } else if (type === "reactivate") {
-      if (!checkPermission("Reactivate committee members", [UserRole.OWNER, UserRole.ADMIN])) {
-        setConfirmModal(null);
-        return;
-      }
-      const updatedStatus: Member["status"] = "Offline";
-      if (!isDemoMode && db) {
-        try {
-          await setDoc(doc(db, "organizations", orgId, "members", member.id), { status: updatedStatus }, { merge: true });
-        } catch (e) {
-          console.error(e);
-        }
-      }
-      setMembers(prev => prev.map(m => m.id === member.id ? { ...m, status: updatedStatus } : m));
-      await logAuditAction("Member access reactivated", member.name, "Success");
-    } else if (type === "cancelInvite") {
-      if (!checkPermission("Cancel invitation", [UserRole.OWNER, UserRole.ADMIN])) {
-        setConfirmModal(null);
-        return;
-      }
-      if (!isDemoMode && db) {
-        try {
-          await deleteDoc(doc(db, "organizations", orgId, "members", member.id));
-        } catch (e) {
-          console.error(e);
-        }
-      }
-      setMembers(prev => prev.filter(m => m.id !== member.id));
-      await logAuditAction("Invitation cancelled", `${member.name} (${member.email})`, "Success");
+  // Delete Member handler
+  const handleDeleteMember = async (memberId: string, memberName: string) => {
+    // Permission: Only Owner can delete/remove members
+    if (!checkPermission("Remove committee members", [UserRole.OWNER])) {
+      return;
     }
 
-    setConfirmModal(null);
+    if (confirm(`Are you sure you want to remove ${memberName} from the committee workspace?`)) {
+      if (!isDemoMode && db) {
+        try {
+          await setDoc(doc(db, "organizations", orgId, "members", memberId), { id: memberId }, { merge: false });
+          // Note: for safety, just filter local as well or let onSnapshot update
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      setMembers(prev => prev.filter(m => m.id !== memberId));
+      await logAuditAction("Member removed", memberName, "Success");
+    }
   };
 
   // Change Role handler
   const handleModifyMemberRole = async (memberId: string, memberName: string, newRole: UserRole) => {
+    // Permission: Only Owner can change user roles
     if (!checkPermission("Modify roles of committee members", [UserRole.OWNER])) {
       return;
     }
@@ -458,6 +360,7 @@ export default function CommitteeWorkspaceView({
 
   // Send Chat message
   const handleSendChatMessage = async () => {
+    // Permissions: Viewers cannot send chat messages
     if (!checkPermission("Send workspace chat messages", [UserRole.OWNER, UserRole.ADMIN, UserRole.TREASURER, UserRole.ASSISTANT_TREASURER, UserRole.AUDITOR])) {
       return;
     }
@@ -490,7 +393,7 @@ export default function CommitteeWorkspaceView({
     setChatInput("");
     setChatAttachment(null);
 
-    // Dynamic response from other member in demo mode
+    // Dynamic simulated response from other member to keep it alive
     setTimeout(() => {
       const response: ChatMessage = {
         id: `chat-${Date.now() + 1}`,
@@ -525,13 +428,7 @@ export default function CommitteeWorkspaceView({
     });
   };
 
-  // Derived Operational Summary Metrics
-  const totalMembersCount = members.length;
-  const onlineMembers = members.filter(m => m.status === "Online");
-  const onlineCount = onlineMembers.length;
-  const pendingCount = members.filter(m => m.status === "Pending" || m.status === "Expired").length;
-  const suspendedCount = members.filter(m => m.status === "Suspended").length;
-
+  // Helper count badges
   const roleCounts = {
     Owner: members.filter(m => m.role === UserRole.OWNER).length,
     Admin: members.filter(m => m.role === UserRole.ADMIN).length,
@@ -549,31 +446,22 @@ export default function CommitteeWorkspaceView({
     return matchesSearch && log.result.toLowerCase() === logFilter.toLowerCase();
   });
 
-  const activeUserRoleDisplay = currentUser?.role || activeRole || UserRole.OWNER;
-
   return (
     <div className="flex-1 bg-slate-950 p-4 md:p-6 text-slate-100 min-h-full space-y-6 overflow-y-auto" id="committee-workspace">
       
       {/* Header Widget */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
         <div>
-          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+          <div className="flex items-center gap-2 mb-1.5">
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-950 text-emerald-400 border border-emerald-800/30">
               🟢 Enterprise Active
             </span>
             <span className="text-[10px] text-slate-400 font-mono">
               Shortcode: {activeProject?.mpesaShortcode || "222111"}
             </span>
-            <button
-              onClick={() => setShowRoleGuideModal(true)}
-              className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-indigo-950/60 hover:bg-indigo-900/60 text-indigo-300 border border-indigo-800/40 transition cursor-pointer flex items-center gap-1"
-            >
-              <Info className="w-3 h-3 text-indigo-400" />
-              Role Permissions Guide
-            </button>
           </div>
           <h1 className="text-xl md:text-2xl font-sans font-black tracking-tight text-white flex items-center gap-2">
-            <Users className="w-6 h-6 text-emerald-400 shrink-0" />
+            <Users className="w-6 h-6 text-emerald-400" />
             {orgName} Workspace
           </h1>
           <p className="text-xs text-slate-400 max-w-2xl mt-1 leading-relaxed">
@@ -581,119 +469,57 @@ export default function CommitteeWorkspaceView({
           </p>
         </div>
 
-        {/* Persona Switcher / Role View */}
-        {isDemoMode ? (
-          <div className="bg-slate-900 border border-slate-800 p-3 rounded-2xl space-y-1 shrink-0">
-            <label className="text-[10px] text-slate-400 font-mono font-bold uppercase block">
-              🧪 Sandbox Persona Switcher:
-            </label>
-            <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 text-amber-400" />
-              <select
-                value={activeRole}
-                onChange={(e) => {
-                  const newRole = e.target.value as UserRole;
-                  setActiveRole(newRole);
-                  logAuditAction("Role changed", `Switched tester view to ${newRole}`, "Success");
-                }}
-                className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 cursor-pointer font-sans font-medium"
-              >
-                {Object.values(UserRole).map(r => (
-                  <option key={r} value={r}>{r} Mode</option>
-                ))}
-              </select>
-            </div>
-            <p className="text-[9px] text-slate-500 font-mono leading-tight">
-              Test restrictions live in sandbox mode.
-            </p>
+        {/* Dynamic Sandbox Role Switcher */}
+        <div className="bg-slate-900 border border-slate-800 p-3 rounded-2xl space-y-1 shrink-0">
+          <label className="text-[10px] text-slate-400 font-mono font-bold uppercase block">
+            🧪 Simulated Persona Switcher:
+          </label>
+          <div className="flex items-center gap-2">
+            <Shield className="w-4 h-4 text-amber-400" />
+            <select
+              value={activeRole}
+              onChange={(e) => {
+                const newRole = e.target.value as UserRole;
+                setActiveRole(newRole);
+                logAuditAction("Role changed", `Switched tester view to ${newRole}`, "Success");
+              }}
+              className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 cursor-pointer font-sans font-medium"
+            >
+              {Object.values(UserRole).map(r => (
+                <option key={r} value={r}>{r} Mode</option>
+              ))}
+            </select>
           </div>
-        ) : (
-          <div className="bg-slate-900 border border-slate-800 px-4 py-3 rounded-2xl flex items-center gap-3 shrink-0">
-            <div className="w-9 h-9 rounded-xl bg-indigo-950 border border-indigo-800/40 flex items-center justify-center text-indigo-400">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <span className="text-[10px] text-slate-400 font-mono font-bold uppercase block">
-                Authenticated Access
-              </span>
-              <p className="text-xs font-bold text-white flex items-center gap-1.5 mt-0.5">
-                Your role: <span className="text-emerald-400 font-extrabold">{activeUserRoleDisplay}</span>
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Operational Summary + Role Composition Stats */}
-      <div className="space-y-3">
-        {/* Row 1: Key Operational Counts */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="p-3.5 rounded-2xl border border-slate-800 bg-slate-900/60 font-sans flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-mono uppercase font-bold tracking-wider text-slate-400">Total Members</p>
-              <p className="text-2xl font-black text-white mt-1">{totalMembersCount}</p>
-            </div>
-            <div className="w-9 h-9 rounded-xl bg-slate-800/80 flex items-center justify-center text-slate-300">
-              <Users className="w-5 h-5" />
-            </div>
-          </div>
-
-          <div className="p-3.5 rounded-2xl border border-emerald-900/40 bg-emerald-950/20 font-sans flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-mono uppercase font-bold tracking-wider text-emerald-400">Online Now</p>
-              <p className="text-2xl font-black text-emerald-300 mt-1">{onlineCount}</p>
-            </div>
-            <div className="w-9 h-9 rounded-xl bg-emerald-900/40 flex items-center justify-center text-emerald-400">
-              <Activity className="w-5 h-5" />
-            </div>
-          </div>
-
-          <div className="p-3.5 rounded-2xl border border-amber-900/40 bg-amber-950/20 font-sans flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-mono uppercase font-bold tracking-wider text-amber-400">Pending Invitations</p>
-              <p className="text-2xl font-black text-amber-300 mt-1">{pendingCount}</p>
-            </div>
-            <div className="w-9 h-9 rounded-xl bg-amber-900/40 flex items-center justify-center text-amber-400">
-              <Clock className="w-5 h-5" />
-            </div>
-          </div>
-
-          <div className="p-3.5 rounded-2xl border border-rose-900/40 bg-rose-950/20 font-sans flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-mono uppercase font-bold tracking-wider text-rose-400">Suspended Members</p>
-              <p className="text-2xl font-black text-rose-300 mt-1">{suspendedCount}</p>
-            </div>
-            <div className="w-9 h-9 rounded-xl bg-rose-900/40 flex items-center justify-center text-rose-400">
-              <Ban className="w-5 h-5" />
-            </div>
-          </div>
-        </div>
-
-        {/* Row 2: Role Composition Counters */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-2.5">
-          {[
-            { label: "Owners", count: roleCounts.Owner, color: "border-indigo-500/30 text-indigo-400 bg-indigo-950/20" },
-            { label: "Administrators", count: roleCounts.Admin, color: "border-emerald-500/30 text-emerald-400 bg-emerald-950/20" },
-            { label: "Treasurers", count: roleCounts.Treasurer, color: "border-amber-500/30 text-amber-400 bg-amber-950/20" },
-            { label: "Assistants", count: roleCounts.Assistant, color: "border-sky-500/30 text-sky-400 bg-sky-950/20" },
-            { label: "Auditors", count: roleCounts.Auditor, color: "border-purple-500/30 text-purple-400 bg-purple-950/20" },
-            { label: "Viewers", count: roleCounts.Viewer, color: "border-slate-600/30 text-slate-400 bg-slate-900/20" },
-          ].map((item, index) => (
-            <div key={index} className={`p-2.5 rounded-xl border text-center font-sans ${item.color}`}>
-              <p className="text-[9px] font-mono uppercase font-bold tracking-wider opacity-80">{item.label}</p>
-              <p className="text-lg font-bold mt-0.5">{item.count}</p>
-            </div>
-          ))}
+          <p className="text-[9px] text-slate-500 font-mono leading-tight">
+            Test restrictions live! Changes access level instantly.
+          </p>
         </div>
       </div>
 
-      {/* Main Workspace Navigation Shell */}
+      {/* Top role count dashboard */}
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+        {[
+          { label: "Owners", count: roleCounts.Owner, color: "border-indigo-500/40 text-indigo-400 bg-indigo-950/20" },
+          { label: "Administrators", count: roleCounts.Admin, color: "border-emerald-500/40 text-emerald-400 bg-emerald-950/20" },
+          { label: "Treasurers", count: roleCounts.Treasurer, color: "border-amber-500/40 text-amber-400 bg-amber-950/20" },
+          { label: "Assistants", count: roleCounts.Assistant, color: "border-sky-500/40 text-sky-400 bg-sky-950/20" },
+          { label: "Auditors", count: roleCounts.Auditor, color: "border-purple-500/40 text-purple-400 bg-purple-950/20" },
+          { label: "Viewers", count: roleCounts.Viewer, color: "border-slate-600/40 text-slate-400 bg-slate-900/20" },
+        ].map((item, index) => (
+          <div key={index} className={`p-3 rounded-xl border text-center font-sans ${item.color}`}>
+            <p className="text-[10px] font-mono uppercase font-bold tracking-wider opacity-80">{item.label}</p>
+            <p className="text-xl font-bold mt-1">{item.count}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Main Workspace Navigation Tabbed Shell */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl flex flex-col min-h-[500px]">
         {/* Sub-tab navigation */}
         <div className="bg-slate-950/50 border-b border-slate-800 px-4 pt-2 flex flex-wrap gap-1.5">
           {[
             { id: "overview", label: "Committee Overview", icon: Users },
-            { id: "invite", label: "Invite Member", icon: UserPlus, count: pendingCount },
+            { id: "invite", label: "Invite Member", icon: UserPlus },
             { id: "logs", label: "Audit Log Trail", icon: ClipboardList },
             { id: "chat", label: "Internal Chat Room", icon: MessageSquare },
             { id: "notifications", label: "Notifications Feed", icon: Bell, count: notifications.filter(n => !n.read).length },
@@ -735,208 +561,86 @@ export default function CommitteeWorkspaceView({
                 exit={{ opacity: 0, y: -8 }}
                 className="space-y-6"
               >
-                {/* Active Members Grid */}
+                {/* Active Members grid */}
                 <div className="space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center justify-between">
                     <h3 className="text-sm font-bold text-white font-sans uppercase tracking-wider flex items-center gap-2">
-                      <UserCheck className="w-4.5 h-4.5 text-emerald-400" /> Active Committee Roster
+                      <UserCheck className="w-4.5 h-4.5 text-emerald-400" /> Active Committee Members
                     </h3>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-mono text-slate-400">
-                        Total enrolled: {members.length} members
-                      </span>
-                      <button
-                        onClick={() => setShowRoleGuideModal(true)}
-                        className="text-xs text-indigo-400 hover:text-indigo-300 underline font-medium cursor-pointer ml-2"
-                      >
-                        Permissions Matrix
-                      </button>
-                    </div>
+                    <p className="text-[11px] font-mono text-slate-400">
+                      Total enrolled: {members.length} members
+                    </p>
                   </div>
 
-                  {members.length === 0 ? (
-                    <div className="p-8 text-center text-slate-500 font-mono text-xs border border-dashed border-slate-800 rounded-2xl">
-                      No committee members found in this workspace. Click "Invite Member" to add your team.
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {members.map((member) => (
-                        <div key={member.id} className="p-4 bg-slate-950/60 border border-slate-800 rounded-2xl flex flex-col justify-between gap-3 hover:border-slate-700 transition relative">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex gap-3 min-w-0">
-                              <div className="relative shrink-0">
-                                <div className="w-10 h-10 rounded-full bg-slate-850 flex items-center justify-center text-sm font-bold border border-slate-700 text-white">
-                                  {member.name.split(" ").map(n => n[0]).join("").substring(0, 2)}
-                                </div>
-                                <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-slate-900 ${
-                                  member.status === "Online" ? "bg-emerald-500" :
-                                  member.status === "Away" ? "bg-amber-500" :
-                                  member.status === "Pending" ? "bg-sky-400 animate-pulse" :
-                                  member.status === "Suspended" ? "bg-rose-500" : "bg-slate-500"
-                                }`} title={`Status: ${member.status}`} />
-                              </div>
-
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <h4 className="text-xs font-bold text-white truncate">{member.name}</h4>
-                                  <span className={`px-2 py-0.5 rounded text-[9px] font-mono font-semibold shrink-0 ${
-                                    member.role === UserRole.OWNER ? "bg-indigo-950 text-indigo-400 border border-indigo-800/30" :
-                                    member.role === UserRole.ADMIN ? "bg-emerald-950 text-emerald-400 border border-emerald-800/30" :
-                                    member.role === UserRole.TREASURER ? "bg-amber-950 text-amber-400 border border-amber-800/30" :
-                                    member.role === UserRole.ASSISTANT_TREASURER ? "bg-sky-950 text-sky-400 border border-sky-800/30" :
-                                    member.role === UserRole.AUDITOR ? "bg-purple-950 text-purple-400 border border-purple-800/30" :
-                                    "bg-slate-900 text-slate-400 border border-slate-700/30"
-                                  }`}>
-                                    {member.role}
-                                  </span>
-                                </div>
-
-                                <p className="text-[10px] text-slate-400 mt-1 truncate">
-                                  {member.email} {member.phone ? `• ${member.phone}` : ""}
-                                </p>
-
-                                <div className="flex items-center gap-3 mt-1.5 text-[9px] text-slate-500 font-mono flex-wrap">
-                                  <span>Joined: {new Date(member.joinedAt).toLocaleDateString()}</span>
-                                  <span>•</span>
-                                  <span>
-                                    {member.lastActive 
-                                      ? `Active: ${new Date(member.lastActive).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` 
-                                      : "Activity not available."}
-                                  </span>
-                                </div>
-                              </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {members.map((member) => (
+                      <div key={member.id} className="p-4 bg-slate-950/60 border border-slate-800 rounded-2xl flex items-start justify-between gap-4 hover:border-slate-700 transition">
+                        <div className="flex gap-3">
+                          <div className="relative">
+                            <div className="w-10 h-10 rounded-full bg-slate-850 flex items-center justify-center text-sm font-bold border border-slate-700">
+                              {member.name.split(" ").map(n => n[0]).join("").substring(0, 2)}
                             </div>
-
-                            {/* Status Pill Badge */}
-                            <div className="shrink-0">
-                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase border ${
-                                member.status === "Online" ? "bg-emerald-950/60 text-emerald-400 border-emerald-800/30" :
-                                member.status === "Away" ? "bg-amber-950/60 text-amber-400 border-amber-800/30" :
-                                member.status === "Pending" ? "bg-sky-950/60 text-sky-400 border-sky-800/30" :
-                                member.status === "Suspended" ? "bg-rose-950/60 text-rose-400 border-rose-800/30" :
-                                "bg-slate-900 text-slate-400 border-slate-800"
+                            <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-slate-900 ${
+                              member.status === "Online" ? "bg-emerald-500" :
+                              member.status === "Away" ? "bg-amber-500" :
+                              member.status === "Pending" ? "bg-indigo-400 animate-pulse" : "bg-slate-500"
+                            }`} title={member.status} />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <h4 className="text-xs font-bold text-white">{member.name}</h4>
+                              <span className={`px-2 py-0.5 rounded text-[9px] font-mono font-semibold ${
+                                member.role === UserRole.OWNER ? "bg-indigo-950 text-indigo-400 border border-indigo-800/20" :
+                                member.role === UserRole.ADMIN ? "bg-emerald-950 text-emerald-400 border border-emerald-800/20" :
+                                member.role === UserRole.TREASURER ? "bg-amber-950 text-amber-400 border border-amber-800/20" :
+                                member.role === UserRole.ASSISTANT_TREASURER ? "bg-sky-950 text-sky-400 border border-sky-800/20" :
+                                member.role === UserRole.AUDITOR ? "bg-purple-950 text-purple-400 border border-purple-800/20" :
+                                "bg-slate-900 text-slate-400"
                               }`}>
-                                {member.status}
+                                {member.role}
                               </span>
                             </div>
+                            <p className="text-[10px] text-slate-400 mt-0.5">{member.email} • {member.phone}</p>
+                            <p className="text-[9px] text-slate-500 font-mono mt-1">Joined: {new Date(member.joinedAt).toLocaleDateString()}</p>
                           </div>
+                        </div>
 
-                          {/* Action Footer Bar */}
-                          <div className="pt-2 border-t border-slate-850 flex items-center justify-between gap-2">
-                            <button
-                              onClick={() => setSelectedMemberProfile(member)}
-                              className="text-[10px] font-mono text-indigo-400 hover:text-indigo-300 transition cursor-pointer flex items-center gap-1"
+                        {/* Member management actions */}
+                        <div className="flex items-center gap-1.5">
+                          {/* Role modifier selector */}
+                          {activeRole === UserRole.OWNER && member.role !== UserRole.OWNER && (
+                            <select
+                              value={member.role}
+                              onChange={(e) => handleModifyMemberRole(member.id, member.name, e.target.value as UserRole)}
+                              className="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-[10px] text-slate-300 focus:outline-none cursor-pointer"
                             >
-                              <Eye className="w-3 h-3" />
-                              View Profile
+                              <option value={UserRole.ADMIN}>Admin</option>
+                              <option value={UserRole.TREASURER}>Treasurer</option>
+                              <option value={UserRole.ASSISTANT_TREASURER}>Assistant</option>
+                              <option value={UserRole.AUDITOR}>Auditor</option>
+                              <option value={UserRole.VIEWER}>Viewer</option>
+                            </select>
+                          )}
+
+                          {member.role !== UserRole.OWNER && (
+                            <button
+                              onClick={() => handleDeleteMember(member.id, member.name)}
+                              className="p-1 text-slate-500 hover:text-rose-400 rounded transition hover:bg-rose-950/20 cursor-pointer"
+                              title="Remove member"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
-
-                            <div className="flex items-center gap-1.5">
-                              {/* Role Selector (Owner only) */}
-                              {activeRole === UserRole.OWNER && member.role !== UserRole.OWNER && (
-                                <select
-                                  value={member.role}
-                                  onChange={(e) => handleModifyMemberRole(member.id, member.name, e.target.value as UserRole)}
-                                  className="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-[10px] text-slate-300 focus:outline-none cursor-pointer"
-                                  title="Change Role"
-                                >
-                                  <option value={UserRole.ADMIN}>Admin</option>
-                                  <option value={UserRole.TREASURER}>Treasurer</option>
-                                  <option value={UserRole.ASSISTANT_TREASURER}>Assistant</option>
-                                  <option value={UserRole.AUDITOR}>Auditor</option>
-                                  <option value={UserRole.VIEWER}>Viewer</option>
-                                </select>
-                              )}
-
-                              {/* View Activity */}
-                              <button
-                                onClick={() => {
-                                  setSearchTerm(member.name);
-                                  setSubTab("logs");
-                                }}
-                                className="px-2 py-1 text-[10px] font-mono text-slate-400 hover:text-slate-200 bg-slate-900 border border-slate-800 rounded transition cursor-pointer"
-                                title="Filter activity logs"
-                              >
-                                Activity
-                              </button>
-
-                              {/* Suspend / Reactivate Action */}
-                              {member.role !== UserRole.OWNER && (
-                                member.status === "Suspended" ? (
-                                  <button
-                                    onClick={() => setConfirmModal({ type: "reactivate", member })}
-                                    className="p-1 text-emerald-400 hover:bg-emerald-950/30 rounded transition cursor-pointer"
-                                    title="Reactivate Access"
-                                  >
-                                    <CheckCircle2 className="w-3.5 h-3.5" />
-                                  </button>
-                                ) : (
-                                  <button
-                                    onClick={() => setConfirmModal({ type: "suspend", member })}
-                                    className="p-1 text-slate-500 hover:text-amber-400 rounded transition hover:bg-amber-950/20 cursor-pointer"
-                                    title="Suspend Access"
-                                  >
-                                    <Ban className="w-3.5 h-3.5" />
-                                  </button>
-                                )
-                              )}
-
-                              {/* Remove Member Action */}
-                              {member.role !== UserRole.OWNER && (
-                                <button
-                                  onClick={() => setConfirmModal({ type: "remove", member })}
-                                  className="p-1 text-slate-500 hover:text-rose-400 rounded transition hover:bg-rose-950/20 cursor-pointer"
-                                  title="Remove Member"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
+                          )}
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Recent Committee Activity Summary (Compact) */}
-                <div className="bg-slate-950/50 border border-slate-800 rounded-2xl p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold text-white font-sans uppercase tracking-wider flex items-center gap-2">
-                      <Activity className="w-4 h-4 text-emerald-400" /> Recent Committee Activity
-                    </h4>
-                    <button
-                      onClick={() => setSubTab("logs")}
-                      className="text-[10px] font-mono text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 cursor-pointer"
-                    >
-                      Audit Trail <ChevronRight className="w-3 h-3" />
-                    </button>
+                      </div>
+                    ))}
                   </div>
-
-                  {auditLogs.length === 0 ? (
-                    <p className="text-xs text-slate-500 font-mono italic">No recent committee activity recorded.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {auditLogs.slice(0, 4).map((log) => (
-                        <div key={log.id} className="p-2.5 bg-slate-900/60 border border-slate-850 rounded-xl flex items-center justify-between text-xs gap-3">
-                          <div className="min-w-0 flex-1 flex items-center gap-2">
-                            <span className="font-bold text-white truncate shrink-0">{log.user}</span>
-                            <span className="text-[9px] font-mono bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded shrink-0">{log.role}</span>
-                            <span className="text-slate-400 truncate">— {log.action}: <span className="text-slate-200">{log.object}</span></span>
-                          </div>
-                          <span className="text-[9px] font-mono text-slate-500 shrink-0">
-                            {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
 
-                {/* Workspace Presence Panel */}
+                {/* Simulated live active viewers sidebar */}
                 <div className="bg-slate-950/40 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
-                    <div className="relative shrink-0">
+                    <div className="relative">
                       <span className="flex h-3 w-3 relative">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
@@ -944,21 +648,16 @@ export default function CommitteeWorkspaceView({
                     </div>
                     <div>
                       <p className="text-xs font-bold text-white">Live Workspace Presence</p>
-                      <p className="text-[10px] text-slate-400 font-mono mt-0.5">Active team members logged into this fundraiser:</p>
+                      <p className="text-[10px] text-slate-400 font-mono mt-0.5">Other members currently active on this fundraiser:</p>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {onlineMembers.length === 0 ? (
-                      <span className="text-xs text-slate-500 font-mono italic">No other committee members currently online.</span>
-                    ) : (
-                      onlineMembers.map((m) => (
-                        <span key={m.id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900 text-[10px] font-mono text-slate-300 border border-slate-800">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                          {m.name} ({m.role})
-                        </span>
-                      ))
-                    )}
+                  <div className="flex items-center gap-1.5">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900 text-[10px] font-mono text-slate-300 border border-slate-800">
+                      🟢 Mary Amina (Treasurer)
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900 text-[10px] font-mono text-slate-300 border border-slate-800">
+                      🟡 Grace Wambui (Admin)
+                    </span>
                   </div>
                 </div>
               </motion.div>
@@ -971,14 +670,14 @@ export default function CommitteeWorkspaceView({
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
-                className="max-w-3xl mx-auto space-y-6"
+                className="max-w-2xl mx-auto space-y-6"
               >
                 <div className="space-y-1 text-center">
                   <h3 className="text-sm font-bold text-white font-sans uppercase tracking-wider">
                     Invite New Committee Member
                   </h3>
                   <p className="text-xs text-slate-400">
-                    Add administrators, treasurers, and auditors to securely help manage statement ledgers and campaign goals.
+                    Add administrators, treasurers, and auditors to securely help reconcile M-PESA statement ledger sheets.
                   </p>
                 </div>
 
@@ -1055,7 +754,7 @@ export default function CommitteeWorkspaceView({
                     
                     <button
                       onClick={handleCopyInviteLink}
-                      className="px-4 py-3 bg-slate-900 hover:bg-slate-850 border border-slate-800 text-xs font-semibold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer text-slate-200"
+                      className="px-4 py-3 bg-slate-900 hover:bg-slate-850 border border-slate-800 text-xs font-semibold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       {copiedId === "link" ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
                       {copiedId === "link" ? "Copied!" : "Copy Link"}
@@ -1071,40 +770,10 @@ export default function CommitteeWorkspaceView({
                   </div>
                 </div>
 
-                {/* Pending & Expired Invitations List */}
-                <div className="p-5 bg-slate-950/40 border border-slate-800 rounded-2xl space-y-3">
-                  <h4 className="text-xs font-bold text-white font-sans uppercase tracking-wider flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-amber-400" /> Pending Committee Invitations
-                  </h4>
-
-                  {members.filter(m => m.status === "Pending" || m.status === "Expired").length === 0 ? (
-                    <p className="text-xs text-slate-500 font-mono italic">No pending committee invitations.</p>
-                  ) : (
-                    <div className="space-y-2.5">
-                      {members.filter(m => m.status === "Pending" || m.status === "Expired").map((pendingMem) => (
-                        <div key={pendingMem.id} className="p-3 bg-slate-900/60 border border-slate-800 rounded-xl flex items-center justify-between gap-3 text-xs">
-                          <div>
-                            <p className="font-bold text-white">{pendingMem.name} <span className="text-[10px] font-mono text-amber-400">({pendingMem.role})</span></p>
-                            <p className="text-[10px] text-slate-400 font-mono">{pendingMem.email} • Sent: {new Date(pendingMem.joinedAt).toLocaleDateString()}</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => setConfirmModal({ type: "cancelInvite", member: pendingMem })}
-                              className="px-2.5 py-1 text-[10px] font-mono text-rose-400 hover:text-rose-300 bg-rose-950/30 border border-rose-900/40 rounded transition cursor-pointer"
-                            >
-                              Revoke
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
                 {/* Role descriptions cheat-sheet cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2">
                   <div className="p-4 bg-slate-950/40 border border-slate-800 rounded-2xl space-y-2">
-                    <h4 className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                    <h4 className="text-xs font-bold text-indigo-400 flex items-center gap-1.5">
                       <ShieldCheck className="w-4 h-4" /> Treasurer Privileges
                     </h4>
                     <p className="text-[11px] text-slate-400 leading-relaxed">
@@ -1113,7 +782,7 @@ export default function CommitteeWorkspaceView({
                   </div>
 
                   <div className="p-4 bg-slate-950/40 border border-slate-800 rounded-2xl space-y-2">
-                    <h4 className="text-xs font-bold text-purple-400 flex items-center gap-1.5">
+                    <h4 className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
                       <Shield className="w-4 h-4" /> Auditor Privileges
                     </h4>
                     <p className="text-[11px] text-slate-400 leading-relaxed">
@@ -1142,16 +811,8 @@ export default function CommitteeWorkspaceView({
                       placeholder="Search audit trail logs..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-9 pr-8 py-2 bg-slate-950 border border-slate-800 text-xs text-slate-100 rounded-xl focus:outline-none"
+                      className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 text-xs text-slate-100 rounded-xl focus:outline-none"
                     />
-                    {searchTerm && (
-                      <button 
-                        onClick={() => setSearchTerm("")} 
-                        className="absolute right-2.5 top-2.5 text-slate-500 hover:text-slate-300 text-xs font-bold"
-                      >
-                        ✕
-                      </button>
-                    )}
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -1175,7 +836,7 @@ export default function CommitteeWorkspaceView({
                   </div>
                 </div>
 
-                {/* Audit Logs Table */}
+                {/* Audit Logs table */}
                 <div className="border border-slate-800 rounded-2xl overflow-x-auto">
                   <table className="w-full text-left font-sans text-xs">
                     <thead className="bg-slate-950 text-slate-400 font-mono text-[10px] uppercase border-b border-slate-800">
@@ -1205,14 +866,14 @@ export default function CommitteeWorkspaceView({
                             </span>
                           </td>
                           <td className="p-3.5 text-right text-slate-500 font-mono text-[10px]">
-                            {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                            {new Date(log.timestamp).toLocaleTimeString()}
                           </td>
                         </tr>
                       ))}
                       {filteredLogs.length === 0 && (
                         <tr>
                           <td colSpan={6} className="p-8 text-center text-slate-500 font-mono">
-                            No matching audit trail events found in database logs.
+                            No match audit trail events found in database logs.
                           </td>
                         </tr>
                       )}
@@ -1229,7 +890,7 @@ export default function CommitteeWorkspaceView({
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
-                className="flex flex-col h-[420px] justify-between"
+                className="flex flex-col h-[400px] justify-between"
               >
                 {/* Pinned message bar */}
                 <div className="bg-indigo-950/30 border border-indigo-800/20 px-3 py-2 rounded-xl flex items-start gap-2.5 mb-3">
@@ -1242,7 +903,7 @@ export default function CommitteeWorkspaceView({
                   </div>
                 </div>
 
-                {/* Message Stream */}
+                {/* Message stream */}
                 <div className="flex-1 overflow-y-auto space-y-3.5 pr-2 mb-4 scrollbar-thin scrollbar-thumb-slate-800">
                   {chatMessages.map((msg) => {
                     const isCurrentUser = msg.sender === (currentUser?.email ? currentUser.email.split("@")[0] : "Ecosystem Admin");
@@ -1264,7 +925,7 @@ export default function CommitteeWorkspaceView({
                         <div className="space-y-1 bg-slate-950/50 border border-slate-850 p-3 rounded-2xl max-w-[85%]">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="text-xs font-bold text-white">{msg.sender}</span>
-                            <span className="text-[9px] font-mono text-slate-500 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">
+                            <span className="text-[9px] font-mono text-slate-500 bg-slate-900 px-1.5 py-0.5 rounded">
                               {msg.role}
                             </span>
                           </div>
@@ -1273,7 +934,7 @@ export default function CommitteeWorkspaceView({
                         {/* File Attachment preview */}
                         {msg.attachmentName && (
                           <div className="mt-2 p-2 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-between gap-3 max-w-sm">
-                            <div className="flex items-center gap-2 min-w-0">
+                            <div className="flex items-center gap-2">
                               <Paperclip className="w-4 h-4 text-emerald-400 shrink-0" />
                               <div className="min-w-0">
                                 <p className="text-xs font-bold text-slate-200 truncate">{msg.attachmentName}</p>
@@ -1285,7 +946,7 @@ export default function CommitteeWorkspaceView({
                                 alert(`Simulating file download of: ${msg.attachmentName}`);
                                 logAuditAction("Report exported", msg.attachmentName, "Success");
                               }}
-                              className="px-2.5 py-1 bg-emerald-950 text-emerald-400 text-[10px] font-bold rounded hover:bg-emerald-900 cursor-pointer shrink-0"
+                              className="px-2.5 py-1 bg-emerald-950 text-emerald-400 text-[10px] font-bold rounded hover:bg-emerald-900 cursor-pointer"
                             >
                               Download
                             </button>
@@ -1302,7 +963,7 @@ export default function CommitteeWorkspaceView({
                   <div ref={chatEndRef} />
                 </div>
 
-                {/* Input Area */}
+                {/* Input area */}
                 <div className="space-y-2 bg-slate-950/80 p-2.5 rounded-2xl border border-slate-800">
                   {chatAttachment && (
                     <div className="px-3 py-1.5 bg-emerald-950/30 border border-emerald-900/30 rounded-xl flex items-center justify-between gap-2 text-xs">
@@ -1417,225 +1078,6 @@ export default function CommitteeWorkspaceView({
         </div>
       </div>
 
-      {/* MEMBER PROFILE MODAL */}
-      <AnimatePresence>
-        {selectedMemberProfile && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 z-50 font-sans"
-          >
-            <motion.div 
-              initial={{ scale: 0.95, y: 15 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 15 }}
-              className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-5 shadow-2xl relative"
-            >
-              <button
-                onClick={() => setSelectedMemberProfile(null)}
-                className="absolute top-5 right-5 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-slate-800 border-2 border-slate-700 flex items-center justify-center text-lg font-bold text-white shrink-0">
-                  {selectedMemberProfile.name.split(" ").map(n => n[0]).join("").substring(0, 2)}
-                </div>
-                <div>
-                  <h3 className="text-base font-extrabold text-white">{selectedMemberProfile.name}</h3>
-                  <span className="inline-block mt-1 px-2.5 py-0.5 rounded text-[10px] font-mono font-bold bg-indigo-950 text-indigo-400 border border-indigo-800/40">
-                    {selectedMemberProfile.role}
-                  </span>
-                </div>
-              </div>
-
-              <div className="bg-slate-950 p-4 rounded-2xl border border-slate-850 space-y-2.5 text-xs font-mono">
-                <div className="flex justify-between border-b border-slate-850 pb-2">
-                  <span className="text-slate-500">Email:</span>
-                  <span className="text-slate-200 font-bold">{selectedMemberProfile.email}</span>
-                </div>
-                <div className="flex justify-between border-b border-slate-850 pb-2">
-                  <span className="text-slate-500">Phone:</span>
-                  <span className="text-slate-200 font-bold">{selectedMemberProfile.phone || "Not recorded"}</span>
-                </div>
-                <div className="flex justify-between border-b border-slate-850 pb-2">
-                  <span className="text-slate-500">Joined Workspace:</span>
-                  <span className="text-slate-200 font-bold">{new Date(selectedMemberProfile.joinedAt).toLocaleDateString()}</span>
-                </div>
-                <div className="flex justify-between border-b border-slate-850 pb-2">
-                  <span className="text-slate-500">Account Status:</span>
-                  <span className={`font-bold uppercase ${
-                    selectedMemberProfile.status === "Online" ? "text-emerald-400" :
-                    selectedMemberProfile.status === "Away" ? "text-amber-400" :
-                    selectedMemberProfile.status === "Suspended" ? "text-rose-400" : "text-slate-400"
-                  }`}>
-                    {selectedMemberProfile.status}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Last Active:</span>
-                  <span className="text-slate-200 font-bold">
-                    {selectedMemberProfile.lastActive 
-                      ? new Date(selectedMemberProfile.lastActive).toLocaleString() 
-                      : "Activity not available."}
-                  </span>
-                </div>
-              </div>
-
-              {/* Role Permissions Summary */}
-              <div className="p-3.5 bg-indigo-950/20 border border-indigo-900/30 rounded-xl space-y-1.5">
-                <p className="text-[10px] font-bold text-indigo-300 font-mono uppercase tracking-wider">
-                  Role Authorization Overview
-                </p>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  {ROLE_PERMISSIONS_INFO.find(r => r.role === selectedMemberProfile.role)?.description || "Standard workspace permissions."}
-                </p>
-              </div>
-
-              <div className="flex justify-end pt-2">
-                <button
-                  onClick={() => setSelectedMemberProfile(null)}
-                  className="px-5 py-2.5 bg-slate-950 hover:bg-slate-850 text-white text-xs font-bold rounded-xl border border-slate-800 cursor-pointer transition"
-                >
-                  Close Profile
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* CONFIRMATION DESTRUCTIVE ACTION MODAL */}
-      <AnimatePresence>
-        {confirmModal && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 z-50 font-sans"
-          >
-            <motion.div 
-              initial={{ scale: 0.95, y: 15 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 15 }}
-              className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl"
-            >
-              <div className="w-12 h-12 bg-rose-950/60 text-rose-400 rounded-2xl flex items-center justify-center border border-rose-800/30">
-                <AlertTriangle className="w-6 h-6" />
-              </div>
-
-              <div className="space-y-1.5">
-                <h3 className="text-sm font-black text-white uppercase tracking-wider">
-                  {confirmModal.type === "remove" ? "Remove Committee Member?" :
-                   confirmModal.type === "suspend" ? "Suspend Member Access?" :
-                   confirmModal.type === "reactivate" ? "Reactivate Member Access?" : "Revoke Committee Invitation?"}
-                </h3>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  {confirmModal.type === "remove" 
-                    ? `Are you sure you want to permanently remove ${confirmModal.member.name} from the ${orgName} workspace? They will lose access to internal committee chat and ledgers.`
-                    : confirmModal.type === "suspend"
-                    ? `Are you sure you want to suspend access for ${confirmModal.member.name}? Their login will be revoked until reactivated.`
-                    : confirmModal.type === "reactivate"
-                    ? `Reactivate workspace access for ${confirmModal.member.name}?`
-                    : `Cancel pending invitation sent to ${confirmModal.member.name} (${confirmModal.member.email})?`}
-                </p>
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-3">
-                <button
-                  onClick={() => setConfirmModal(null)}
-                  className="px-4 py-2.5 bg-slate-950 hover:bg-slate-850 text-slate-300 text-xs font-semibold rounded-xl border border-slate-800 cursor-pointer transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={executeConfirmedAction}
-                  className={`px-5 py-2.5 text-white text-xs font-bold rounded-xl transition cursor-pointer shadow-md ${
-                    confirmModal.type === "reactivate" 
-                      ? "bg-emerald-600 hover:bg-emerald-500" 
-                      : "bg-rose-600 hover:bg-rose-500"
-                  }`}
-                >
-                  {confirmModal.type === "remove" ? "Yes, Remove Member" :
-                   confirmModal.type === "suspend" ? "Yes, Suspend Access" :
-                   confirmModal.type === "reactivate" ? "Yes, Reactivate" : "Yes, Revoke Invitation"}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ROLE PERMISSIONS GUIDE MATRIX MODAL */}
-      <AnimatePresence>
-        {showRoleGuideModal && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 z-50 font-sans"
-          >
-            <motion.div 
-              initial={{ scale: 0.95, y: 15 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 15 }}
-              className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-2xl w-full space-y-5 shadow-2xl relative max-h-[85vh] overflow-y-auto"
-            >
-              <button
-                onClick={() => setShowRoleGuideModal(false)}
-                className="absolute top-5 right-5 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-indigo-950 text-indigo-400 border border-indigo-800/40 flex items-center justify-center shrink-0">
-                  <ShieldCheck className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="text-base font-extrabold text-white">Committee Role Permissions Matrix</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">Authorization boundaries enforced across the HarambeeFlow workspace.</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                {ROLE_PERMISSIONS_INFO.map((rInfo) => (
-                  <div key={rInfo.role} className="p-4 bg-slate-950/80 border border-slate-800 rounded-2xl space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className={`px-2.5 py-0.5 rounded text-[10px] font-mono font-bold border ${rInfo.badgeColor}`}>
-                        {rInfo.role}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-300 leading-snug">{rInfo.description}</p>
-                    <div className="pt-1 space-y-1">
-                      <p className="text-[9px] font-mono font-bold text-slate-400 uppercase">Granted Privileges:</p>
-                      <ul className="space-y-0.5">
-                        {rInfo.privileges.map((p, idx) => (
-                          <li key={idx} className="text-[10px] text-slate-400 flex items-center gap-1.5 font-mono">
-                            <span className="text-emerald-400">✓</span> {p}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex justify-end pt-2">
-                <button
-                  onClick={() => setShowRoleGuideModal(false)}
-                  className="px-5 py-2.5 bg-slate-950 hover:bg-slate-850 text-white text-xs font-bold rounded-xl border border-slate-800 cursor-pointer transition"
-                >
-                  Understood
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* ACCESS DENIED MODAL */}
       <AnimatePresence>
         {restrictedAction && (
@@ -1659,9 +1101,9 @@ export default function CommitteeWorkspaceView({
                   Access Restricted by Permission Engine
                 </h3>
                 <p className="text-xs text-slate-300 leading-relaxed">
-                  You are currently active as <strong className="text-amber-400">{activeRole}</strong>.
+                  You are currently simulating the <strong className="text-amber-400">{activeRole}</strong> persona.
                 </p>
-                <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-850 space-y-2 text-xs text-slate-400 font-mono">
+                <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-850 space-y-2 text-xs text-slate-400">
                   <div className="flex justify-between">
                     <span>Action Attempted:</span>
                     <strong className="text-slate-200">{restrictedAction.action}</strong>
@@ -1673,7 +1115,7 @@ export default function CommitteeWorkspaceView({
                 </div>
               </div>
               <p className="text-[11px] text-slate-400 leading-normal">
-                Contact your committee Owner or Administrator to adjust your role access level.
+                To try this action, simply switch your active persona/role in the switcher on the top-right of the Committee Workspace. This is a secure ledger sandboxed trial.
               </p>
               <div className="pt-2 flex justify-end">
                 <button
