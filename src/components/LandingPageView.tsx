@@ -77,8 +77,9 @@ export default function LandingPageView({ onEnterApp, onEnterDemo }: LandingPage
         {/* Right: Menu / Hamburger Trigger */}
         <div className="flex items-center gap-2">
           <button 
+            type="button"
             onClick={() => setIsDrawerOpen(true)}
-            className="p-2 min-h-[38px] bg-slate-900/80 hover:bg-slate-800 border border-slate-800/80 rounded-xl text-slate-200 transition flex items-center justify-center cursor-pointer active:scale-95 gap-1.5 px-3.5 text-xs font-bold"
+            className="p-2 min-h-[38px] bg-slate-900/80 hover:bg-slate-800 border border-slate-800/80 rounded-xl text-slate-200 transition flex items-center justify-center cursor-pointer active:scale-95 gap-1.5 px-3.5 text-xs font-bold touch-manipulation select-none"
             aria-label="Open Navigation Menu"
           >
             <Menu className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -132,8 +133,9 @@ export default function LandingPageView({ onEnterApp, onEnterDemo }: LandingPage
 
                   {/* Close X Button */}
                   <button
+                    type="button"
                     onClick={() => setIsDrawerOpen(false)}
-                    className="p-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white transition active:scale-95 cursor-pointer"
+                    className="p-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white transition active:scale-95 cursor-pointer touch-manipulation"
                     aria-label="Close menu"
                   >
                     <X className="w-5 h-5" />
@@ -222,11 +224,12 @@ export default function LandingPageView({ onEnterApp, onEnterDemo }: LandingPage
               <div className="pt-5 border-t border-slate-800/80 mt-auto flex flex-col gap-2.5">
                 {/* Primary Action: Start Fundraising */}
                 <button
+                  type="button"
                   onClick={() => {
                     setIsDrawerOpen(false);
                     onEnterApp();
                   }}
-                  className="w-full py-3 px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs sm:text-sm transition shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+                  className="w-full py-3 px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs sm:text-sm transition shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] touch-manipulation select-none"
                 >
                   <Sparkles className="w-4 h-4 fill-slate-950 shrink-0" />
                   <span>Start Fundraising</span>
@@ -234,11 +237,12 @@ export default function LandingPageView({ onEnterApp, onEnterDemo }: LandingPage
 
                 {/* Secondary Action: Sign In */}
                 <button
+                  type="button"
                   onClick={() => {
                     setIsDrawerOpen(false);
                     onEnterApp();
                   }}
-                  className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-white font-semibold rounded-xl text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+                  className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-white font-semibold rounded-xl text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] touch-manipulation select-none"
                 >
                   <LogIn className="w-4 h-4 text-emerald-400 shrink-0" />
                   <span>Sign In</span>
@@ -323,19 +327,21 @@ export default function LandingPageView({ onEnterApp, onEnterDemo }: LandingPage
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.5, type: "spring" }}
-                className="flex flex-col items-center w-full sm:w-auto mb-0"
+                className="flex flex-col items-center w-full sm:w-auto mb-0 relative z-30"
               >
                 <button
+                  type="button"
                   onClick={onEnterApp}
-                  className="w-full sm:w-auto px-8 sm:px-12 py-3.5 sm:py-4 bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-300 hover:to-teal-400 text-slate-950 font-black text-sm sm:text-base rounded-xl sm:rounded-2xl shadow-[0_0_20px_rgba(16,185,129,0.25)] hover:shadow-[0_0_30px_rgba(16,185,129,0.45)] border border-emerald-300/20 hover:border-emerald-200/30 transition-all duration-200 ease-in-out transform hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer group min-h-[48px] mb-3"
+                  className="w-full sm:w-auto px-8 sm:px-12 py-3.5 sm:py-4 bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-300 hover:to-teal-400 text-slate-950 font-black text-sm sm:text-base rounded-xl sm:rounded-2xl shadow-[0_0_20px_rgba(16,185,129,0.25)] hover:shadow-[0_0_30px_rgba(16,185,129,0.45)] border border-emerald-300/20 hover:border-emerald-200/30 transition-all duration-200 ease-in-out transform hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer group min-h-[48px] mb-3 touch-manipulation select-none relative z-30"
                   id="btn-start-fundraising-primary"
                 >
                   Start Fundraising →
                 </button>
 
                 <button 
+                  type="button"
                   onClick={() => setActiveTab("trust")}
-                  className="text-xs sm:text-sm font-medium text-slate-400 hover:text-slate-200 transition underline cursor-pointer"
+                  className="text-xs sm:text-sm font-medium text-slate-400 hover:text-slate-200 transition underline cursor-pointer touch-manipulation"
                 >
                   Learn how HarambeeFlow remains completely non-custodial
                 </button>

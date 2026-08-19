@@ -89,47 +89,6 @@ export default function CommunicationsAutomationCenter({
     messageText: ""
   });
 
-  // Treasurer AI Assist State
-  const [aiAssistLoading, setAiAssistLoading] = useState<boolean>(false);
-  const [aiAssistSuggestion, setAiAssistSuggestion] = useState<string | null>(null);
-  const [aiAssistActionTag, setAiAssistActionTag] = useState<string>("Improve");
-
-  const handleRefineComposeMessage = async (action: string = "Improve") => {
-    if (!composeForm.messageText || !composeForm.messageText.trim()) {
-      triggerToast("Enter a message first, then Treasurer AI can help refine it.");
-      return;
-    }
-
-    setAiAssistLoading(true);
-    setAiAssistActionTag(action);
-
-    try {
-      const response = await fetch("/api/ai/refine-comm", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messageText: composeForm.messageText,
-          action,
-          recipientName: composeForm.recipientName,
-          campaignName: activeProject?.name || "Harambee Campaign"
-        })
-      });
-
-      const data = await response.json();
-      if (data.message) {
-        setAiAssistSuggestion(data.message);
-        triggerToast("✨ Message refined by Treasurer AI. Review below.");
-      } else {
-        triggerToast("AI assistance is temporarily unavailable. Your original message has been preserved.");
-      }
-    } catch (err) {
-      console.error("AI refine error:", err);
-      triggerToast("AI assistance is temporarily unavailable. Your original message has been preserved.");
-    } finally {
-      setAiAssistLoading(false);
-    }
-  };
-
   // Timeline notification feedback
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const triggerToast = (msg: string) => {
@@ -2269,7 +2228,7 @@ export default function CommunicationsAutomationCenter({
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white border border-slate-200 w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl p-5 sm:p-6 space-y-4 shadow-2xl"
+              className="bg-white border border-slate-200 w-full max-w-md rounded-2xl p-6 space-y-4 shadow-2xl"
             >
               <div className="flex items-center justify-between border-b border-slate-200 pb-3">
                 <div className="flex items-center gap-2">
@@ -2278,10 +2237,7 @@ export default function CommunicationsAutomationCenter({
                 </div>
                 <button 
                   type="button"
-                  onClick={() => {
-                    setIsComposeOpen(false);
-                    setAiAssistSuggestion(null);
-                  }}
+                  onClick={() => setIsComposeOpen(false)}
                   className="text-slate-400 hover:text-slate-700 transition-all cursor-pointer text-xs font-bold"
                 >
                   ✕ Close
@@ -2327,147 +2283,23 @@ export default function CommunicationsAutomationCenter({
                   </select>
                 </div>
 
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[11px] text-slate-700 font-bold block">Message Body Text</label>
-                    {composeForm.messageText.length > 0 && (
-                      <span className="text-[10px] text-slate-500 font-mono">
-                        {composeForm.messageText.length} chars
-                      </span>
-                    )}
-                  </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] text-slate-700 font-bold block">Message Body Text</label>
                   <textarea
                     rows={4}
                     value={composeForm.messageText}
                     onChange={(e) => setComposeForm({ ...composeForm, messageText: e.target.value })}
                     placeholder="Type your manual message here. It will be sent instantly."
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-900 focus:outline-hidden"
                     required
                   />
                 </div>
-
-                {/* TREASURER AI ASSIST CONTROL BOX */}
-                <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                      <span className="text-xs font-bold text-emerald-950">✨ Treasurer AI Assist</span>
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-slate-600 leading-tight">
-                    Refine your message for clarity and professionalism.
-                  </p>
-
-                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => handleRefineComposeMessage("Improve")}
-                      disabled={aiAssistLoading}
-                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-2xs shrink-0"
-                    >
-                      <Sparkles className="w-3 h-3" />
-                      <span>{aiAssistLoading && aiAssistActionTag === "Improve" ? "Refining..." : "Improve with AI"}</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleRefineComposeMessage("Shorten")}
-                      disabled={aiAssistLoading}
-                      className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-emerald-300/80 text-emerald-800 rounded-lg text-[11px] font-medium transition-all cursor-pointer disabled:opacity-50 shrink-0"
-                    >
-                      Shorten
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleRefineComposeMessage("Make More Professional")}
-                      disabled={aiAssistLoading}
-                      className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-emerald-300/80 text-emerald-800 rounded-lg text-[11px] font-medium transition-all cursor-pointer disabled:opacity-50 shrink-0"
-                    >
-                      Make More Professional
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleRefineComposeMessage("Make Warmer")}
-                      disabled={aiAssistLoading}
-                      className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-emerald-300/80 text-emerald-800 rounded-lg text-[11px] font-medium transition-all cursor-pointer disabled:opacity-50 shrink-0"
-                    >
-                      Make Warmer
-                    </button>
-                  </div>
-                </div>
-
-                {/* AI PROCESSING LOADING INDICATOR */}
-                {aiAssistLoading && (
-                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-center gap-2 font-medium animate-pulse">
-                    <Sparkles className="w-4 h-4 text-emerald-600 animate-spin shrink-0" />
-                    <span>✨ Treasurer AI is refining your message...</span>
-                  </div>
-                )}
-
-                {/* AI SUGGESTION REVIEW AREA */}
-                <AnimatePresence>
-                  {aiAssistSuggestion && !aiAssistLoading && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 5 }}
-                      className="bg-white border-2 border-emerald-500/80 rounded-xl p-3.5 space-y-2.5 shadow-md"
-                    >
-                      <div className="flex items-center justify-between border-b border-emerald-100 pb-2">
-                        <div className="flex items-center gap-1.5">
-                          <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                          <span className="text-[11px] font-bold text-slate-900 uppercase tracking-wider font-mono">
-                            ✨ TREASURER AI SUGGESTION
-                          </span>
-                        </div>
-                        <span className="text-[10px] text-emerald-800 font-semibold px-2 py-0.5 bg-emerald-50 rounded-full border border-emerald-200">
-                          {aiAssistActionTag}
-                        </span>
-                      </div>
-
-                      <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 whitespace-pre-wrap font-sans leading-relaxed max-h-48 overflow-y-auto">
-                        {aiAssistSuggestion}
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 pt-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAiAssistSuggestion(null);
-                            triggerToast("Original draft retained.");
-                          }}
-                          className="py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer border border-slate-200 transition-all text-center"
-                        >
-                          Keep My Draft
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setComposeForm({ ...composeForm, messageText: aiAssistSuggestion });
-                            setAiAssistSuggestion(null);
-                            triggerToast("✨ Applied AI suggestion to your message draft.");
-                          }}
-                          className="py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs transition-all flex items-center justify-center gap-1.5"
-                        >
-                          <Check className="w-3.5 h-3.5" />
-                          <span>Use This Message</span>
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-100">
+              <div className="grid grid-cols-2 gap-3 pt-3">
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsComposeOpen(false);
-                    setAiAssistSuggestion(null);
-                  }}
+                  onClick={() => setIsComposeOpen(false)}
                   className="py-2.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer"
                 >
                   Discard Draft

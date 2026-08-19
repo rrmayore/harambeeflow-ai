@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   Megaphone, Plus, Calendar, List, History, Sparkles, Clock, ArrowRight, 
@@ -6,7 +6,7 @@ import {
   Trash2, Copy, Edit, Filter, Share2, FileText, Layers, Bot, TrendingUp, 
   Coins, Users, Sliders, HelpCircle, RefreshCw, Eye, MessageSquare, ChevronRight,
   UserCheck, ShieldCheck, Heart, Volume2, CalendarDays, Zap, Play, Pause, Search,
-  BellRing, Info, ClipboardCopy, Check, Activity, AlertTriangle, ArrowUpRight
+  BellRing, Info, ClipboardCopy, Check
 } from "lucide-react";
 import { Project, Contribution, Pledge } from "../types";
 import { collection, onSnapshot, query, where, doc, setDoc, addDoc, getDocs, deleteDoc } from "firebase/firestore";
@@ -38,20 +38,6 @@ export default function CommunicationsAutomationCenter({
 }: CommunicationsAutomationCenterProps) {
   // Tabs: dashboard, automations, templates, broadcasts, timeline, insights
   const [activeSubTab, setActiveSubTab] = useState<string>("dashboard");
-  const tabNavRef = useRef<HTMLDivElement>(null);
-  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
-
-  // Auto-scroll active tab into view on mobile viewport
-  useEffect(() => {
-    const activeEl = tabRefs.current[activeSubTab];
-    if (activeEl && tabNavRef.current) {
-      activeEl.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-        inline: "center"
-      });
-    }
-  }, [activeSubTab]);
 
   // CRM Roles & Security Check
   // Committee roles mapping
@@ -88,47 +74,6 @@ export default function CommunicationsAutomationCenter({
     channel: "whatsapp",
     messageText: ""
   });
-
-  // Treasurer AI Assist State
-  const [aiAssistLoading, setAiAssistLoading] = useState<boolean>(false);
-  const [aiAssistSuggestion, setAiAssistSuggestion] = useState<string | null>(null);
-  const [aiAssistActionTag, setAiAssistActionTag] = useState<string>("Improve");
-
-  const handleRefineComposeMessage = async (action: string = "Improve") => {
-    if (!composeForm.messageText || !composeForm.messageText.trim()) {
-      triggerToast("Enter a message first, then Treasurer AI can help refine it.");
-      return;
-    }
-
-    setAiAssistLoading(true);
-    setAiAssistActionTag(action);
-
-    try {
-      const response = await fetch("/api/ai/refine-comm", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messageText: composeForm.messageText,
-          action,
-          recipientName: composeForm.recipientName,
-          campaignName: activeProject?.name || "Harambee Campaign"
-        })
-      });
-
-      const data = await response.json();
-      if (data.message) {
-        setAiAssistSuggestion(data.message);
-        triggerToast("✨ Message refined by Treasurer AI. Review below.");
-      } else {
-        triggerToast("AI assistance is temporarily unavailable. Your original message has been preserved.");
-      }
-    } catch (err) {
-      console.error("AI refine error:", err);
-      triggerToast("AI assistance is temporarily unavailable. Your original message has been preserved.");
-    } finally {
-      setAiAssistLoading(false);
-    }
-  };
 
   // Timeline notification feedback
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -809,7 +754,7 @@ export default function CommunicationsAutomationCenter({
   };
 
   return (
-    <div className="flex-1 bg-slate-50 text-slate-900 p-3 md:p-6 space-y-6 flex flex-col min-h-[calc(100vh-100px)] font-sans">
+    <div className="flex-1 bg-slate-950 text-slate-100 p-3 md:p-6 space-y-6 flex flex-col min-h-[calc(100vh-100px)]">
       
       {/* Toast Alert Feedback */}
       <AnimatePresence>
@@ -818,47 +763,41 @@ export default function CommunicationsAutomationCenter({
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed top-24 right-4 z-50 bg-white border border-emerald-500 text-emerald-800 px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 font-medium text-xs md:text-sm"
+            className="fixed top-24 right-4 z-50 bg-slate-900 border border-emerald-500 text-emerald-400 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 font-medium text-xs md:text-sm"
           >
-            <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
+            <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0 animate-bounce" />
             <span>{toastMessage}</span>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Hero / Operational Workspace Header */}
-      <div className="bg-white border border-slate-200/90 rounded-2xl p-5 md:p-7 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1">
+      {/* Header Banner */}
+      <div className="bg-gradient-to-r from-slate-900 via-emerald-950/20 to-slate-900 border border-slate-800 rounded-2xl p-5 md:p-7 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center shrink-0">
-              <Megaphone className="w-5 h-5" />
-            </div>
+            <span className="p-2.5 bg-emerald-500/10 rounded-xl border border-emerald-500/20 text-emerald-400">
+              <Megaphone className="w-5 h-5 md:w-6 md:h-6" />
+            </span>
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl md:text-2xl font-black tracking-tight text-slate-900 uppercase">
-                  COMMUNICATIONS &amp; AUTOMATION
-                </h1>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase">
-                  OPERATE WORKSPACE
-                </span>
-              </div>
-              <p className="text-xs md:text-sm text-slate-600 mt-0.5 font-normal">
-                Manage supporter messages, automated receipts, reminders, campaign announcements, and delivery workflows from one workspace.
+              <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white">
+                Communications &amp; Automation Center
+              </h1>
+              <p className="text-xs md:text-sm text-slate-400 mt-0.5">
+                Salesforce + HubSpot automation customized for {activeProject.name}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0 self-start md:self-auto">
-          <div className="bg-slate-100 border border-slate-200 rounded-xl px-3 py-2 flex items-center gap-2 text-xs text-slate-700 font-medium">
-            <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
-            Role: <span className="font-bold text-slate-900">{userRole}</span>
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="bg-slate-800/80 border border-slate-700/60 rounded-xl px-3 py-1.5 flex items-center gap-2 text-xs text-slate-300">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            Role: <span className="font-semibold text-emerald-400">{userRole}</span>
           </div>
 
           <button
-            type="button"
             onClick={() => setIsComposeOpen(true)}
-            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs md:text-sm flex items-center gap-2 transition-all cursor-pointer shadow-sm hover:shadow-md"
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs md:text-sm flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-emerald-950/40"
           >
             <Plus className="w-4 h-4" />
             <span>Compose Message</span>
@@ -867,10 +806,7 @@ export default function CommunicationsAutomationCenter({
       </div>
 
       {/* Six Tab Navigation bar */}
-      <div 
-        ref={tabNavRef}
-        className="bg-white border border-slate-200 rounded-2xl p-1.5 shadow-xs overflow-x-auto scrollbar-none flex items-center justify-start gap-1.5 w-full max-w-full shrink-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-x"
-      >
+      <div className="border-b border-slate-800 overflow-x-auto scrollbar-none flex items-center justify-start gap-1.5 md:gap-2">
         {[
           { id: "dashboard", label: "Dashboard", icon: TrendingUp },
           { id: "automations", label: "Automation Builder", icon: Zap },
@@ -884,20 +820,18 @@ export default function CommunicationsAutomationCenter({
           return (
             <button
               key={tab.id}
-              ref={(el) => (tabRefs.current[tab.id] = el)}
-              type="button"
               onClick={() => {
                 setActiveSubTab(tab.id);
                 setEditingNodeId(null);
               }}
-              className={`shrink-0 flex items-center gap-2 px-3.5 py-2.5 text-xs font-bold rounded-xl whitespace-nowrap transition-all cursor-pointer select-none ${
+              className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold whitespace-nowrap border-b-2 transition-all cursor-pointer ${
                 isActive 
-                  ? "bg-slate-900 text-white shadow-xs" 
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                  ? "border-emerald-500 text-emerald-400 font-bold" 
+                  : "border-transparent text-slate-400 hover:text-slate-200"
               }`}
             >
-              <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-emerald-400" : "text-slate-500"}`} />
-              <span className="shrink-0 whitespace-nowrap">{tab.label}</span>
+              <Icon className="w-4 h-4 shrink-0" />
+              <span>{tab.label}</span>
             </button>
           );
         })}
@@ -916,108 +850,46 @@ export default function CommunicationsAutomationCenter({
               exit={{ opacity: 0, y: -10 }}
               className="space-y-6"
             >
-              {/* Executive Operational Summary ("Today") */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 font-mono">
-                    Today Operational Summary
-                  </h2>
-                  <span className="text-[11px] font-mono text-slate-500">
-                    {new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
-                  {[
-                    { label: "Messages Sent Today", value: `${stats.totalSent} ${stats.totalSent === 1 ? 'message' : 'messages'}`, desc: "Pushed to providers", color: "text-slate-900", accent: "bg-emerald-600" },
-                    { label: "WhatsApp Delivered", value: `${stats.whatsappCount} ${stats.whatsappCount === 1 ? 'message' : 'messages'}`, desc: "Direct supporter chat", color: "text-emerald-700", accent: "bg-emerald-500" },
-                    { label: "SMS Dispatched", value: `${stats.smsCount} ${stats.smsCount === 1 ? 'message' : 'messages'}`, desc: "Carrier network logs", color: "text-blue-700", accent: "bg-blue-500" },
-                    { label: "Email Delivered", value: `${stats.emailCount} ${stats.emailCount === 1 ? 'message' : 'messages'}`, desc: "SMTP relay status", color: "text-purple-700", accent: "bg-purple-500" },
-                    { label: "Delivery Failures", value: stats.failed > 0 ? `${stats.failed} ${stats.failed === 1 ? 'delivery failure' : 'delivery failures'}` : "0 failures", desc: stats.failed > 0 ? "Requires review" : "All operating normally", color: stats.failed > 0 ? "text-rose-700 font-extrabold" : "text-slate-600", accent: stats.failed > 0 ? "bg-rose-500" : "bg-slate-400" }
-                  ].map((kpi, idx) => (
-                    <div key={idx} className="bg-white border border-slate-200 p-4 rounded-2xl space-y-2 shadow-xs">
-                      <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{kpi.label}</p>
-                      <div className="space-y-0.5">
-                        <p className={`text-xl font-extrabold tracking-tight ${kpi.color}`}>{kpi.value}</p>
-                      </div>
-                      <div className="flex items-center gap-1.5 pt-1">
-                        <span className={`w-1.5 h-1.5 rounded-full ${kpi.accent}`}></span>
-                        <p className="text-[10px] text-slate-500 truncate">{kpi.desc}</p>
-                      </div>
+              {/* Executive KPI Cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
+                {[
+                  { label: "Messages Sent Today", value: stats.totalSent, desc: "Pushed to providers", color: "text-emerald-400", bg: "bg-emerald-500/10" },
+                  { label: "WhatsApp Delivered", value: stats.whatsappCount, desc: "Direct client session", color: "text-green-400", bg: "bg-green-500/10" },
+                  { label: "SMS Dispatched", value: stats.smsCount, desc: "Carrier network logs", color: "text-blue-400", bg: "bg-blue-500/10" },
+                  { label: "Email Delivered", value: stats.emailCount, desc: "IMAP/SMTP relay status", color: "text-purple-400", bg: "bg-purple-500/10" },
+                  { label: "Delivery Failures", value: stats.failed, desc: "Auto-retry active", color: stats.failed > 0 ? "text-red-400" : "text-slate-400", bg: "bg-red-500/10" }
+                ].map((kpi, idx) => (
+                  <div key={idx} className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-2">
+                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">{kpi.label}</p>
+                    <div className="flex items-baseline gap-2">
+                      <span className={`text-2xl font-bold tracking-tight ${kpi.color}`}>{kpi.value}</span>
+                      <span className="text-[10px] text-slate-500">units</span>
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Attention / Exceptions Card */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${stats.failed > 0 ? 'bg-rose-50 text-rose-600 border border-rose-200' : 'bg-emerald-50 text-emerald-600 border border-emerald-200'}`}>
-                      {stats.failed > 0 ? <AlertTriangle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
-                    </div>
-                    <div>
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 font-mono">
-                        Attention Needed &amp; Operational Health
-                      </h3>
-                      <p className="text-xs text-slate-600">
-                        {stats.failed > 0 
-                          ? `${stats.failed} ${stats.failed === 1 ? 'communication needs' : 'communications need'} attention or manual retry.`
-                          : "All communications are operating normally with zero active delivery errors."}
-                      </p>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`w-1.5 h-1.5 rounded-full ${kpi.bg.replace('/10', '/80')} animate-pulse`}></span>
+                      <p className="text-[10px] text-slate-400 truncate">{kpi.desc}</p>
                     </div>
                   </div>
-
-                  {stats.failed > 0 ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFilterStatus("failed");
-                        setActiveSubTab("timeline");
-                      }}
-                      className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs flex items-center gap-1"
-                    >
-                      <span>View Failures ({stats.failed})</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                  ) : (
-                    <span className="px-3 py-1 rounded-full text-[10px] font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
-                      Status Normal
-                    </span>
-                  )}
-                </div>
-
-                {stats.failed > 0 && (
-                  <div className="p-3 bg-rose-50/60 border border-rose-200 rounded-xl text-xs text-rose-800 space-y-1">
-                    <p className="font-bold flex items-center gap-1.5">
-                      <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                      <span>WhatsApp delivery failed for 1 supporter (Timothy Nduati)</span>
-                    </p>
-                    <p className="text-[11px] text-rose-700 pl-5">
-                      Reason: WhatsApp API quota exceeded / Phone offline. You can manually retry SMS fallback from the Timeline tab.
-                    </p>
-                  </div>
-                )}
+                ))}
               </div>
 
               {/* Secondary Metrics & Smart Actions Summary */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
                 {[
-                  { label: "Active Automations", value: `${stats.activeFlows} running`, desc: "Listening for events", icon: Zap, color: "text-purple-700", bg: "bg-purple-50 border-purple-200" },
-                  { label: "Scheduled Updates", value: `${stats.scheduled} queued`, desc: "Calendar dispatch", icon: Calendar, color: "text-amber-700", bg: "bg-amber-50 border-amber-200" },
-                  { label: "Average Open Rate", value: `${stats.openRate}%`, desc: "WhatsApp baseline", icon: Eye, color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200" },
-                  { label: "Click Engagement", value: `${stats.clickRate}%`, desc: "Call to Action clicks", icon: TrendingUp, color: "text-sky-700", bg: "bg-sky-50 border-sky-200" }
+                  { label: "Active Automations", value: stats.activeFlows, desc: "Listening live", icon: Zap, color: "text-purple-400" },
+                  { label: "Scheduled Updates", value: stats.scheduled, desc: "Calendar queued", icon: Calendar, color: "text-amber-400" },
+                  { label: "Average Open Rate", value: `${stats.openRate}%`, desc: "WhatsApp baseline", icon: Eye, color: "text-teal-400" },
+                  { label: "Click Engagement", value: `${stats.clickRate}%`, desc: "Call to Action clicks", icon: TrendingUp, color: "text-sky-400" }
                 ].map((card, idx) => {
                   const Icon = card.icon;
                   return (
-                    <div key={idx} className="bg-white border border-slate-200 p-4 rounded-2xl flex items-center justify-between shadow-xs">
+                    <div key={idx} className="bg-slate-900/60 border border-slate-800 p-5 rounded-xl flex items-center justify-between">
                       <div className="space-y-1">
-                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{card.label}</p>
-                        <p className="text-xl font-extrabold tracking-tight text-slate-900">{card.value}</p>
+                        <p className="text-xs text-slate-400">{card.label}</p>
+                        <p className="text-2xl font-extrabold tracking-tight text-white">{card.value}</p>
                         <p className="text-[10px] text-slate-500">{card.desc}</p>
                       </div>
-                      <span className={`p-3 rounded-xl border ${card.bg} ${card.color}`}>
+                      <span className={`p-3 bg-slate-800/80 rounded-xl border border-slate-700/50 ${card.color}`}>
                         <Icon className="w-5 h-5" />
                       </span>
                     </div>
@@ -1026,67 +898,56 @@ export default function CommunicationsAutomationCenter({
               </div>
 
               {/* Smart Automation Status Panel */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-xs">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+                <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">
-                      Smart Automation Routines
-                    </h3>
-                    <p className="text-xs text-slate-600 mt-0.5">
-                      Trigger direct personal notifications to supporters without manual effort
-                    </p>
+                    <h3 className="text-sm font-bold text-white">Smart Automation Routines</h3>
+                    <p className="text-xs text-slate-400">Trigger direct personal notifications to supporters without lifting a finger</p>
                   </div>
-                  <span className="text-[11px] font-mono font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 self-start sm:self-auto">
-                    {stats.activeFlows} of {localAutomations.length} Active
+                  <span className="text-[11px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-md border border-emerald-500/20">
+                    {stats.activeFlows} of 3 Running
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {localAutomations.map((flow) => (
-                    <div key={flow.id} className="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex flex-col justify-between gap-4">
-                      <div className="space-y-2.5">
+                    <div key={flow.id} className="bg-slate-950 border border-slate-800/80 p-4 rounded-xl flex flex-col justify-between gap-4">
+                      <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${
-                            flow.channel === "whatsapp" ? "bg-emerald-100 text-emerald-800 border border-emerald-200" : "bg-blue-100 text-blue-800 border border-blue-200"
+                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-sm ${
+                            flow.channel === "whatsapp" ? "bg-green-500/10 text-green-400 border border-green-500/20" : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
                           }`}>
                             {flow.channel}
                           </span>
-                          <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
-                            flow.active ? "bg-emerald-100 text-emerald-800 border-emerald-200" : "bg-slate-200 text-slate-600 border-slate-300"
-                          }`}>
-                            {flow.active ? "● ACTIVE" : "○ PAUSED"}
+                          <span className="text-[11px] font-mono text-slate-400">
+                            {flow.stepsCount} visual steps
                           </span>
                         </div>
-                        <h4 className="text-xs md:text-sm font-bold text-slate-900">{flow.name}</h4>
-                        <div className="p-2.5 bg-white border border-slate-200 rounded-xl space-y-1 text-[11px]">
-                          <p className="text-slate-500 font-mono text-[10px] uppercase font-bold">WHEN (TRIGGER):</p>
-                          <p className="font-semibold text-slate-800">{flow.trigger}</p>
-                          <p className="text-slate-500 font-mono text-[10px] uppercase font-bold pt-1">ACTION:</p>
-                          <p className="text-slate-600">Send personalized {flow.channel.toUpperCase()} message ({flow.stepsCount} visual steps)</p>
-                        </div>
+                        <h4 className="text-xs md:text-sm font-bold text-slate-100">{flow.name}</h4>
+                        <p className="text-[11px] text-slate-400 leading-relaxed">
+                          Triggered on <span className="font-medium text-slate-200">'{flow.trigger}'</span>. Instantly formats personalized receipts.
+                        </p>
                       </div>
 
-                      <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
+                      <div className="pt-2 border-t border-slate-800/60 flex items-center justify-between">
                         <button
-                          type="button"
                           onClick={() => {
                             setSelectedWorkflowId(flow.id);
                             setActiveSubTab("automations");
                           }}
-                          className="text-[11px] text-emerald-700 hover:text-emerald-800 font-bold flex items-center gap-1 cursor-pointer"
+                          className="text-[11px] text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 cursor-pointer"
                         >
                           <span>Open Visual Builder</span>
                           <ChevronRight className="w-3.5 h-3.5" />
                         </button>
 
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-slate-500 font-medium">{flow.active ? "Active" : "Paused"}</span>
+                          <span className="text-[10px] text-slate-400">{flow.active ? "Active" : "Paused"}</span>
                           <button
-                            type="button"
                             onClick={() => handleToggleWorkflow(flow.id, flow.active)}
-                            className={`w-9 h-5 rounded-full transition-colors relative cursor-pointer ${flow.active ? "bg-emerald-600" : "bg-slate-300"}`}
+                            className={`w-9 h-5 rounded-full transition-colors relative cursor-pointer ${flow.active ? "bg-emerald-500" : "bg-slate-800"}`}
                           >
-                            <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-xs transition-transform ${flow.active ? "translate-x-4" : ""}`}></span>
+                            <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${flow.active ? "translate-x-4" : ""}`}></span>
                           </button>
                         </div>
                       </div>
@@ -1095,20 +956,19 @@ export default function CommunicationsAutomationCenter({
                 </div>
               </div>
 
-              {/* Community & Committee Broadcast Section */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
+              {/* Instant Delivery Simulator Panel */}
+              <div className="bg-gradient-to-r from-slate-900 via-slate-950 to-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col md:flex-row items-center justify-between gap-4">
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-emerald-700">
-                    <Volume2 className="w-5 h-5 text-emerald-600" />
-                    <span className="text-xs font-bold uppercase tracking-wider font-mono">Community &amp; Committee Broadcast</span>
+                  <div className="flex items-center gap-2 text-emerald-400">
+                    <Volume2 className="w-5 h-5 animate-pulse" />
+                    <span className="text-xs font-bold uppercase tracking-wider">Live Broadcast Stream</span>
                   </div>
-                  <h4 className="text-sm font-bold text-slate-900">Send an important campaign announcement to your committee or supporters</h4>
-                  <p className="text-xs text-slate-600">Instantly update all coordinators or supporters regarding current fund levels with a single click</p>
+                  <h4 className="text-sm font-bold text-white">Broadcast directly to active campaign committee</h4>
+                  <p className="text-xs text-slate-400">Instantly update all coordinators regarding current fund levels with a single click</p>
                 </div>
 
-                <div className="flex items-center gap-3 shrink-0">
+                <div className="flex items-center gap-3">
                   <button
-                    type="button"
                     onClick={async () => {
                       triggerToast("⚡ Broadcasting instant progress update to committee...");
                       await new Promise(r => setTimeout(r, 1000));
@@ -1125,18 +985,10 @@ export default function CommunicationsAutomationCenter({
                       setTimelineLogs([mockLog, ...timelineLogs]);
                       triggerToast("🚀 Success! Broadcast delivered to 4 members.");
                     }}
-                    className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center gap-2 shadow-xs"
+                    className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold border border-slate-700 cursor-pointer transition-all flex items-center gap-2"
                   >
                     <Megaphone className="w-4 h-4" />
                     <span>Ping Committee</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveSubTab("broadcasts")}
-                    className="px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5"
-                  >
-                    <span>Compose Broadcast</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
@@ -1154,50 +1006,48 @@ export default function CommunicationsAutomationCenter({
             >
               {/* Left Selector & Builder Palette */}
               <div className="lg:col-span-1 space-y-4">
-                <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3 shadow-xs">
-                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider font-mono">Select Workflow</h3>
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4">
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Select Workflow</h3>
                   <div className="space-y-2">
                     {localAutomations.map((flow) => (
                       <button
                         key={flow.id}
-                        type="button"
                         onClick={() => {
                           setSelectedWorkflowId(flow.id);
                           setEditingNodeId(null);
                         }}
-                        className={`w-full text-left p-3 rounded-xl border text-xs transition-all flex items-center justify-between cursor-pointer ${
+                        className={`w-full text-left p-3 rounded-lg border text-xs transition-all flex items-center justify-between cursor-pointer ${
                           selectedWorkflow.id === flow.id 
-                            ? "bg-emerald-50 border-emerald-300 text-slate-900 font-bold" 
-                            : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
+                            ? "bg-slate-850 border-emerald-500/50 text-white" 
+                            : "bg-slate-950 border-slate-800/80 text-slate-300 hover:bg-slate-900"
                         }`}
                       >
-                        <div className="space-y-0.5">
+                        <div className="space-y-1">
                           <p className="font-bold">{flow.name}</p>
                           <p className="text-[10px] text-slate-500">Trigger: {flow.trigger}</p>
                         </div>
-                        <span className={`w-2.5 h-2.5 rounded-full ${flow.active ? "bg-emerald-600" : "bg-slate-400"}`}></span>
+                        <span className={`w-2 h-2 rounded-full ${flow.active ? "bg-emerald-500" : "bg-slate-600"}`}></span>
                       </button>
                     ))}
                   </div>
                 </div>
 
-                <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3 shadow-xs">
-                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider font-mono">Visual Blocks Palette</h3>
-                  <p className="text-[11px] text-slate-600">Click to append a new logical block onto your visual timeline</p>
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Visual Blocks Palette</h3>
+                  <p className="text-[11px] text-slate-400">Click to append a new logical block onto your visual timeline</p>
                   
                   <div className="space-y-2 pt-1">
                     {[
-                      { type: "trigger", label: "Trigger Node", desc: "Start flow sequence", color: "border-purple-200 text-purple-800 bg-purple-50 hover:bg-purple-100" },
-                      { type: "delay", label: "Delay / Wait", desc: "Insert wait times", color: "border-blue-200 text-blue-800 bg-blue-50 hover:bg-blue-100" },
-                      { type: "condition", label: "Condition Fork", desc: "Filter rule validation", color: "border-amber-200 text-amber-800 bg-amber-50 hover:bg-amber-100" },
-                      { type: "action", label: "Action Dispatch", desc: "Send SMS/WhatsApp", color: "border-emerald-200 text-emerald-800 bg-emerald-50 hover:bg-emerald-100" },
-                      { type: "end", label: "End sequence", desc: "Safely finish loop", color: "border-rose-200 text-rose-800 bg-rose-50 hover:bg-rose-100" }
+                      { type: "trigger", label: "Trigger Node", desc: "Start flow sequence", color: "border-purple-500/30 text-purple-400 bg-purple-500/5 hover:bg-purple-500/10" },
+                      { type: "delay", label: "Delay / Wait", desc: "Insert wait times", color: "border-blue-500/30 text-blue-400 bg-blue-500/5 hover:bg-blue-500/10" },
+                      { type: "condition", label: "Condition Fork", desc: "Filter rule validation", color: "border-amber-500/30 text-amber-400 bg-amber-500/5 hover:bg-amber-500/10" },
+                      { type: "action", label: "Action Disp", desc: "Send SMS/WhatsApp", color: "border-emerald-500/30 text-emerald-400 bg-emerald-500/5 hover:bg-emerald-500/10" },
+                      { type: "end", label: "End sequence", desc: "Safely finish loop", color: "border-red-500/30 text-red-400 bg-red-500/5 hover:bg-red-500/10" }
                     ].map((item) => (
                       <button
                         key={item.type}
-                        type="button"
                         onClick={() => handleAddWorkflowNode(item.type as any)}
-                        className={`w-full text-left p-2.5 border rounded-xl text-xs transition-all flex items-center justify-between cursor-pointer ${item.color}`}
+                        className={`w-full text-left p-2.5 border rounded-lg text-xs transition-all flex items-center justify-between cursor-pointer ${item.color}`}
                       >
                         <div>
                           <p className="font-bold">{item.label}</p>
@@ -1211,25 +1061,24 @@ export default function CommunicationsAutomationCenter({
               </div>
 
               {/* Middle Visual Canvas Timeline */}
-              <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-5 flex flex-col justify-between min-h-[500px] shadow-xs">
+              <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col justify-between min-h-[500px]">
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                     <div>
-                      <h3 className="text-sm font-bold text-slate-900">{selectedWorkflow.name}</h3>
-                      <p className="text-[11px] text-slate-600">Trigger hook active: {selectedWorkflow.trigger}</p>
+                      <h3 className="text-sm font-bold text-white">{selectedWorkflow.name}</h3>
+                      <p className="text-[11px] text-slate-400">Trigger hook active: {selectedWorkflow.trigger}</p>
                     </div>
 
                     <div className="flex items-center gap-2">
                       <button 
-                        type="button"
                         onClick={() => handleToggleWorkflow(selectedWorkflow.id, selectedWorkflow.active)}
-                        className={`px-3 py-1 text-[11px] font-bold rounded-full flex items-center gap-1 border transition-all cursor-pointer ${
+                        className={`px-3 py-1 text-[11px] font-bold rounded-md flex items-center gap-1 border transition-all ${
                           selectedWorkflow.active 
-                            ? "bg-emerald-50 text-emerald-800 border-emerald-200" 
-                            : "bg-slate-100 text-slate-600 border-slate-200"
+                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" 
+                            : "bg-slate-950 text-slate-400 border-slate-850"
                         }`}
                       >
-                        {selectedWorkflow.active ? <Play className="w-3 h-3 text-emerald-600" /> : <Pause className="w-3 h-3 text-slate-500" />}
+                        {selectedWorkflow.active ? <Play className="w-3 h-3 text-emerald-400" /> : <Pause className="w-3 h-3 text-slate-500" />}
                         <span>{selectedWorkflow.active ? "Status: Active" : "Status: Paused"}</span>
                       </button>
                     </div>
@@ -1238,7 +1087,7 @@ export default function CommunicationsAutomationCenter({
                   {/* Flow Timelines Grid */}
                   <div className="relative pt-4 pb-8 flex flex-col items-center space-y-6">
                     {/* Visual Connector Guide lines */}
-                    <div className="absolute top-8 bottom-12 left-1/2 w-[2px] bg-slate-200 -translate-x-1/2 -z-0"></div>
+                    <div className="absolute top-8 bottom-12 left-1/2 w-[2px] bg-slate-800 -translate-x-1/2 -z-0"></div>
 
                     {selectedWorkflow.nodes?.map((node: any, idx: number) => {
                       const IconNode = node.icon || Zap;
@@ -1247,40 +1096,40 @@ export default function CommunicationsAutomationCenter({
                         <div key={node.id} className="relative z-10 w-full max-w-sm">
                           <div 
                             onClick={() => setEditingNodeId(node.id)}
-                            className={`p-3.5 rounded-2xl border transition-all duration-150 cursor-pointer flex items-center gap-3.5 ${
+                            className={`p-3.5 rounded-xl border transition-all duration-150 cursor-pointer flex items-center gap-3.5 ${
                               isEditing 
-                                ? "bg-emerald-50 border-emerald-500 shadow-md" 
-                                : "bg-slate-50 border-slate-200 hover:border-slate-300"
+                                ? "bg-slate-850 border-emerald-500 shadow-lg shadow-emerald-950/20" 
+                                : "bg-slate-950 border-slate-800 hover:border-slate-700"
                             }`}
                           >
-                            <span className="p-2.5 rounded-xl text-emerald-700 bg-white border border-slate-200 shadow-2xs">
-                              <IconNode className="w-4 h-4 text-emerald-600" />
+                            <span className={`p-2.5 rounded-lg text-white bg-slate-900 border border-slate-800`}>
+                              <IconNode className="w-4 h-4 text-emerald-400" />
                             </span>
                             <div className="flex-1 space-y-0.5">
-                              <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest font-mono">Step {idx + 1}: {node.type}</p>
-                              <p className="text-xs font-bold text-slate-900">{node.title}</p>
-                              <p className="text-[10px] text-slate-600 line-clamp-1">{node.desc}</p>
+                              <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Step {idx + 1}: {node.type}</p>
+                              <p className="text-xs font-bold text-slate-200">{node.title}</p>
+                              <p className="text-[10px] text-slate-400 line-clamp-1">{node.desc}</p>
                             </div>
                             
-                            <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+                            <ChevronRight className="w-4 h-4 text-slate-500 shrink-0" />
                           </div>
                         </div>
                       );
                     })}
 
                     <div className="w-full max-w-sm text-center pt-2">
-                      <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-medium text-emerald-800">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-950 border border-slate-800 text-[11px] text-slate-400">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                         <span>Workflow safe and integrated</span>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="border-t border-slate-200 pt-3 flex justify-between items-center text-[11px] text-slate-500">
+                <div className="border-t border-slate-800/80 pt-4 flex justify-between items-center text-[11px] text-slate-500">
                   <span className="flex items-center gap-1">
                     <Info className="w-3.5 h-3.5" />
-                    Tap any block to configure triggers, delays, and message templates.
+                    Interactive canvas. Tap block to configure triggers and templates.
                   </span>
                 </div>
               </div>
@@ -1288,16 +1137,15 @@ export default function CommunicationsAutomationCenter({
               {/* Right Configuration pane */}
               <div className="lg:col-span-1">
                 {editingNode ? (
-                  <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-xs">
-                    <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                       <div>
-                        <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider font-mono">Node configuration</h4>
-                        <p className="text-xs font-bold text-slate-900">{editingNode.title}</p>
+                        <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Node configuration</h4>
+                        <p className="text-xs font-bold text-white">{editingNode.title}</p>
                       </div>
                       <button 
-                        type="button"
                         onClick={() => handleDeleteNode(editingNode.id)}
-                        className="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-all cursor-pointer"
+                        className="p-1.5 hover:bg-red-500/10 text-slate-400 hover:text-red-400 rounded-lg transition-all cursor-pointer"
                         title="Delete visual block"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -1306,45 +1154,45 @@ export default function CommunicationsAutomationCenter({
 
                     <div className="space-y-4">
                       <div className="space-y-1.5">
-                        <label className="text-[11px] text-slate-700 font-bold block">Display Label</label>
+                        <label className="text-[11px] text-slate-400 font-bold block">Display Label</label>
                         <input
                           type="text"
                           value={editingNode.title}
                           onChange={(e) => handleUpdateNodeConfig(editingNode.id, { title: e.target.value })}
-                          className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs focus:border-emerald-500 focus:outline-hidden text-slate-900"
+                          className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:border-emerald-500 focus:outline-hidden text-slate-200"
                         />
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-[11px] text-slate-700 font-bold block">Summary Description</label>
+                        <label className="text-[11px] text-slate-400 font-bold block">Summary Description</label>
                         <textarea
                           rows={2}
                           value={editingNode.desc}
                           onChange={(e) => handleUpdateNodeConfig(editingNode.id, { desc: e.target.value })}
-                          className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs focus:border-emerald-500 focus:outline-hidden text-slate-900"
+                          className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:border-emerald-500 focus:outline-hidden text-slate-200"
                         />
                       </div>
 
                       {/* Render type-specific options */}
                       {editingNode.type === "delay" && (
-                        <div className="space-y-3 pt-2 border-t border-slate-200">
-                          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider font-mono">Delay parameters</p>
+                        <div className="space-y-3 pt-2 border-t border-slate-800/60">
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Delay parameters</p>
                           <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <label className="text-[10px] text-slate-600 block">Duration</label>
+                              <label className="text-[10px] text-slate-500 block">Duration</label>
                               <input
                                 type="number"
                                 defaultValue={editingNode.config.duration || 5}
                                 onChange={(e) => handleUpdateNodeConfig(editingNode.id, { config: { ...editingNode.config, duration: Number(e.target.value) } })}
-                                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-900"
+                                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200"
                               />
                             </div>
                             <div>
-                              <label className="text-[10px] text-slate-600 block">Unit</label>
+                              <label className="text-[10px] text-slate-500 block">Unit</label>
                               <select
                                 defaultValue={editingNode.config.unit || "minutes"}
                                 onChange={(e) => handleUpdateNodeConfig(editingNode.id, { config: { ...editingNode.config, unit: e.target.value } })}
-                                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-900"
+                                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200"
                               >
                                 <option value="minutes">Minutes</option>
                                 <option value="hours">Hours</option>
@@ -1356,15 +1204,15 @@ export default function CommunicationsAutomationCenter({
                       )}
 
                       {editingNode.type === "action" && (
-                        <div className="space-y-3 pt-2 border-t border-slate-200">
-                          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider font-mono">Action dispatch details</p>
+                        <div className="space-y-3 pt-2 border-t border-slate-800/60">
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Action dispatch details</p>
                           <div className="space-y-2">
                             <div>
-                              <label className="text-[10px] text-slate-600 block">Link to Template</label>
+                              <label className="text-[10px] text-slate-500 block">Link to Template</label>
                               <select
                                 defaultValue={editingNode.config.templateId || "tpl-1"}
                                 onChange={(e) => handleUpdateNodeConfig(editingNode.id, { config: { ...editingNode.config, templateId: e.target.value } })}
-                                className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-xs text-slate-900"
+                                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200"
                               >
                                 {localTemplates.map(t => (
                                   <option key={t.id} value={t.id}>{t.title} ({t.channel})</option>
@@ -1376,13 +1224,13 @@ export default function CommunicationsAutomationCenter({
                       )}
 
                       {editingNode.type === "condition" && (
-                        <div className="space-y-3 pt-2 border-t border-slate-200">
-                          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider font-mono">Logic rule branch</p>
+                        <div className="space-y-3 pt-2 border-t border-slate-800/60">
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Logic rule branch</p>
                           <div className="space-y-1.5">
-                            <label className="text-[10px] text-slate-600 block">Rule Filter</label>
+                            <label className="text-[10px] text-slate-500 block">Rule Filter</label>
                             <select
                               defaultValue="first-donation"
-                              className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-xs text-slate-900"
+                              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200"
                             >
                               <option value="first-donation">Is First Contribution</option>
                               <option value="high-value">Is Amount &gt; KES 10,000</option>
@@ -1393,22 +1241,21 @@ export default function CommunicationsAutomationCenter({
                       )}
 
                       <button
-                        type="button"
                         onClick={() => {
                           setEditingNodeId(null);
                           triggerToast("Configuration changes validated & saved.");
                         }}
-                        className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs"
+                        className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all cursor-pointer"
                       >
                         Apply Node Changes
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-white border border-slate-200 rounded-2xl p-5 text-center space-y-3 shadow-xs">
-                    <Info className="w-8 h-8 text-slate-400 mx-auto" />
-                    <h4 className="text-xs font-bold text-slate-800">No Block Selected</h4>
-                    <p className="text-[11px] text-slate-600">Click any block in your timeline view to customize delays, conditions, and template integrations.</p>
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 text-center space-y-3">
+                    <Info className="w-8 h-8 text-slate-500 mx-auto" />
+                    <h4 className="text-xs font-bold text-slate-300">No Block Selected</h4>
+                    <p className="text-[11px] text-slate-400">Click any block in your timeline view to customize delays, conditions, and template integrations.</p>
                   </div>
                 )}
               </div>
@@ -1426,13 +1273,12 @@ export default function CommunicationsAutomationCenter({
             >
               {/* Left sidebar templates selector */}
               <div className="lg:col-span-4 space-y-4">
-                <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3 shadow-xs">
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest font-mono">Saved Templates</h3>
+                    <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-widest">Saved Templates</h3>
                     <button
-                      type="button"
                       onClick={handleAddNewTemplate}
-                      className="p-1 hover:bg-slate-100 rounded-lg text-emerald-700 transition-all cursor-pointer"
+                      className="p-1 hover:bg-slate-800 rounded-lg text-emerald-400 hover:text-emerald-300 transition-all cursor-pointer"
                       title="Add blank template"
                     >
                       <Plus className="w-4 h-4" />
@@ -1443,19 +1289,18 @@ export default function CommunicationsAutomationCenter({
                     {localTemplates.map((tpl) => (
                       <button
                         key={tpl.id}
-                        type="button"
                         onClick={() => setSelectedTemplateId(tpl.id)}
-                        className={`w-full text-left p-3 rounded-xl border text-xs transition-all flex items-center justify-between cursor-pointer ${
+                        className={`w-full text-left p-3 rounded-lg border text-xs transition-all flex items-center justify-between cursor-pointer ${
                           selectedTemplateId === tpl.id
-                            ? "bg-emerald-50 border-emerald-300 text-slate-900 font-bold"
-                            : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
+                            ? "bg-slate-850 border-emerald-500/50 text-white"
+                            : "bg-slate-950 border-slate-850 text-slate-400 hover:bg-slate-900 hover:text-slate-200"
                         }`}
                       >
                         <div className="space-y-0.5 truncate pr-2">
-                          <p className="font-bold truncate text-slate-900">{tpl.title}</p>
-                          <p className="text-[10px] text-slate-500 uppercase tracking-wider font-mono">{tpl.category} • {tpl.channel}</p>
+                          <p className="font-bold truncate text-slate-200">{tpl.title}</p>
+                          <p className="text-[10px] text-slate-500 uppercase tracking-wider">{tpl.category} • {tpl.channel}</p>
                         </div>
-                        <span className="text-[9px] font-mono font-bold text-slate-600 bg-white px-1.5 py-0.5 rounded border border-slate-200 shrink-0">
+                        <span className="text-[9px] font-mono text-slate-500 bg-slate-900 px-1 py-0.5 rounded border border-slate-800 shrink-0">
                           {tpl.version}
                         </span>
                       </button>
@@ -1464,12 +1309,12 @@ export default function CommunicationsAutomationCenter({
                 </div>
 
                 {/* Placeholders helper widget */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-2.5 shadow-xs">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
-                    <Sliders className="w-4 h-4 text-emerald-600" />
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2.5">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-300">
+                    <Sliders className="w-4 h-4 text-emerald-400" />
                     <span>Dynamic Placeholders</span>
                   </div>
-                  <p className="text-[10px] text-slate-600 leading-relaxed">
+                  <p className="text-[10px] text-slate-400 leading-relaxed">
                     Click any element to instantly copy the placeholder syntax into your editor template code
                   </p>
                   
@@ -1486,12 +1331,11 @@ export default function CommunicationsAutomationCenter({
                     ].map((ph) => (
                       <button
                         key={ph}
-                        type="button"
                         onClick={() => copyPlaceholder(ph)}
-                        className="px-2 py-1.5 bg-slate-50 border border-slate-200 hover:border-emerald-300 rounded-lg text-[9px] font-mono font-bold text-emerald-800 text-left truncate cursor-pointer transition-all flex items-center justify-between"
+                        className="px-2 py-1.5 bg-slate-950 border border-slate-850 hover:border-slate-700 rounded-lg text-[9px] font-mono text-emerald-400 text-left hover:text-emerald-300 truncate cursor-pointer transition-all flex items-center justify-between"
                       >
                         <span className="truncate">{ph}</span>
-                        <ClipboardCopy className="w-3 h-3 text-slate-400 shrink-0 ml-1" />
+                        <ClipboardCopy className="w-3 h-3 text-slate-600 shrink-0 ml-1" />
                       </button>
                     ))}
                   </div>
@@ -1499,19 +1343,19 @@ export default function CommunicationsAutomationCenter({
               </div>
 
               {/* Center template editor pane */}
-              <div className="lg:col-span-4 bg-white border border-slate-200 rounded-2xl p-5 flex flex-col justify-between shadow-xs">
+              <div className="lg:col-span-4 bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col justify-between">
                 <form onSubmit={handleSaveTemplate} className="space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                     <div>
-                      <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider font-mono">Template Editor</h3>
-                      <p className="text-xs font-bold text-slate-900">{selectedTemplate?.title || "New Template"}</p>
+                      <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Template Editor</h3>
+                      <p className="text-xs text-white">{selectedTemplate?.title || "New Template"}</p>
                     </div>
                     
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={handleDuplicateTemplate}
-                        className="p-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg text-slate-600 hover:text-slate-900 transition-all cursor-pointer"
+                        className="p-1.5 bg-slate-950 hover:bg-slate-850 border border-slate-850 rounded-lg text-slate-400 hover:text-white transition-all cursor-pointer"
                         title="Duplicate Template"
                       >
                         <Copy className="w-3.5 h-3.5" />
@@ -1519,7 +1363,7 @@ export default function CommunicationsAutomationCenter({
                       <button
                         type="button"
                         onClick={() => setShowTestModal(true)}
-                        className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-lg text-[11px] font-bold border border-emerald-200 cursor-pointer transition-all flex items-center gap-1"
+                        className="px-2.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg text-[11px] font-bold border border-emerald-500/20 cursor-pointer transition-all flex items-center gap-1"
                       >
                         <Send className="w-3 h-3" />
                         <span>Test Send</span>
@@ -1529,23 +1373,23 @@ export default function CommunicationsAutomationCenter({
 
                   <div className="space-y-3.5">
                     <div className="space-y-1">
-                      <label className="text-[11px] text-slate-700 font-bold block">Template Title</label>
+                      <label className="text-[11px] text-slate-400 font-bold block">Template Title</label>
                       <input
                         type="text"
                         value={templateForm.title}
                         onChange={(e) => setTemplateForm({ ...templateForm, title: e.target.value })}
-                        className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs focus:border-emerald-500 focus:outline-hidden text-slate-900"
+                        className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-2 text-xs focus:border-emerald-500 focus:outline-hidden text-slate-200"
                         required
                       />
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-[11px] text-slate-700 font-bold block mb-1">Category</label>
+                        <label className="text-[11px] text-slate-400 font-bold block mb-1">Category</label>
                         <select
                           value={templateForm.category}
                           onChange={(e) => setTemplateForm({ ...templateForm, category: e.target.value })}
-                          className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-xs text-slate-900"
+                          className="w-full bg-slate-950 border border-slate-850 rounded-lg p-2 text-xs text-slate-200"
                         >
                           <option value="Thank You">Thank You</option>
                           <option value="Pledge Reminder">Pledge Reminder</option>
@@ -1559,11 +1403,11 @@ export default function CommunicationsAutomationCenter({
                       </div>
 
                       <div>
-                        <label className="text-[11px] text-slate-700 font-bold block mb-1">Channel</label>
+                        <label className="text-[11px] text-slate-400 font-bold block mb-1">Channel</label>
                         <select
                           value={templateForm.channel}
                           onChange={(e) => setTemplateForm({ ...templateForm, channel: e.target.value })}
-                          className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-xs text-slate-900"
+                          className="w-full bg-slate-950 border border-slate-850 rounded-lg p-2 text-xs text-slate-200"
                         >
                           <option value="whatsapp">WhatsApp Business</option>
                           <option value="sms">SMS Network</option>
@@ -1573,12 +1417,12 @@ export default function CommunicationsAutomationCenter({
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[11px] text-slate-700 font-bold block">Body Content</label>
+                      <label className="text-[11px] text-slate-400 font-bold block">Body Content</label>
                       <textarea
                         rows={7}
                         value={templateForm.text}
                         onChange={(e) => setTemplateForm({ ...templateForm, text: e.target.value })}
-                        className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs font-sans focus:border-emerald-500 focus:outline-hidden text-slate-900 leading-relaxed"
+                        className="w-full bg-slate-950 border border-slate-850 rounded-lg p-3 text-xs font-sans focus:border-emerald-500 focus:outline-hidden text-slate-200 leading-relaxed"
                         placeholder="Configure template text..."
                         required
                       />
@@ -1587,7 +1431,7 @@ export default function CommunicationsAutomationCenter({
 
                   <button
                     type="submit"
-                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold tracking-wide transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold tracking-wide transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-950/20"
                   >
                     <Check className="w-4 h-4" />
                     <span>Save Template Changes</span>
@@ -1600,23 +1444,23 @@ export default function CommunicationsAutomationCenter({
               </div>
 
               {/* Right Gemini AI Personalization Engine Pane */}
-              <div className="lg:col-span-4 bg-emerald-50/60 border border-emerald-200/80 rounded-2xl p-5 space-y-4 shadow-xs">
-                <div className="flex items-center gap-2 text-emerald-800">
-                  <Bot className="w-5 h-5 text-emerald-700" />
-                  <span className="text-xs font-extrabold uppercase tracking-wider font-mono">HarambeeFlow AI Message Personalizer</span>
+              <div className="lg:col-span-4 bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-xl p-5 space-y-4">
+                <div className="flex items-center gap-2 text-emerald-400">
+                  <Bot className="w-5 h-5 animate-pulse" />
+                  <span className="text-xs font-bold uppercase tracking-wider">HarambeeFlow AI Message Personalizer</span>
                 </div>
-                <p className="text-[11px] text-slate-700 leading-relaxed">
+                <p className="text-[11px] text-slate-400 leading-relaxed">
                   Generate hyper-personalized community templates in various tones, audiences and Kenyan dialects instantly.
                 </p>
 
                 <div className="space-y-3 pt-1">
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[10px] text-slate-600 font-bold block">Tone Preset</label>
+                      <label className="text-[10px] text-slate-500 block">Tone Preset</label>
                       <select
                         value={aiPrompt.tone}
                         onChange={(e) => setAiPrompt({ ...aiPrompt, tone: e.target.value })}
-                        className="w-full bg-white border border-slate-300 rounded-xl p-2 text-[11px] text-slate-900"
+                        className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-[11px] text-slate-200"
                       >
                         <option value="Warm">Warm / Polite</option>
                         <option value="Formal">Formal / Official</option>
@@ -1628,11 +1472,11 @@ export default function CommunicationsAutomationCenter({
                     </div>
 
                     <div>
-                      <label className="text-[10px] text-slate-600 font-bold block">Language Dialect</label>
+                      <label className="text-[10px] text-slate-500 block">Language Dialect</label>
                       <select
                         value={aiPrompt.language}
                         onChange={(e) => setAiPrompt({ ...aiPrompt, language: e.target.value })}
-                        className="w-full bg-white border border-slate-300 rounded-xl p-2 text-[11px] text-slate-900"
+                        className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-[11px] text-slate-200"
                       >
                         <option value="English">Pure English</option>
                         <option value="Kiswahili">Pure Kiswahili</option>
@@ -1644,11 +1488,11 @@ export default function CommunicationsAutomationCenter({
 
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[10px] text-slate-600 font-bold block">Category Purpose</label>
+                      <label className="text-[10px] text-slate-500 block">Category Purpose</label>
                       <select
                         value={aiPrompt.purpose}
                         onChange={(e) => setAiPrompt({ ...aiPrompt, purpose: e.target.value })}
-                        className="w-full bg-white border border-slate-300 rounded-xl p-2 text-[11px] text-slate-900"
+                        className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-[11px] text-slate-200"
                       >
                         <option value="Thank You">Receipt / Thank You</option>
                         <option value="Pledge Reminder">Overdue Pledge Reminder</option>
@@ -1659,11 +1503,11 @@ export default function CommunicationsAutomationCenter({
                     </div>
 
                     <div>
-                      <label className="text-[10px] text-slate-600 font-bold block">Length Format</label>
+                      <label className="text-[10px] text-slate-500 block">Length Format</label>
                       <select
                         value={aiPrompt.length}
                         onChange={(e) => setAiPrompt({ ...aiPrompt, length: e.target.value })}
-                        className="w-full bg-white border border-slate-300 rounded-xl p-2 text-[11px] text-slate-900"
+                        className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-[11px] text-slate-200"
                       >
                         <option value="Short">Short (SMS optimized)</option>
                         <option value="Medium">Medium length</option>
@@ -1676,7 +1520,7 @@ export default function CommunicationsAutomationCenter({
                     type="button"
                     onClick={handleCallAIGenerator}
                     disabled={loading}
-                    className="w-full py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-xs"
+                    className="w-full py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
                   >
                     <Sparkles className="w-4 h-4 shrink-0" />
                     <span>{loading ? "Personalizing with AI..." : "Generate AI Template"}</span>
@@ -1688,12 +1532,11 @@ export default function CommunicationsAutomationCenter({
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: "auto" }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="space-y-2 pt-2 border-t border-emerald-200"
+                        className="space-y-2 pt-2 border-t border-slate-800"
                       >
-                        <div className="flex items-center justify-between text-[10px] text-slate-600">
+                        <div className="flex items-center justify-between text-[10px] text-slate-400">
                           <span className="font-mono">{generationMeta}</span>
                           <button
-                            type="button"
                             onClick={() => {
                               setTemplateForm({
                                 ...templateForm,
@@ -1701,13 +1544,13 @@ export default function CommunicationsAutomationCenter({
                               });
                               triggerToast("Applied AI text to local editor!");
                             }}
-                            className="text-emerald-800 hover:text-emerald-900 font-bold flex items-center gap-1 cursor-pointer"
+                            className="text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 cursor-pointer"
                           >
                             <span>Apply to Editor</span>
                             <ArrowRight className="w-3.5 h-3.5" />
                           </button>
                         </div>
-                        <div className="bg-white border border-slate-200 p-3 rounded-xl text-xs leading-relaxed max-h-[160px] overflow-y-auto font-sans text-slate-800 whitespace-pre-wrap select-all">
+                        <div className="bg-slate-950 border border-slate-800 p-3 rounded-lg text-xs leading-relaxed max-h-[160px] overflow-y-auto font-sans text-slate-300 whitespace-pre-wrap select-all">
                           {generatedResult}
                         </div>
                       </motion.div>
@@ -1728,32 +1571,32 @@ export default function CommunicationsAutomationCenter({
               className="grid grid-cols-1 lg:grid-cols-3 gap-6"
             >
               {/* Left Column: Create Broadcast Campaign */}
-              <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
+              <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5">
                 <form onSubmit={handleLaunchBroadcast} className="space-y-4">
-                  <div className="border-b border-slate-200 pb-3">
-                    <h3 className="text-sm font-bold text-slate-900">New Campaign Broadcast</h3>
-                    <p className="text-xs text-slate-600">Send manual or scheduled mass messages to target lists</p>
+                  <div className="border-b border-slate-800 pb-3">
+                    <h3 className="text-sm font-bold text-white">New Campaign Broadcast</h3>
+                    <p className="text-xs text-slate-400">Send manual or scheduled mass messages to target lists</p>
                   </div>
 
                   <div className="space-y-3.5">
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
-                        <label className="text-[11px] text-slate-700 font-bold block">Broadcast Name</label>
+                        <label className="text-[11px] text-slate-400 font-bold block">Broadcast Name</label>
                         <input
                           type="text"
                           value={broadcastForm.title}
                           onChange={(e) => setBroadcastForm({ ...broadcastForm, title: e.target.value })}
-                          className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-emerald-500 focus:outline-hidden"
+                          className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-2 text-xs text-slate-200 focus:border-emerald-500 focus:outline-hidden"
                           required
                         />
                       </div>
 
                       <div className="space-y-1">
-                        <label className="text-[11px] text-slate-700 font-bold block">Target Audience</label>
+                        <label className="text-[11px] text-slate-400 font-bold block">Target Audience</label>
                         <select
                           value={broadcastForm.target}
                           onChange={(e) => setBroadcastForm({ ...broadcastForm, target: e.target.value })}
-                          className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-xs text-slate-900"
+                          className="w-full bg-slate-950 border border-slate-850 rounded-lg p-2 text-xs text-slate-200"
                         >
                           <option value="Everyone">Everyone (All Contributors)</option>
                           <option value="Only pledgers">Only Pledgers</option>
@@ -1767,11 +1610,11 @@ export default function CommunicationsAutomationCenter({
 
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
-                        <label className="text-[11px] text-slate-700 font-bold block">Delivery Channel</label>
+                        <label className="text-[11px] text-slate-400 font-bold block">Delivery Channel</label>
                         <select
                           value={broadcastForm.channel}
                           onChange={(e) => setBroadcastForm({ ...broadcastForm, channel: e.target.value })}
-                          className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-xs text-slate-900"
+                          className="w-full bg-slate-950 border border-slate-850 rounded-lg p-2 text-xs text-slate-200"
                         >
                           <option value="whatsapp">WhatsApp Business Campaign</option>
                           <option value="sms">SMS Network Carrier</option>
@@ -1780,11 +1623,11 @@ export default function CommunicationsAutomationCenter({
                       </div>
 
                       <div className="space-y-1">
-                        <label className="text-[11px] text-slate-700 font-bold block">Scheduling options</label>
+                        <label className="text-[11px] text-slate-400 font-bold block">Scheduling options</label>
                         <select
                           value={broadcastForm.scheduleOption}
                           onChange={(e) => setBroadcastForm({ ...broadcastForm, scheduleOption: e.target.value })}
-                          className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-xs text-slate-900"
+                          className="w-full bg-slate-950 border border-slate-850 rounded-lg p-2 text-xs text-slate-200"
                         >
                           <option value="immediate">Immediate dispatch</option>
                           <option value="scheduled">Schedule specific date</option>
@@ -1795,19 +1638,19 @@ export default function CommunicationsAutomationCenter({
 
                     {broadcastForm.scheduleOption !== "immediate" && (
                       <div className="space-y-1 animate-fade-in">
-                        <label className="text-[11px] text-slate-700 font-bold block">Designated dispatch timestamp</label>
+                        <label className="text-[11px] text-slate-400 font-bold block">Designated dispatch timestamp</label>
                         <input
                           type="datetime-local"
                           value={broadcastForm.scheduleDate}
                           onChange={(e) => setBroadcastForm({ ...broadcastForm, scheduleDate: e.target.value })}
-                          className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:border-emerald-500 focus:outline-hidden"
+                          className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-2 text-xs text-slate-200 focus:border-emerald-500 focus:outline-hidden"
                         />
                       </div>
                     )}
 
                     <div className="space-y-1">
                       <div className="flex items-center justify-between">
-                        <label className="text-[11px] text-slate-700 font-bold block">Custom Broadcast Body</label>
+                        <label className="text-[11px] text-slate-400 font-bold block">Custom Broadcast Body</label>
                         <button
                           type="button"
                           onClick={() => {
@@ -1817,7 +1660,7 @@ export default function CommunicationsAutomationCenter({
                             });
                             triggerToast("Injected standard campaign template.");
                           }}
-                          className="text-[10px] text-emerald-700 hover:text-emerald-800 font-bold cursor-pointer"
+                          className="text-[10px] text-emerald-400 hover:text-emerald-300 font-bold cursor-pointer"
                         >
                           Use Standard Template
                         </button>
@@ -1826,7 +1669,7 @@ export default function CommunicationsAutomationCenter({
                         rows={4}
                         value={broadcastForm.text}
                         onChange={(e) => setBroadcastForm({ ...broadcastForm, text: e.target.value })}
-                        className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs focus:border-emerald-500 focus:outline-hidden text-slate-900"
+                        className="w-full bg-slate-950 border border-slate-850 rounded-lg p-3 text-xs focus:border-emerald-500 focus:outline-hidden text-slate-200"
                         placeholder="Write your custom text here..."
                         required
                       />
@@ -1834,29 +1677,29 @@ export default function CommunicationsAutomationCenter({
                   </div>
 
                   {/* Audience Preview alert */}
-                  <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl flex items-center justify-between gap-3">
+                  <div className="bg-slate-950 border border-slate-850 p-4 rounded-xl flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <span className="p-2 bg-white rounded-xl border border-emerald-200 text-emerald-700">
+                      <span className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20 text-emerald-400">
                         <Users className="w-4 h-4" />
                       </span>
                       <div>
-                        <p className="text-xs font-bold text-slate-900">Audience Preview Segment</p>
-                        <p className="text-[10px] text-slate-600 leading-none mt-1">
+                        <p className="text-xs font-bold text-slate-100">Audience Preview Segment</p>
+                        <p className="text-[10px] text-slate-400 leading-none mt-1">
                           Calculated recipients based on targeted filters
                         </p>
                       </div>
                     </div>
 
                     <div className="text-right">
-                      <span className="text-lg font-black text-emerald-800">{estimatedAudienceCount}</span>
-                      <span className="text-[10px] text-slate-600 block">supporters</span>
+                      <span className="text-lg font-black text-emerald-400">{estimatedAudienceCount}</span>
+                      <span className="text-[10px] text-slate-500 block">supporters</span>
                     </div>
                   </div>
 
                   <button
                     type="submit"
                     disabled={loading || !canManageBroadcasts}
-                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all disabled:opacity-50 cursor-pointer shadow-xs flex items-center justify-center gap-2"
+                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all disabled:opacity-50 cursor-pointer shadow-lg shadow-emerald-950/20 flex items-center justify-center gap-2"
                   >
                     <Megaphone className="w-4 h-4 shrink-0" />
                     <span>{loading ? "Processing campaign list..." : broadcastForm.scheduleOption === "immediate" ? "Dispatch Campaign Broadcast Now" : "Schedule Campaign Broadcast"}</span>
@@ -1864,35 +1707,35 @@ export default function CommunicationsAutomationCenter({
                 </form>
               </div>
 
-              {/* Right Column: Scheduler Calendar / Agenda */}
+              {/* Right Column: Beautiful Scheduler Calendar / Agenda */}
               <div className="space-y-4">
-                <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3 shadow-xs">
-                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest font-mono">Broadcast Schedule Calendar</h3>
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Broadcast Schedule Calendar</h3>
                   
-                  {/* Calendar Grid */}
-                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-2">
-                    <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                      <span className="text-xs font-bold text-slate-800">August 2026</span>
-                      <span className="text-[10px] font-mono text-slate-500">Local Timezone</span>
+                  {/* Calendar Mock Grid */}
+                  <div className="bg-slate-950 p-3 rounded-xl border border-slate-850 space-y-2">
+                    <div className="flex items-center justify-between border-b border-slate-850 pb-2">
+                      <span className="text-xs font-bold text-slate-300">July 2026</span>
+                      <span className="text-[10px] font-mono text-slate-500">UTC-7 Timezone</span>
                     </div>
 
-                    <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-medium text-slate-500 font-mono">
+                    <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-medium text-slate-500">
                       <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
                     </div>
-                    <div className="grid grid-cols-7 gap-1.5 text-center text-xs text-slate-700">
+                    <div className="grid grid-cols-7 gap-1.5 text-center text-xs text-slate-400">
                       {Array.from({ length: 31 }).map((_, i) => {
                         const day = i + 1;
                         const isScheduled = day === 21; // mock day
-                        const isToday = day === 12;
+                        const isToday = day === 19;
                         return (
                           <div 
                             key={i} 
-                            className={`p-1 rounded-lg flex items-center justify-center font-mono ${
+                            className={`p-1 rounded-sm flex items-center justify-center font-mono ${
                               isScheduled 
-                                ? "bg-amber-100 text-amber-800 font-bold border border-amber-300" 
+                                ? "bg-amber-500/10 text-amber-400 font-bold border border-amber-500/30" 
                                 : isToday 
-                                  ? "bg-slate-900 text-white font-bold" 
-                                  : "hover:bg-slate-200"
+                                  ? "bg-emerald-500 text-white font-bold rounded-lg" 
+                                  : "hover:bg-slate-900"
                             }`}
                           >
                             {day}
@@ -1903,19 +1746,19 @@ export default function CommunicationsAutomationCenter({
                   </div>
 
                   <div className="space-y-2">
-                    <p className="text-[11px] font-bold text-slate-700">Queue &amp; Upcoming Dispatch logs</p>
+                    <p className="text-[11px] font-bold text-slate-400">Queue &amp; Upcoming Dispatch logs</p>
                     <div className="space-y-2">
                       {broadcasts.map((b) => (
-                        <div key={b.id} className="bg-slate-50 border border-slate-200 p-3 rounded-xl flex items-center justify-between">
-                          <div className="space-y-0.5">
-                            <h5 className="text-xs font-bold text-slate-900">{b.title}</h5>
-                            <p className="text-[10px] text-slate-500 uppercase tracking-wider font-mono">{b.targetAudience} • {b.channel}</p>
+                        <div key={b.id} className="bg-slate-950 border border-slate-850 p-3 rounded-lg flex items-center justify-between">
+                          <div className="space-y-1">
+                            <h5 className="text-xs font-bold text-slate-200">{b.title}</h5>
+                            <p className="text-[10px] text-slate-400 uppercase tracking-wider">{b.targetAudience} • {b.channel}</p>
                             <p className="text-[9px] text-slate-500">{new Date(b.date).toLocaleString()}</p>
                           </div>
 
                           <div className="text-right shrink-0">
-                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${
-                              b.status === "scheduled" ? "bg-amber-100 text-amber-800 border border-amber-200" : "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-sm ${
+                              b.status === "scheduled" ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                             }`}>
                               {b.status}
                             </span>
@@ -1940,25 +1783,25 @@ export default function CommunicationsAutomationCenter({
               className="space-y-4"
             >
               {/* Timeline Header Filter Bar */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs">
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div className="relative flex-1 max-w-sm">
-                  <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                  <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
                   <input
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-4 py-2 text-xs focus:border-emerald-500 focus:outline-hidden text-slate-900"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-4 py-2 text-xs focus:border-emerald-500 focus:outline-hidden"
                     placeholder="Search by donor name, phone, message content..."
                   />
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
-                  <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 px-2.5 py-1.5 rounded-xl text-xs">
-                    <span className="text-slate-500 font-bold uppercase text-[9px] font-mono">Channel:</span>
+                  <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 px-2 py-1.5 rounded-lg text-xs">
+                    <span className="text-slate-500 font-bold uppercase text-[9px]">Channel:</span>
                     <select
                       value={filterChannel}
                       onChange={(e) => setFilterChannel(e.target.value)}
-                      className="bg-transparent border-0 text-slate-900 focus:ring-0 text-xs font-semibold focus:outline-hidden"
+                      className="bg-transparent border-0 text-slate-300 focus:ring-0 text-xs font-medium focus:outline-hidden"
                     >
                       <option value="all">All Channels</option>
                       <option value="whatsapp">WhatsApp</option>
@@ -1967,12 +1810,12 @@ export default function CommunicationsAutomationCenter({
                     </select>
                   </div>
 
-                  <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 px-2.5 py-1.5 rounded-xl text-xs">
-                    <span className="text-slate-500 font-bold uppercase text-[9px] font-mono">Status:</span>
+                  <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 px-2 py-1.5 rounded-lg text-xs">
+                    <span className="text-slate-500 font-bold uppercase text-[9px]">Status:</span>
                     <select
                       value={filterStatus}
                       onChange={(e) => setFilterStatus(e.target.value)}
-                      className="bg-transparent border-0 text-slate-900 focus:ring-0 text-xs font-semibold focus:outline-hidden"
+                      className="bg-transparent border-0 text-slate-300 focus:ring-0 text-xs font-medium focus:outline-hidden"
                     >
                       <option value="all">All Statuses</option>
                       <option value="delivered">Delivered</option>
@@ -1984,57 +1827,57 @@ export default function CommunicationsAutomationCenter({
               </div>
 
               {/* Timeline chronological list */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-6 shadow-xs">
-                <div className="border-b border-slate-200 pb-3 flex items-center justify-between">
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-6">
+                <div className="border-b border-slate-800 pb-3 flex items-center justify-between">
                   <div>
-                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest font-mono">Chronological History logs</h3>
-                    <p className="text-xs text-slate-600">Immutable secure audit trail of all automated &amp; manual communications</p>
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Chronological History logs</h3>
+                    <p className="text-xs text-slate-400">Immutable secure audit trail of all automated &amp; manual communications</p>
                   </div>
 
-                  <span className="text-xs font-mono font-bold text-slate-500">{filteredTimelineLogs.length} audit records</span>
+                  <span className="text-xs font-mono text-slate-500">{filteredTimelineLogs.length} audit records</span>
                 </div>
 
-                <div className="relative space-y-6 pl-4 md:pl-6 border-l border-slate-200">
+                <div className="relative space-y-6 pl-4 md:pl-6 border-l border-slate-800">
                   {filteredTimelineLogs.map((log) => {
                     const isFailed = log.status === "failed";
                     const isOpened = log.status === "opened";
                     return (
                       <div key={log.id} className="relative group">
                         {/* Timeline Node Point Dot */}
-                        <span className={`absolute -left-7 md:-left-[29px] top-1.5 w-3 h-3 rounded-full border bg-white ${
+                        <span className={`absolute -left-7 md:-left-[29px] top-1.5 w-3 h-3 rounded-full border bg-slate-950 ${
                           isFailed 
-                            ? "border-rose-500 bg-rose-500" 
+                            ? "border-red-500 bg-red-500/10" 
                             : isOpened 
-                              ? "border-emerald-600 bg-emerald-600" 
-                              : "border-blue-500 bg-blue-500"
+                              ? "border-emerald-400 bg-emerald-400/20" 
+                              : "border-green-500 bg-green-500/10"
                         }`}></span>
 
-                        <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex flex-col md:flex-row md:items-start justify-between gap-4">
+                        <div className="bg-slate-950 border border-slate-850 p-4 rounded-xl flex flex-col md:flex-row md:items-start justify-between gap-4">
                           <div className="space-y-1.5">
                             <div className="flex flex-wrap items-center gap-2">
-                              <h4 className="text-xs font-bold text-slate-900">{log.supporterName}</h4>
+                              <h4 className="text-xs font-bold text-slate-100">{log.supporterName}</h4>
                               <span className="text-[10px] text-slate-500 font-mono">({log.phone})</span>
                               
-                              <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
+                              <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded uppercase tracking-wider ${
                                 log.channel === "whatsapp" 
-                                  ? "bg-emerald-100 text-emerald-800 border border-emerald-200" 
+                                  ? "bg-green-500/10 text-green-400 border border-green-500/20" 
                                   : log.channel === "sms" 
-                                    ? "bg-blue-100 text-blue-800 border border-blue-200" 
-                                    : "bg-purple-100 text-purple-800 border border-purple-200"
+                                    ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" 
+                                    : "bg-purple-500/10 text-purple-400 border border-purple-500/20"
                               }`}>
                                 {log.channel}
                               </span>
 
-                              <span className="text-[10px] text-slate-400">•</span>
-                              <span className="text-[10px] text-slate-600 font-semibold">{log.type}</span>
+                              <span className="text-[10px] text-slate-500">•</span>
+                              <span className="text-[10px] text-slate-400 font-semibold">{log.type}</span>
                             </div>
 
-                            <p className="text-xs text-slate-700 leading-relaxed max-w-2xl bg-white p-2.5 rounded-xl border border-slate-200">
+                            <p className="text-xs text-slate-300 leading-relaxed max-w-2xl bg-slate-900/60 p-2.5 rounded-lg border border-slate-850">
                               {log.text}
                             </p>
 
                             {isFailed && (
-                              <p className="text-[10px] text-rose-700 font-semibold flex items-center gap-1">
+                              <p className="text-[10px] text-red-400 flex items-center gap-1">
                                 <AlertCircle className="w-3.5 h-3.5" />
                                 <span>Error: {log.errorReason || "Network carrier rejection."}</span>
                               </p>
@@ -2049,7 +1892,6 @@ export default function CommunicationsAutomationCenter({
                             <div className="flex items-center gap-2">
                               {isFailed && (
                                 <button
-                                  type="button"
                                   onClick={async () => {
                                     triggerToast(`Retrying SMS message to ${log.supporterName}...`);
                                     await new Promise(r => setTimeout(r, 800));
@@ -2057,18 +1899,18 @@ export default function CommunicationsAutomationCenter({
                                     setTimelineLogs(updated);
                                     triggerToast("🚀 Message delivered successfully!");
                                   }}
-                                  className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-bold cursor-pointer transition-all shadow-xs"
+                                  className="px-2 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded text-[10px] font-bold border border-red-500/20 cursor-pointer transition-all"
                                 >
                                   Retry SMS Send
                                 </button>
                               )}
 
-                              <span className={`text-[9px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
+                              <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
                                 isFailed 
-                                  ? "bg-rose-100 text-rose-800 border border-rose-200" 
+                                  ? "bg-red-500/10 text-red-400 border border-red-500/20" 
                                   : isOpened 
-                                    ? "bg-emerald-100 text-emerald-800 border border-emerald-200" 
-                                    : "bg-blue-100 text-blue-800 border border-blue-200"
+                                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" 
+                                    : "bg-green-500/10 text-green-400 border border-green-500/20"
                               }`}>
                                 {log.status}
                               </span>
@@ -2094,62 +1936,62 @@ export default function CommunicationsAutomationCenter({
             >
               {/* Health Score Overview */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col justify-between space-y-4 shadow-xs">
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col justify-between space-y-4">
                   <div className="space-y-1">
-                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest font-mono">Communication Health Score</h3>
-                    <p className="text-xs text-slate-600">Calculated over campaign interaction benchmarks</p>
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Communication Health Score</h3>
+                    <p className="text-xs text-slate-400">Calculated over campaign interaction benchmarks</p>
                   </div>
 
                   <div className="relative w-36 h-36 mx-auto flex items-center justify-center">
                     {/* SVG Radial progress */}
                     <svg className="w-full h-full transform -rotate-90">
-                      <circle cx="72" cy="72" r="60" className="stroke-slate-200 stroke-[8] fill-none" />
-                      <circle cx="72" cy="72" r="60" className="stroke-emerald-600 stroke-[8] fill-none" strokeDasharray={2 * Math.PI * 60} strokeDashoffset={2 * Math.PI * 60 * (1 - aiInsights.score / 100)} />
+                      <circle cx="72" cy="72" r="60" className="stroke-slate-850 stroke-[8] fill-none" />
+                      <circle cx="72" cy="72" r="60" className="stroke-emerald-500 stroke-[8] fill-none" strokeDasharray={2 * Math.PI * 60} strokeDashoffset={2 * Math.PI * 60 * (1 - aiInsights.score / 100)} />
                     </svg>
                     <div className="absolute text-center">
-                      <span className="text-3xl font-black text-slate-900">{aiInsights.score}</span>
+                      <span className="text-3xl font-black text-white">{aiInsights.score}</span>
                       <span className="text-xs text-slate-500 block">out of 100</span>
                     </div>
                   </div>
 
                   <div className="text-center">
-                    <span className="text-xs font-mono font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                    <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-md border border-emerald-500/20">
                       Excellent Campaign Hygiene
                     </span>
                   </div>
                 </div>
 
                 {/* Gemini Analytics details */}
-                <div className="md:col-span-2 bg-white border border-slate-200 rounded-2xl p-5 space-y-4 flex flex-col justify-between shadow-xs">
+                <div className="md:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 flex flex-col justify-between">
                   <div className="space-y-4">
-                    <div className="flex items-center gap-2 text-emerald-700">
-                      <Sparkles className="w-5 h-5 text-emerald-600" />
-                      <span className="text-xs font-bold uppercase tracking-widest font-mono">HarambeeFlow AI Communication Analysis</span>
+                    <div className="flex items-center gap-2 text-emerald-400">
+                      <Sparkles className="w-5 h-5 animate-pulse" />
+                      <span className="text-xs font-bold uppercase tracking-widest">HarambeeFlow AI Communication Analysis</span>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1">
-                        <p className="text-[10px] text-slate-500 uppercase tracking-wider font-mono">Best Time To Disseminate</p>
-                        <p className="text-xs font-bold text-slate-900">{aiInsights.bestTime}</p>
-                        <p className="text-[10px] text-slate-500">Based on historic M-PESA payment intervals</p>
+                      <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-850 space-y-1">
+                        <p className="text-[10px] text-slate-400 uppercase tracking-wider">Best Time To Disseminate</p>
+                        <p className="text-xs font-bold text-slate-200">{aiInsights.bestTime}</p>
+                        <p className="text-[10px] text-slate-500">Based on historic M-PESA webhook payment intervals</p>
                       </div>
 
-                      <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1">
-                        <p className="text-[10px] text-slate-500 uppercase tracking-wider font-mono">Supporter Fatigue metrics</p>
-                        <p className="text-xs font-bold text-slate-900">{aiInsights.fatigueLevel}</p>
+                      <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-850 space-y-1">
+                        <p className="text-[10px] text-slate-400 uppercase tracking-wider">Supporter Fatigue metrics</p>
+                        <p className="text-xs font-bold text-slate-200">{aiInsights.fatigueLevel}</p>
                         <p className="text-[10px] text-slate-500">Healthy rate protecting donor trust from notifications</p>
                       </div>
                     </div>
 
-                    <div className="bg-emerald-50/70 p-4 rounded-xl border border-emerald-200 space-y-1.5">
-                      <p className="text-[10px] text-emerald-800 font-bold uppercase tracking-wider font-mono">Supporter Engagement analysis</p>
-                      <p className="text-xs text-slate-800 leading-relaxed font-medium">
+                    <div className="bg-slate-950 p-4 rounded-xl border border-slate-850 space-y-1.5">
+                      <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Supporter Engagement analysis</p>
+                      <p className="text-xs text-slate-300 leading-relaxed">
                         {aiInsights.engagementDesc}
                       </p>
                     </div>
                   </div>
 
-                  <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-[10px] text-slate-500 font-mono">
+                  <div className="pt-2 border-t border-slate-800 flex justify-between items-center text-[10px] text-slate-500 font-mono">
                     <span>Model: gemini-3.5-flash</span>
                     <span>Last analyzed: Today</span>
                   </div>
@@ -2158,24 +2000,23 @@ export default function CommunicationsAutomationCenter({
 
               {/* Action recommendations Cards */}
               <div className="space-y-3">
-                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest font-mono">Suggested Next AI Actions</h3>
+                <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-widest">Suggested Next AI Actions</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {aiInsights.recommendations.map((rec, i) => (
-                    <div key={i} className="bg-white border border-slate-200 p-4 rounded-2xl flex flex-col justify-between gap-4 shadow-xs">
+                    <div key={i} className="bg-slate-900 border border-slate-800 p-4 rounded-xl flex flex-col justify-between gap-4">
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className={`text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full border ${
-                            rec.impact.includes("High") ? "bg-emerald-50 text-emerald-800 border-emerald-200" : "bg-amber-50 text-amber-800 border-amber-200"
+                          <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-sm bg-slate-950 border border-slate-850 ${
+                            rec.impact.includes("High") ? "text-emerald-400 border-emerald-500/20" : "text-amber-400 border-amber-500/20"
                           }`}>
                             Impact: {rec.impact}
                           </span>
                         </div>
-                        <h4 className="text-xs md:text-sm font-bold text-slate-900">{rec.title}</h4>
-                        <p className="text-[11px] text-slate-600 leading-relaxed">{rec.desc}</p>
+                        <h4 className="text-xs md:text-sm font-bold text-slate-100">{rec.title}</h4>
+                        <p className="text-[11px] text-slate-400 leading-relaxed">{rec.desc}</p>
                       </div>
 
                       <button
-                        type="button"
                         onClick={() => {
                           if (rec.title.includes("Pledge")) {
                             setAiPrompt({
@@ -2191,7 +2032,7 @@ export default function CommunicationsAutomationCenter({
                             setIsComposeOpen(true);
                           }
                         }}
-                        className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-[10px] font-bold border border-slate-200 cursor-pointer transition-all flex items-center justify-center gap-1"
+                        className="w-full py-1.5 bg-slate-950 hover:bg-slate-850 text-slate-300 rounded-lg text-[10px] font-bold border border-slate-800 cursor-pointer transition-all flex items-center justify-center gap-1"
                       >
                         <span>Activate Recommendation</span>
                         <ArrowRight className="w-3.5 h-3.5" />
@@ -2209,32 +2050,32 @@ export default function CommunicationsAutomationCenter({
       {/* MODAL 1: TEST SEND SIMULATION */}
       <AnimatePresence>
         {showTestModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-fade-in">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-4 animate-fade-in">
             <motion.div 
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white border border-slate-200 w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-2xl"
+              className="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-xl p-5 space-y-4 shadow-2xl"
             >
               <div className="space-y-1">
-                <h3 className="text-sm font-bold text-slate-900">Send Test Message</h3>
-                <p className="text-xs text-slate-600">Verify layout with real dynamic parsing simulation</p>
+                <h3 className="text-sm font-bold text-white">Send Test Message</h3>
+                <p className="text-xs text-slate-400">Verify layout with real dynamic parsing simulation</p>
               </div>
 
               <div className="space-y-3">
                 <div className="space-y-1">
-                  <label className="text-[11px] text-slate-700 block font-bold">Recipient Mobile Phone</label>
+                  <label className="text-[11px] text-slate-400 block font-bold">Recipient Mobile Phone</label>
                   <input
                     type="text"
                     value={testSendPhone}
                     onChange={(e) => setTestSendPhone(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-hidden"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-hidden"
                   />
                 </div>
 
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
-                  <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider font-mono">Live Parse preview</p>
-                  <p className="text-xs text-slate-800 leading-relaxed">
+                <div className="p-3 bg-slate-950 rounded-lg border border-slate-850 space-y-1.5">
+                  <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Live Parse preview</p>
+                  <p className="text-xs text-slate-300 leading-relaxed">
                     Hello Richard Mayore, thank you for supporting {activeProject.name} with your generous donation of KES 15,000!
                   </p>
                 </div>
@@ -2244,14 +2085,14 @@ export default function CommunicationsAutomationCenter({
                 <button
                   type="button"
                   onClick={() => setShowTestModal(false)}
-                  className="py-2.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer"
+                  className="py-2 bg-slate-950 hover:bg-slate-850 border border-slate-800 text-slate-300 rounded-lg text-xs font-semibold cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={handleTestSend}
-                  className="py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs"
+                  className="py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold cursor-pointer"
                 >
                   Confirm dispatch
                 </button>
@@ -2264,25 +2105,21 @@ export default function CommunicationsAutomationCenter({
       {/* FLOATING COMPOSE DIALOG MODAL */}
       <AnimatePresence>
         {isComposeOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-fade-in">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-4 animate-fade-in">
             <motion.div 
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white border border-slate-200 w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl p-5 sm:p-6 space-y-4 shadow-2xl"
+              className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-xl p-6 space-y-4 shadow-2xl"
             >
-              <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                 <div className="flex items-center gap-2">
-                  <Megaphone className="w-5 h-5 text-emerald-700" />
-                  <h3 className="text-sm font-bold text-slate-900">Compose Quick Message</h3>
+                  <Megaphone className="w-5 h-5 text-emerald-400" />
+                  <h3 className="text-sm font-bold text-white">Compose Quick Message</h3>
                 </div>
                 <button 
-                  type="button"
-                  onClick={() => {
-                    setIsComposeOpen(false);
-                    setAiAssistSuggestion(null);
-                  }}
-                  className="text-slate-400 hover:text-slate-700 transition-all cursor-pointer text-xs font-bold"
+                  onClick={() => setIsComposeOpen(false)}
+                  className="text-slate-400 hover:text-white transition-all cursor-pointer text-xs"
                 >
                   ✕ Close
                 </button>
@@ -2291,35 +2128,35 @@ export default function CommunicationsAutomationCenter({
               <div className="space-y-3.5">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-[11px] text-slate-700 font-bold block">Recipient Name</label>
+                    <label className="text-[11px] text-slate-400 font-bold block">Recipient Name</label>
                     <input
                       type="text"
                       value={composeForm.recipientName}
                       onChange={(e) => setComposeForm({ ...composeForm, recipientName: e.target.value })}
                       placeholder="e.g. John Kamau"
-                      className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-hidden"
+                      className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-hidden"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] text-slate-700 font-bold block">Mobile Phone</label>
+                    <label className="text-[11px] text-slate-400 font-bold block">Mobile Phone</label>
                     <input
                       type="text"
                       value={composeForm.recipientPhone}
                       onChange={(e) => setComposeForm({ ...composeForm, recipientPhone: e.target.value })}
                       placeholder="e.g. +254712345678"
-                      className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-hidden"
+                      className="w-full bg-slate-950 border border-slate-850 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-hidden"
                       required
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[11px] text-slate-700 font-bold block">Dispatch Channel</label>
+                  <label className="text-[11px] text-slate-400 font-bold block">Dispatch Channel</label>
                   <select
                     value={composeForm.channel}
                     onChange={(e) => setComposeForm({ ...composeForm, channel: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-xs text-slate-900 font-medium"
+                    className="w-full bg-slate-950 border border-slate-850 rounded-lg p-2 text-xs text-slate-200 font-medium"
                   >
                     <option value="whatsapp">WhatsApp Business Gateway</option>
                     <option value="sms">Carrier SMS network</option>
@@ -2327,155 +2164,31 @@ export default function CommunicationsAutomationCenter({
                   </select>
                 </div>
 
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[11px] text-slate-700 font-bold block">Message Body Text</label>
-                    {composeForm.messageText.length > 0 && (
-                      <span className="text-[10px] text-slate-500 font-mono">
-                        {composeForm.messageText.length} chars
-                      </span>
-                    )}
-                  </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] text-slate-400 font-bold block">Message Body Text</label>
                   <textarea
                     rows={4}
                     value={composeForm.messageText}
                     onChange={(e) => setComposeForm({ ...composeForm, messageText: e.target.value })}
                     placeholder="Type your manual message here. It will be sent instantly."
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
+                    className="w-full bg-slate-950 border border-slate-850 rounded-lg p-3 text-xs text-slate-200 focus:outline-hidden"
                     required
                   />
                 </div>
-
-                {/* TREASURER AI ASSIST CONTROL BOX */}
-                <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                      <span className="text-xs font-bold text-emerald-950">✨ Treasurer AI Assist</span>
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-slate-600 leading-tight">
-                    Refine your message for clarity and professionalism.
-                  </p>
-
-                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => handleRefineComposeMessage("Improve")}
-                      disabled={aiAssistLoading}
-                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-2xs shrink-0"
-                    >
-                      <Sparkles className="w-3 h-3" />
-                      <span>{aiAssistLoading && aiAssistActionTag === "Improve" ? "Refining..." : "Improve with AI"}</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleRefineComposeMessage("Shorten")}
-                      disabled={aiAssistLoading}
-                      className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-emerald-300/80 text-emerald-800 rounded-lg text-[11px] font-medium transition-all cursor-pointer disabled:opacity-50 shrink-0"
-                    >
-                      Shorten
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleRefineComposeMessage("Make More Professional")}
-                      disabled={aiAssistLoading}
-                      className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-emerald-300/80 text-emerald-800 rounded-lg text-[11px] font-medium transition-all cursor-pointer disabled:opacity-50 shrink-0"
-                    >
-                      Make More Professional
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleRefineComposeMessage("Make Warmer")}
-                      disabled={aiAssistLoading}
-                      className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-emerald-300/80 text-emerald-800 rounded-lg text-[11px] font-medium transition-all cursor-pointer disabled:opacity-50 shrink-0"
-                    >
-                      Make Warmer
-                    </button>
-                  </div>
-                </div>
-
-                {/* AI PROCESSING LOADING INDICATOR */}
-                {aiAssistLoading && (
-                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-center gap-2 font-medium animate-pulse">
-                    <Sparkles className="w-4 h-4 text-emerald-600 animate-spin shrink-0" />
-                    <span>✨ Treasurer AI is refining your message...</span>
-                  </div>
-                )}
-
-                {/* AI SUGGESTION REVIEW AREA */}
-                <AnimatePresence>
-                  {aiAssistSuggestion && !aiAssistLoading && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 5 }}
-                      className="bg-white border-2 border-emerald-500/80 rounded-xl p-3.5 space-y-2.5 shadow-md"
-                    >
-                      <div className="flex items-center justify-between border-b border-emerald-100 pb-2">
-                        <div className="flex items-center gap-1.5">
-                          <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                          <span className="text-[11px] font-bold text-slate-900 uppercase tracking-wider font-mono">
-                            ✨ TREASURER AI SUGGESTION
-                          </span>
-                        </div>
-                        <span className="text-[10px] text-emerald-800 font-semibold px-2 py-0.5 bg-emerald-50 rounded-full border border-emerald-200">
-                          {aiAssistActionTag}
-                        </span>
-                      </div>
-
-                      <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 whitespace-pre-wrap font-sans leading-relaxed max-h-48 overflow-y-auto">
-                        {aiAssistSuggestion}
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 pt-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAiAssistSuggestion(null);
-                            triggerToast("Original draft retained.");
-                          }}
-                          className="py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer border border-slate-200 transition-all text-center"
-                        >
-                          Keep My Draft
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setComposeForm({ ...composeForm, messageText: aiAssistSuggestion });
-                            setAiAssistSuggestion(null);
-                            triggerToast("✨ Applied AI suggestion to your message draft.");
-                          }}
-                          className="py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs transition-all flex items-center justify-center gap-1.5"
-                        >
-                          <Check className="w-3.5 h-3.5" />
-                          <span>Use This Message</span>
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-100">
+              <div className="grid grid-cols-2 gap-3 pt-3">
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsComposeOpen(false);
-                    setAiAssistSuggestion(null);
-                  }}
-                  className="py-2.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer"
+                  onClick={() => setIsComposeOpen(false)}
+                  className="py-2.5 bg-slate-950 hover:bg-slate-850 border border-slate-800 text-slate-300 rounded-xl text-xs font-semibold cursor-pointer"
                 >
                   Discard Draft
                 </button>
                 <button
                   type="button"
                   onClick={handleQuickComposeSend}
-                  className="py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+                  className="py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5"
                 >
                   <Send className="w-3.5 h-3.5" />
                   <span>Send Message Now</span>

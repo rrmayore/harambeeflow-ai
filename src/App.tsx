@@ -912,18 +912,20 @@ export default function App() {
     }
 
     if (projects.length === 0) {
+      if (activeTab === "landing" || activeTab === "trust") {
+        setActiveTab("dashboard");
+      }
       setWizardOpen(true);
     } else {
-      if (activeTab === "landing") {
+      if (activeTab === "landing" || activeTab === "trust") {
         setActiveTab("dashboard");
       }
     }
   };
 
   const handleStartFundraising = () => {
-    if (!currentUser) {
-      setActiveTab("dashboard");
-    } else {
+    setActiveTab("dashboard");
+    if (currentUser) {
       const isTourDone = Boolean(
         userProfile?.hasCompletedWelcomeTour || 
         userProfile?.onboarded || 
@@ -933,12 +935,8 @@ export default function App() {
 
       if (!isTourDone) {
         setTourOpen(true);
-      } else {
-        if (projects.length === 0) {
-          setWizardOpen(true);
-        } else {
-          setActiveTab("dashboard");
-        }
+      } else if (projects.length === 0) {
+        setWizardOpen(true);
       }
     }
   };
@@ -2316,11 +2314,12 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
   ].includes(activeTab);
 
   const showCampaignSwitcherInHeader = isWorkspaceMode && !isSystemMode;
+  const isScrollableRootPage = (projects.length === 0 && wizardOpen) || activeTab === "landing" || activeTab === "trust";
 
   return (
     <PWAFrameWrapper isSimulated={isSimulatedStandalone} handleExit={() => setIsSimulatedStandalone(false)}>
       <div className={`min-h-screen bg-slate-950 flex flex-col font-sans leading-normal relative ${
-        projects.length === 0 && wizardOpen ? "w-full overflow-y-auto" : "overflow-hidden h-screen w-screen"
+        isScrollableRootPage ? "w-full min-h-screen overflow-y-auto" : "overflow-hidden h-screen w-screen"
       }`}>
         {renderSyncGuard()}
         {/* TEST MODE NOTICE BANNER */}
@@ -2338,7 +2337,7 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
         )}
 
         <div className={`flex flex-1 w-full ${
-          projects.length === 0 && wizardOpen ? "min-h-screen" : "overflow-hidden h-full"
+          isScrollableRootPage ? "min-h-screen" : "overflow-hidden h-full"
         }`}>
         {/* Sidebar navigation (Web structure) */}
       <Sidebar 
@@ -2365,7 +2364,7 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
 
       {/* Mobile Header Nav */}
       <div className={`flex flex-col flex-1 ${
-        projects.length === 0 && wizardOpen ? "min-h-screen" : "h-screen overflow-hidden"
+        isScrollableRootPage ? "min-h-screen" : "h-screen overflow-hidden"
       }`}>
         {activeTab !== "landing" && activeTab !== "trust" && (
           <header className="bg-slate-900 border-b border-slate-800 px-3.5 sm:px-4 py-2.5 shrink-0 flex items-center justify-between gap-2 md:hidden sticky top-0 z-30 shadow-md min-h-[56px]">
@@ -2476,12 +2475,12 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
 
         {/* Primary Screen Area Split View */}
         <main className={`flex-1 flex flex-col lg:flex-row w-full ${
-          projects.length === 0 && wizardOpen ? "min-h-screen" : "h-full overflow-hidden"
+          isScrollableRootPage ? "min-h-screen" : "h-full overflow-hidden"
         }`}>
           
           {/* Main workspace (Dashboard/Simulator/Blueprints/Prompt customization) */}
           <div className={`flex-1 flex flex-col justify-between w-full ${
-            projects.length === 0 && wizardOpen ? "min-h-screen" : "h-full overflow-hidden"
+            isScrollableRootPage ? "min-h-screen" : "h-full overflow-hidden"
           }`}>
             
             {/* Top General Alert message if server is mounting */}
@@ -2500,7 +2499,7 @@ Action Plan: Direct-messaging committee members to follow up on remaining pledge
 
             {activeTab === "trust" && (
               <TrustSecurityView 
-                onStartFundraising={() => setActiveTab("dashboard")} 
+                onStartFundraising={handleStartFundraising} 
                 onNavigateToHowItWorks={() => setActiveTab("landing")} 
               />
             )}
