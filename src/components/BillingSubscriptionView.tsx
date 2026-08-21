@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { 
   CreditCard, Check, Sparkles, Zap, ShieldCheck, ArrowRight, Download, 
   HelpCircle, Clock, AlertCircle, Phone, Mail, Lock, CheckCircle2, Copy, 
@@ -6,13 +6,34 @@ import {
   FileText, Heart, Layers, MessageSquare, FileSpreadsheet, Building2,
   Edit3, Globe, Shield, Database, Cloud, Award, CheckCircle, Tag, User, 
   LockKeyhole, ChevronDown, ChevronUp, Server, CheckSquare, TrendingUp,
-  DollarSign, ShieldAlert, FileCheck, Landmark, Key, Users2
+  DollarSign, ShieldAlert, FileCheck, Landmark, Key, Users2, Loader2
 } from "lucide-react";
+import { auth } from "../firebase";
 
 interface BillingSubscriptionViewProps {
   onBackToSettings?: () => void;
   currentUser?: any;
   activeProject?: any;
+}
+
+export interface AuthoritativeSubscriptionState {
+  authenticated?: boolean;
+  userId?: string;
+  planId: "community" | "standard" | "professional";
+  status: "free" | "trial" | "active" | "past_due" | "expired" | "cancelled";
+  access: boolean;
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
+  autoRenew: boolean;
+  entitlements?: Record<string, any>;
+  subscription?: {
+    userId?: string;
+    planId?: string;
+    status?: string;
+    currentPeriodStart?: string;
+    currentPeriodEnd?: string;
+    autoRenew?: boolean;
+  };
 }
 
 export default function BillingSubscriptionView({ 
@@ -28,6 +49,35 @@ export default function BillingSubscriptionView({
   const [feedbackMsg, setFeedbackMsg] = useState("");
   const [copiedEmail, setCopiedEmail] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  // Authoritative server-side subscription state
+  const [serverSub, setServerSub] = useState<AuthoritativeSubscriptionState | null>(null);
+  const [isLoadingStatus, setIsLoadingStatus] = useState<boolean>(true);
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const [isInitiatingUpgrade, setIsInitiatingUpgrade] = useState<boolean>(false);
+  const [initiateError, setInitiateError] = useState<string | null>(null);
+  const [stkResponse, setStkResponse] = useState<any | null>(null);
+
+  // Automatic Payment & Subscription Confirmation Polling State
+  const [pollingStatus, setPollingStatus] = useState<"idle" | "polling" | "confirmed" | "timeout" | "failed">("idle");
+  const [confirmedSubData, setConfirmedSubData] = useState<AuthoritativeSubscriptionState | null>(null);
+  const pollingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingDeadlineRef = useRef<number>(0);
+
+  // Safe helper to stop any active polling timer
+  const stopPolling = () => {
+    if (pollingTimerRef.current) {
+      clearInterval(pollingTimerRef.current);
+      pollingTimerRef.current = null;
+    }
+  };
+
+  // Clean up polling timer on component unmount
+  useEffect(() => {
+    return () => {
+      stopPolling();
+    };
+  }, []);
 
   // Organization Information local state
   const [orgInfo, setOrgInfo] = useState({
@@ -48,6 +98,59 @@ export default function BillingSubscriptionView({
   const [showEditOrgModal, setShowEditOrgModal] = useState(false);
   const [tempOrgInfo, setTempOrgInfo] = useState(orgInfo);
 
+  // Fetch Authoritative Subscription Status from Secure Backend API
+  const fetchSubscriptionStatus = async () => {
+    setIsLoadingStatus(true);
+    setStatusError(null);
+    try {
+      const user = currentUser || auth?.currentUser;
+      if (!user) {
+        // Safe unauthenticated fallback: default to community free tier
+        setServerSub({
+          planId: "community",
+          status: "free",
+          access: true,
+          currentPeriodStart: null,
+          currentPeriodEnd: null,
+          autoRenew: false
+        });
+        setIsLoadingStatus(false);
+        return;
+      }
+
+      const token = await user.getIdToken();
+      const res = await fetch("/api/subscription/status", {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          throw new Error("Authentication required. Please sign in to view authoritative subscription details.");
+        } else if (res.status === 403) {
+          throw new Error("Access forbidden. You do not have permission to view subscription status.");
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || `Server error (${res.status}) while retrieving subscription status.`);
+        }
+      }
+
+      const data: AuthoritativeSubscriptionState = await res.json();
+      setServerSub(data);
+    } catch (err: any) {
+      console.error("[BILLING UI] Error fetching subscription status:", err);
+      setStatusError(err.message || "Failed to load authoritative subscription status.");
+    } finally {
+      setIsLoadingStatus(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSubscriptionStatus();
+  }, [currentUser]);
+
   const handleCopyEmail = () => {
     navigator.clipboard.writeText("support@harambeeflow.org");
     setCopiedEmail(true);
@@ -55,19 +158,129 @@ export default function BillingSubscriptionView({
   };
 
   const handleOpenUpgradeModal = (planName: string = "Standard") => {
+    stopPolling();
     setSelectedPlanForUpgrade(planName);
+    setInitiateError(null);
+    setStkResponse(null);
+    setPollingStatus("idle");
+    setConfirmedSubData(null);
     setShowUpgradeModal(true);
     setUpgradeSubmitted(false);
   };
 
-  const handleConfirmUpgrade = (e: React.FormEvent) => {
+  const handleCloseUpgradeModal = () => {
+    stopPolling();
+    setShowUpgradeModal(false);
+    setPollingStatus("idle");
+  };
+
+  // Starts lightweight authoritative subscription confirmation polling
+  const startPaymentConfirmationPolling = (targetPlanKey: "standard" | "professional") => {
+    stopPolling();
+    setPollingStatus("polling");
+    setConfirmedSubData(null);
+    // Timeout after 2.5 minutes (150,000 ms)
+    pollingDeadlineRef.current = Date.now() + 150000;
+
+    const pollInterval = setInterval(async () => {
+      // Check for timeout
+      if (Date.now() > pollingDeadlineRef.current) {
+        stopPolling();
+        setPollingStatus("timeout");
+        return;
+      }
+
+      try {
+        const user = currentUser || auth?.currentUser;
+        if (!user) {
+          stopPolling();
+          setPollingStatus("failed");
+          return;
+        }
+
+        const token = await user.getIdToken();
+        const res = await fetch("/api/subscription/status", {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+
+        if (res.ok) {
+          const data: AuthoritativeSubscriptionState = await res.json();
+          // Check if the plan is now authoritatively active or trial
+          if (data.planId === targetPlanKey && (data.status === "active" || data.status === "trial")) {
+            stopPolling();
+            setServerSub(data);
+            setConfirmedSubData(data);
+            setPollingStatus("confirmed");
+            setFeedbackMsg(`🎉 Payment Confirmed! Your ${targetPlanKey === "professional" ? "Professional" : "Standard"} subscription is now active.`);
+          }
+        }
+      } catch (pollErr) {
+        console.warn("[BILLING UI] Polling check encountered transient error:", pollErr);
+      }
+    }, 3500);
+
+    pollingTimerRef.current = pollInterval;
+  };
+
+  const handleConfirmUpgrade = async (e: React.FormEvent) => {
     e.preventDefault();
-    setUpgradeSubmitted(true);
-    setFeedbackMsg(`Upgrade request for ${selectedPlanForUpgrade} Plan (${billingCycle}) submitted! M-PESA confirmation prompt will be sent to ${mpesaPhone}.`);
-    setTimeout(() => {
+    setInitiateError(null);
+    setStkResponse(null);
+
+    const planKey = selectedPlanForUpgrade.toLowerCase() as "community" | "standard" | "professional";
+
+    if (planKey === "community") {
+      setFeedbackMsg("You are currently on the Community Tier (Free forever).");
       setShowUpgradeModal(false);
-      setUpgradeSubmitted(false);
-    }, 2500);
+      return;
+    }
+
+    const user = currentUser || auth?.currentUser;
+    if (!user) {
+      setInitiateError("You must be authenticated with Firebase to initiate an upgrade. Please sign in.");
+      return;
+    }
+
+    setIsInitiatingUpgrade(true);
+
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch("/api/subscription/initiate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          planId: planKey,
+          billingCycle,
+          phoneNumber: mpesaPhone
+        })
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        const errMsg = data.message || data.error || `Payment initiation failed with status ${response.status}.`;
+        setInitiateError(errMsg);
+        return;
+      }
+
+      setStkResponse(data);
+      setUpgradeSubmitted(true);
+      setFeedbackMsg(data.customerMessage || `M-PESA STK Push prompt sent to ${mpesaPhone}! Please enter your PIN on your phone.`);
+
+      // Automatically start confirmation polling loop
+      startPaymentConfirmationPolling(planKey);
+    } catch (err: any) {
+      console.error("[BILLING UI] Payment initiation error:", err);
+      setInitiateError(err.message || "Network error while connecting to M-PESA payment gateway. Please check your connection.");
+    } finally {
+      setIsInitiatingUpgrade(false);
+    }
   };
 
   const handleOpenEditOrgModal = () => {
@@ -345,17 +558,21 @@ export default function BillingSubscriptionView({
               </span>
             </button>
           </div>
-        </div>
-
-        {/* PRICING CARDS GRID */}
+        </div>        {/* PRICING CARDS GRID */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 items-stretch">
           
           {/* COMMUNITY CARD */}
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-7 flex flex-col justify-between space-y-6 relative hover:border-slate-700 transition shadow-xl" id="billing-plan-community">
+          <div className={`bg-slate-900 border rounded-3xl p-6 sm:p-7 flex flex-col justify-between space-y-6 relative transition shadow-xl ${
+            (serverSub?.planId || "community") === "community" ? "border-slate-600 bg-slate-900/90" : "border-slate-800 hover:border-slate-700"
+          }`} id="billing-plan-community">
             <div className="space-y-5">
               <div className="flex items-center justify-between">
-                <span className="px-3 py-1 rounded-full text-[10px] font-bold font-mono bg-slate-800 text-slate-300 border border-slate-700 uppercase tracking-wider">
-                  FREE
+                <span className={`px-3 py-1 rounded-full text-[10px] font-bold font-mono uppercase tracking-wider ${
+                  (serverSub?.planId || "community") === "community" 
+                    ? "bg-slate-800 text-emerald-400 border border-emerald-500/30" 
+                    : "bg-slate-800 text-slate-300 border border-slate-700"
+                }`}>
+                  {(serverSub?.planId || "community") === "community" ? "CURRENT PLAN" : "FREE"}
                 </span>
                 <Building2 className="w-5 h-5 text-slate-500" />
               </div>
@@ -413,10 +630,15 @@ export default function BillingSubscriptionView({
             <div className="space-y-2 pt-4">
               <button
                 onClick={() => handleOpenUpgradeModal("Community")}
-                className="w-full py-3 bg-slate-800 hover:bg-slate-750 text-slate-200 hover:text-white font-bold text-xs rounded-xl border border-slate-700 transition cursor-pointer text-center"
+                disabled={(serverSub?.planId || "community") === "community"}
+                className={`w-full py-3 font-bold text-xs rounded-xl border transition cursor-pointer text-center ${
+                  (serverSub?.planId || "community") === "community"
+                    ? "bg-slate-800/80 text-emerald-400 border-slate-700 cursor-default"
+                    : "bg-slate-800 hover:bg-slate-750 text-slate-200 hover:text-white border-slate-700"
+                }`}
                 id="billing-btn-select-community"
               >
-                Start Free
+                {(serverSub?.planId || "community") === "community" ? "Active Community Plan" : "Start Free"}
               </button>
               <p className="text-[10px] text-slate-500 text-center font-medium">No credit card required.</p>
             </div>
@@ -428,7 +650,7 @@ export default function BillingSubscriptionView({
             {/* Most Popular Badge */}
             <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black text-[10px] uppercase tracking-wider rounded-full shadow-lg font-mono flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 fill-slate-950" />
-              <span>MOST POPULAR</span>
+              <span>{serverSub?.planId === "standard" ? "ACTIVE PLAN" : "MOST POPULAR"}</span>
             </div>
 
             <div className="space-y-5 pt-1">
@@ -515,7 +737,7 @@ export default function BillingSubscriptionView({
                 id="billing-btn-upgrade-standard"
               >
                 <Sparkles className="w-4 h-4 fill-slate-950" />
-                <span>Start 14-Day Free Trial</span>
+                <span>{serverSub?.planId === "standard" ? "Manage Standard Plan" : "Start 14-Day Free Trial"}</span>
               </button>
 
               <div className="flex items-center justify-center gap-3 text-[11px] text-slate-300 font-semibold">
@@ -536,7 +758,7 @@ export default function BillingSubscriptionView({
             <div className="space-y-5">
               <div className="flex items-center justify-between">
                 <span className="px-3 py-1 rounded-full text-[10px] font-bold font-mono bg-indigo-950 text-indigo-300 border border-indigo-800/50 uppercase tracking-wider">
-                  ENTERPRISE & NGOS
+                  {serverSub?.planId === "professional" ? "CURRENT PLAN" : "ENTERPRISE & NGOS"}
                 </span>
                 <Layers className="w-5 h-5 text-indigo-400" />
               </div>
@@ -620,12 +842,11 @@ export default function BillingSubscriptionView({
                 className="w-full py-3 bg-slate-800 hover:bg-slate-750 text-slate-200 hover:text-white font-bold text-xs rounded-xl border border-slate-700 transition cursor-pointer text-center"
                 id="billing-btn-contact-professional"
               >
-                Contact Sales
+                {serverSub?.planId === "professional" ? "Manage Professional Plan" : "Upgrade to Professional"}
               </button>
               <p className="text-[10px] text-slate-500 text-center font-medium">Custom volume billing & dedicated setup.</p>
             </div>
           </div>
-
         </div>
       </div>
 
@@ -968,23 +1189,78 @@ export default function BillingSubscriptionView({
                 <FileText className="w-5 h-5 text-emerald-400" />
                 <h2 className="text-base font-black text-white">Billing Summary</h2>
               </div>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono bg-emerald-950 text-emerald-400 border border-emerald-800/40">
-                Active Overview
-              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={fetchSubscriptionStatus}
+                  disabled={isLoadingStatus}
+                  title="Refresh authoritative subscription status"
+                  className="p-1 text-slate-400 hover:text-emerald-400 transition cursor-pointer rounded-lg hover:bg-slate-800"
+                  id="btn-refresh-subscription-status"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isLoadingStatus ? "animate-spin text-emerald-400" : ""}`} />
+                </button>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono bg-emerald-950 text-emerald-400 border border-emerald-800/40">
+                  {isLoadingStatus ? "Syncing..." : "Server Verified"}
+                </span>
+              </div>
             </div>
+
+            {statusError && (
+              <div className="p-2.5 bg-rose-950/60 border border-rose-800/60 rounded-xl text-[11px] text-rose-300 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <span>{statusError}</span>
+                  <button 
+                    onClick={fetchSubscriptionStatus} 
+                    className="block font-bold text-rose-300 underline hover:text-white mt-1 cursor-pointer"
+                  >
+                    Retry Connection
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-3 text-xs">
               <div className="flex justify-between items-center p-2.5 bg-slate-950/60 rounded-xl border border-slate-800/60">
                 <span className="text-slate-400">Current Plan:</span>
-                <span className="font-black text-emerald-400 font-mono">Community Tier</span>
+                <span className="font-black text-emerald-400 font-mono capitalize">
+                  {serverSub?.planId ? `${serverSub.planId} Tier` : "Community Tier"}
+                </span>
               </div>
 
               <div className="flex justify-between items-center p-2.5 bg-slate-950/60 rounded-xl border border-slate-800/60">
                 <span className="text-slate-400">Subscription Status:</span>
-                <span className="inline-flex items-center gap-1.5 font-bold text-emerald-400 font-mono">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_6px_#34d399]" />
-                  Active
-                </span>
+                {isLoadingStatus ? (
+                  <span className="inline-flex items-center gap-1.5 font-bold text-slate-400 font-mono text-[11px]">
+                    <Loader2 className="w-3 h-3 animate-spin text-emerald-400" />
+                    Checking...
+                  </span>
+                ) : serverSub?.status === "active" ? (
+                  <span className="inline-flex items-center gap-1.5 font-bold text-emerald-400 font-mono">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_6px_#34d399]" />
+                    Active
+                  </span>
+                ) : serverSub?.status === "trial" ? (
+                  <span className="inline-flex items-center gap-1.5 font-bold text-teal-400 font-mono">
+                    <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse shadow-[0_0_6px_#2dd4bf]" />
+                    14-Day Free Trial
+                  </span>
+                ) : serverSub?.status === "past_due" ? (
+                  <span className="inline-flex items-center gap-1.5 font-bold text-amber-400 font-mono">
+                    <span className="w-2 h-2 rounded-full bg-amber-400" />
+                    Past Due
+                  </span>
+                ) : serverSub?.status === "expired" ? (
+                  <span className="inline-flex items-center gap-1.5 font-bold text-rose-400 font-mono">
+                    <span className="w-2 h-2 rounded-full bg-rose-400" />
+                    Expired
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 font-bold text-slate-300 font-mono">
+                    <span className="w-2 h-2 rounded-full bg-slate-400" />
+                    Free Grassroots
+                  </span>
+                )}
               </div>
 
               <div className="flex justify-between items-center p-2.5 bg-slate-950/60 rounded-xl border border-slate-800/60">
@@ -994,12 +1270,22 @@ export default function BillingSubscriptionView({
 
               <div className="flex justify-between items-center p-2.5 bg-slate-950/60 rounded-xl border border-slate-800/60">
                 <span className="text-slate-400">Next Renewal Date:</span>
-                <span className="font-mono text-slate-200 font-semibold">Aug 31, 2026</span>
+                <span className="font-mono text-slate-200 font-semibold">
+                  {serverSub?.currentPeriodEnd 
+                    ? new Date(serverSub.currentPeriodEnd).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                    : "Free Tier (No Expiry)"}
+                </span>
               </div>
 
               <div className="flex justify-between items-center p-2.5 bg-slate-950/60 rounded-xl border border-slate-800/60">
-                <span className="text-slate-400">Current Monthly Cost:</span>
-                <span className="font-mono font-bold text-emerald-400">KES 0 / month</span>
+                <span className="text-slate-400">Authoritative Pricing:</span>
+                <span className="font-mono font-bold text-emerald-400">
+                  {serverSub?.planId === "standard"
+                    ? billingCycle === "annual" ? "KES 14,400 / year (KES 1,200/mo)" : "KES 1,500 / month"
+                    : serverSub?.planId === "professional"
+                    ? billingCycle === "annual" ? "KES 33,600 / year (KES 2,800/mo)" : "KES 3,500 / month"
+                    : "KES 0 / month (Free)"}
+                </span>
               </div>
 
               <div className="flex justify-between items-center p-2.5 bg-emerald-950/30 rounded-xl border border-emerald-500/20">
@@ -1017,7 +1303,7 @@ export default function BillingSubscriptionView({
             id="billing-summary-upgrade-btn"
           >
             <Sparkles className="w-4 h-4 fill-slate-950" />
-            <span>Start 14-Day Free Trial</span>
+            <span>{serverSub?.planId === "standard" ? "Manage Standard Subscription" : "Start 14-Day Free Trial"}</span>
           </button>
         </div>
 
@@ -1225,105 +1511,298 @@ export default function BillingSubscriptionView({
         </p>
       </div>
 
-      {/* MODAL 1 — UPGRADE CONFIRMATION DIALOG */}
+      {/* MODAL 1 — UPGRADE CONFIRMATION & AUTOMATIC ACTIVATION DIALOG */}
       {showUpgradeModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in" id="billing-upgrade-modal">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-6 shadow-2xl relative">
             
             <button
-              onClick={() => setShowUpgradeModal(false)}
+              onClick={handleCloseUpgradeModal}
               className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition cursor-pointer"
               id="billing-upgrade-modal-close"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold font-mono bg-emerald-950 text-emerald-400 border border-emerald-800">
-                <Sparkles className="w-3.5 h-3.5" />
-                Confirm Plan Upgrade
-              </div>
-              <h2 className="text-xl font-black text-white">
-                Upgrade to {selectedPlanForUpgrade} Plan
-              </h2>
-              <p className="text-xs text-slate-400">
-                Confirm your request to upgrade your HarambeeFlow organization subscription.
-              </p>
-            </div>
-
-            <div className="p-4 bg-slate-950 border border-slate-800 rounded-2xl space-y-3 text-xs">
-              <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                <span className="text-slate-400">Selected Plan:</span>
-                <span className="font-bold text-white font-mono">{selectedPlanForUpgrade}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                <span className="text-slate-400">Billing Cycle:</span>
-                <span className="font-bold text-emerald-400 font-mono capitalize">{billingCycle}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                <span className="text-slate-400">Billing Amount:</span>
-                <span className="font-bold text-emerald-400 font-mono">
-                  {selectedPlanForUpgrade === "Community"
-                    ? "KES 0 / month"
-                    : selectedPlanForUpgrade === "Standard"
-                    ? billingCycle === "monthly" ? "KES 1,500 / month" : "KES 14,400 / year"
-                    : billingCycle === "monthly" ? "KES 3,500 / month" : "KES 33,600 / year"}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-400">Settlement Channel:</span>
-                <span className="font-bold text-slate-200">Safaricom M-PESA STK Push</span>
-              </div>
-            </div>
-
-            <form onSubmit={handleConfirmUpgrade} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-300 block">
-                  Confirm M-PESA Registered Phone Number:
-                </label>
-                <div className="relative">
-                  <Phone className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
-                  <input
-                    type="tel"
-                    required
-                    value={mpesaPhone}
-                    onChange={(e) => setMpesaPhone(e.target.value)}
-                    placeholder="0712345678"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
-                    id="billing-modal-phone-input"
-                  />
+            {/* STATE 1: PAYMENT CONFIRMED & SUBSCRIPTION ACTIVATED */}
+            {pollingStatus === "confirmed" ? (
+              <div className="space-y-6 text-center py-4 animate-scale-up" id="billing-upgrade-confirmed-view">
+                <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center mx-auto shadow-[0_0_30px_rgba(52,211,153,0.3)]">
+                  <CheckCircle2 className="w-9 h-9 text-slate-950 stroke-[2.5]" />
                 </div>
-                <span className="text-[10px] text-slate-500 block">
-                  You will receive an automated M-PESA PIN prompt on this phone line to confirm your trial/subscription.
-                </span>
-              </div>
 
-              <div className="p-3 bg-emerald-950/40 border border-emerald-800/40 rounded-xl text-[11px] text-emerald-300 flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                <span>
-                  Includes 14-day full free trial. You can cancel at any time with zero penalty.
-                </span>
-              </div>
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold font-mono bg-emerald-950 text-emerald-400 border border-emerald-800">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Server Verified
+                  </div>
+                  <h2 className="text-2xl font-black text-white">
+                    PAYMENT CONFIRMED!
+                  </h2>
+                  <p className="text-sm text-slate-300">
+                    Your <strong className="text-emerald-400 font-bold">{selectedPlanForUpgrade} Plan</strong> is now active.
+                  </p>
+                </div>
 
-              <div className="flex items-center gap-3 pt-2">
+                <div className="p-4 bg-slate-950 border border-emerald-500/20 rounded-2xl space-y-2.5 text-xs text-left">
+                  <div className="flex justify-between items-center border-b border-slate-800/80 pb-2">
+                    <span className="text-slate-400">Active Tier:</span>
+                    <span className="font-bold text-emerald-400 font-mono capitalize">{selectedPlanForUpgrade}</span>
+                  </div>
+                  <div className="flex justify-between items-center border-b border-slate-800/80 pb-2">
+                    <span className="text-slate-400">Subscription Status:</span>
+                    <span className="inline-flex items-center gap-1.5 font-bold text-emerald-400 font-mono">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_6px_#34d399]" />
+                      Active
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400">Next Renewal Date:</span>
+                    <span className="font-mono text-slate-200 font-semibold">
+                      {(confirmedSubData?.currentPeriodEnd || serverSub?.currentPeriodEnd)
+                        ? new Date(confirmedSubData?.currentPeriodEnd || serverSub?.currentPeriodEnd!).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                        : "Active Period"}
+                    </span>
+                  </div>
+                </div>
+
                 <button
-                  type="button"
-                  onClick={() => setShowUpgradeModal(false)}
-                  className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl transition cursor-pointer"
-                  id="billing-modal-cancel-btn"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs rounded-xl shadow-lg transition cursor-pointer flex items-center justify-center gap-2"
-                  id="billing-modal-submit-btn"
+                  onClick={handleCloseUpgradeModal}
+                  className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs rounded-xl shadow-lg transition cursor-pointer flex items-center justify-center gap-2"
+                  id="billing-upgrade-done-btn"
                 >
                   <Check className="w-4 h-4" />
-                  <span>Confirm Request</span>
+                  <span>View Updated Subscription</span>
                 </button>
               </div>
-            </form>
+
+            /* STATE 2: POLLING FOR M-PESA PAYMENT CONFIRMATION */
+            ) : pollingStatus === "polling" ? (
+              <div className="space-y-6 text-center py-2 animate-fade-in" id="billing-upgrade-polling-view">
+                <div className="w-16 h-16 rounded-3xl bg-slate-800 border border-slate-700 flex items-center justify-center mx-auto relative">
+                  <Phone className="w-7 h-7 text-emerald-400 animate-bounce" />
+                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 animate-ping" />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold font-mono bg-emerald-950 text-emerald-400 border border-emerald-800">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    M-PESA PROMPT SENT
+                  </div>
+                  <h2 className="text-xl font-black text-white">
+                    Please Check Your Phone
+                  </h2>
+                  <p className="text-xs text-slate-300 max-w-sm mx-auto leading-relaxed">
+                    An STK prompt was sent to <strong className="text-white font-mono">{mpesaPhone}</strong>. Please enter your M-PESA PIN on your mobile device to complete payment.
+                  </p>
+                </div>
+
+                <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-2xl space-y-3 text-xs text-left">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">Payment Status:</span>
+                    <span className="inline-flex items-center gap-1.5 font-bold text-teal-400 font-mono text-[11px]">
+                      <Loader2 className="w-3 h-3 animate-spin text-teal-400" />
+                      Waiting for payment confirmation...
+                    </span>
+                  </div>
+                  {stkResponse?.checkoutRequestId && (
+                    <div className="flex items-center justify-between border-t border-slate-800/80 pt-2">
+                      <span className="text-slate-400">Checkout Ref:</span>
+                      <span className="font-mono text-slate-400 text-[10px]">{stkResponse.checkoutRequestId}</span>
+                    </div>
+                  )}
+                  <p className="text-[11px] text-slate-400 leading-relaxed border-t border-slate-800/80 pt-2">
+                    HarambeeFlow will automatically activate your subscription the moment Safaricom confirms your payment.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleCloseUpgradeModal}
+                    className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl transition cursor-pointer"
+                    id="billing-polling-close-btn"
+                  >
+                    Close (Processes in Background)
+                  </button>
+                  <button
+                    onClick={fetchSubscriptionStatus}
+                    disabled={isLoadingStatus}
+                    className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-750 text-emerald-400 font-bold text-xs rounded-xl border border-emerald-500/30 transition cursor-pointer flex items-center justify-center gap-1.5"
+                    id="billing-polling-refresh-btn"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isLoadingStatus ? "animate-spin" : ""}`} />
+                    <span>Check Status Now</span>
+                  </button>
+                </div>
+              </div>
+
+            /* STATE 3: TIMEOUT (STILL PROCESSING) */
+            ) : pollingStatus === "timeout" ? (
+              <div className="space-y-6 text-center py-2 animate-fade-in" id="billing-upgrade-timeout-view">
+                <div className="w-16 h-16 rounded-3xl bg-amber-950/60 border border-amber-800/60 flex items-center justify-center mx-auto">
+                  <Clock className="w-8 h-8 text-amber-400" />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold font-mono bg-amber-950 text-amber-400 border border-amber-800">
+                    <Clock className="w-3.5 h-3.5" />
+                    Still Processing
+                  </div>
+                  <h2 className="text-xl font-black text-white">
+                    M-PESA payment is still being processed.
+                  </h2>
+                  <p className="text-xs text-slate-300 max-w-sm mx-auto leading-relaxed">
+                    Safaricom is taking slightly longer than usual to return the payment confirmation.
+                  </p>
+                </div>
+
+                <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-2xl text-xs text-left space-y-2">
+                  <p className="text-slate-300">
+                    If you have already entered your PIN, your subscription will activate automatically as soon as Safaricom completes the callback.
+                  </p>
+                  <p className="text-slate-400 text-[11px]">
+                    You can check your status anytime using the Refresh button in the Billing Summary panel.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleCloseUpgradeModal}
+                    className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl transition cursor-pointer"
+                    id="billing-timeout-close-btn"
+                  >
+                    Close
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await fetchSubscriptionStatus();
+                      if (serverSub?.planId === selectedPlanForUpgrade.toLowerCase()) {
+                        setPollingStatus("confirmed");
+                      }
+                    }}
+                    disabled={isLoadingStatus}
+                    className="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs rounded-xl shadow-lg transition cursor-pointer flex items-center justify-center gap-1.5"
+                    id="billing-timeout-retry-btn"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isLoadingStatus ? "animate-spin" : ""}`} />
+                    <span>Check Status Now</span>
+                  </button>
+                </div>
+              </div>
+
+            /* STATE 4: INITIAL UPGRADE FORM */
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold font-mono bg-emerald-950 text-emerald-400 border border-emerald-800">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Confirm Plan Upgrade
+                  </div>
+                  <h2 className="text-xl font-black text-white">
+                    Upgrade to {selectedPlanForUpgrade} Plan
+                  </h2>
+                  <p className="text-xs text-slate-400">
+                    Confirm your request to upgrade your HarambeeFlow organization subscription.
+                  </p>
+                </div>
+
+                <div className="p-4 bg-slate-950 border border-slate-800 rounded-2xl space-y-3 text-xs">
+                  <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <span className="text-slate-400">Selected Plan:</span>
+                    <span className="font-bold text-white font-mono">{selectedPlanForUpgrade}</span>
+                  </div>
+                  <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <span className="text-slate-400">Billing Cycle:</span>
+                    <span className="font-bold text-emerald-400 font-mono capitalize">{billingCycle}</span>
+                  </div>
+                  <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <span className="text-slate-400">Billing Amount:</span>
+                    <span className="font-bold text-emerald-400 font-mono">
+                      {selectedPlanForUpgrade === "Community"
+                        ? "KES 0 / month"
+                        : selectedPlanForUpgrade === "Standard"
+                        ? billingCycle === "monthly" ? "KES 1,500 / month" : "KES 14,400 / year"
+                        : billingCycle === "monthly" ? "KES 3,500 / month" : "KES 33,600 / year"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400">Settlement Channel:</span>
+                    <span className="font-bold text-slate-200">Safaricom M-PESA STK Push</span>
+                  </div>
+                </div>
+
+                <form onSubmit={handleConfirmUpgrade} className="space-y-4">
+                  {initiateError && (
+                    <div className="p-3 bg-rose-950/80 border border-rose-800/80 rounded-xl text-[11px] text-rose-300 flex items-start gap-2 animate-scale-up" id="billing-upgrade-error-banner">
+                      <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <strong className="block text-rose-200">Upgrade Error</strong>
+                        <span>{initiateError}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-300 block">
+                      Confirm M-PESA Registered Phone Number:
+                    </label>
+                    <div className="relative">
+                      <Phone className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+                      <input
+                        type="tel"
+                        required
+                        disabled={isInitiatingUpgrade}
+                        value={mpesaPhone}
+                        onChange={(e) => setMpesaPhone(e.target.value)}
+                        placeholder="0712345678"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono disabled:opacity-50"
+                        id="billing-modal-phone-input"
+                      />
+                    </div>
+                    <span className="text-[10px] text-slate-500 block">
+                      You will receive an automated M-PESA PIN prompt on this phone line to confirm your subscription.
+                    </span>
+                  </div>
+
+                  <div className="p-3 bg-emerald-950/40 border border-emerald-800/40 rounded-xl text-[11px] text-emerald-300 flex items-start gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span>
+                      Includes 14-day full free trial. You can cancel at any time with zero penalty.
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      disabled={isInitiatingUpgrade}
+                      onClick={handleCloseUpgradeModal}
+                      className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl transition cursor-pointer disabled:opacity-50"
+                      id="billing-modal-cancel-btn"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isInitiatingUpgrade}
+                      className="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs rounded-xl shadow-lg transition cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+                      id="billing-modal-submit-btn"
+                    >
+                      {isInitiatingUpgrade ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
+                          <span>Sending M-PESA Prompt...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-4 h-4" />
+                          <span>Confirm Request</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
 
           </div>
         </div>

@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import crypto from "crypto";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
@@ -17,7 +18,7 @@ import {
   terminate
 } from "firebase/firestore";
 import { initiateSTKPush } from "./mpesa.service.js";
-import { validateSTKRequest, rateLimitSTKPush } from "./mpesa-security.js";
+import { validateSTKRequest, rateLimitSTKPush, normalizePhoneNumber } from "./mpesa-security.js";
 import { 
   validateCallbackOrigin, 
   isDuplicateCallback, 
@@ -26,10 +27,13 @@ import {
   isDuplicateReceipt,
   setFirestoreInstance
 } from "./mpesa-production-hardening.js";
-import { setDb } from "./db-instance.js";
+import { setDb, getAdminDb } from "./db-instance.js";
 import { registerEventQueueDelegates, setPendingPayment } from "./eventQueue.service.js";
 import { mpesaWebhookController } from "./webhook.controller.js";
 import { mpesaWebhookAuthMiddleware } from "./webhookAuth.middleware.js";
+import { requireAuth } from "./auth.middleware.js";
+import { requirePlan, getAuthoritativeSubscription } from "./subscription.service.js";
+import { Subscription } from "./src/types.js";
 
 dotenv.config();
 
@@ -599,6 +603,237 @@ async function seedAndLoadDatabase() {
 
 // REST ENDPOINTS
 
+// Phase 3 Authentication Test Endpoint: Returns verified user info from Firebase ID Token
+app.get("/api/auth/me", requireAuth, (req, res) => {
+  res.json({
+    authenticated: true,
+    uid: req.user!.uid,
+    email: req.user!.email || null,
+    emailVerified: req.user!.emailVerified || false,
+    displayName: req.user!.displayName || null
+  });
+});
+
+// Phase 4A & 5C: Authenticated Authoritative Subscription Status API
+app.get("/api/subscription/status", requireAuth, async (req, res) => {
+  try {
+    const uid = req.user?.uid;
+    if (!uid) {
+      return res.status(401).json({
+        error: "Unauthorized: Missing authenticated user context",
+        code: "AUTH_REQUIRED"
+      });
+    }
+
+    const sub = await getAuthoritativeSubscription(uid);
+
+    return res.json({
+      authenticated: true,
+      userId: uid,
+      planId: sub.planId,
+      status: sub.status,
+      access: sub.access,
+      currentPeriodStart: sub.currentPeriodStart || null,
+      currentPeriodEnd: sub.currentPeriodEnd || null,
+      autoRenew: sub.autoRenew ?? false,
+      entitlements: sub.entitlements,
+      subscription: {
+        userId: uid,
+        planId: sub.planId,
+        status: sub.status,
+        currentPeriodStart: sub.currentPeriodStart,
+        currentPeriodEnd: sub.currentPeriodEnd,
+        autoRenew: sub.autoRenew
+      }
+    });
+  } catch (err: any) {
+    console.error("[SUBSCRIPTION API ERROR] Unexpected error:", err);
+    return res.status(500).json({
+      error: "Internal Server Error: Unexpected error processing subscription status",
+      code: "INTERNAL_ERROR"
+    });
+  }
+});
+
+// Authoritative Server-Side Subscription Pricing Table (KES)
+const SUBSCRIPTION_PRICING: Record<"standard" | "professional", Record<"monthly" | "annual", number>> = {
+  standard: {
+    monthly: 1500,
+    annual: 14400
+  },
+  professional: {
+    monthly: 3500,
+    annual: 33600
+  }
+};
+
+// Phase 4C: Subscription M-PESA STK Push Initiation
+app.post("/api/subscription/initiate", requireAuth, async (req, res) => {
+  try {
+    const uid = req.user?.uid;
+    if (!uid) {
+      return res.status(401).json({
+        error: "Unauthorized: Missing authenticated user context",
+        code: "AUTH_CONTEXT_MISSING"
+      });
+    }
+
+    const { planId, billingCycle, phoneNumber } = req.body || {};
+
+    // 1. Validate Plan ID (Community is free, not a paid subscription)
+    if (planId !== "standard" && planId !== "professional") {
+      return res.status(400).json({
+        error: "Invalid planId. Only 'standard' and 'professional' are valid paid subscription plans.",
+        code: "INVALID_PLAN"
+      });
+    }
+
+    // 2. Validate Billing Cycle
+    if (billingCycle !== "monthly" && billingCycle !== "annual") {
+      return res.status(400).json({
+        error: "Invalid billingCycle. Expected 'monthly' or 'annual'.",
+        code: "INVALID_BILLING_CYCLE"
+      });
+    }
+
+    // 3. Validate and normalize phone number
+    if (!phoneNumber || typeof phoneNumber !== "string" || !phoneNumber.trim()) {
+      return res.status(400).json({
+        error: "Missing or invalid phoneNumber. A valid Kenyan mobile number is required.",
+        code: "INVALID_PHONE_NUMBER"
+      });
+    }
+
+    const normalizedPhone = normalizePhoneNumber(phoneNumber.trim());
+    if (!/^254(7|1)\d{8}$/.test(normalizedPhone)) {
+      return res.status(400).json({
+        error: "Invalid Kenyan phone number format. Must be a valid Safaricom/Airtel mobile number (e.g., 0712345678 or 254712345678).",
+        code: "INVALID_PHONE_FORMAT"
+      });
+    }
+
+    // 4. Server-Authoritative Price Lookup (Currency is strictly KES)
+    const amount = SUBSCRIPTION_PRICING[planId][billingCycle];
+    const currency = "KES";
+
+    // 5. Generate Cryptographically Safe Unique Payment ID
+    const paymentId = `sub_pay_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
+    const timestamp = new Date().toISOString();
+
+    const pendingRecord = {
+      id: paymentId,
+      userId: uid,
+      planId,
+      billingCycle,
+      amount,
+      currency,
+      phoneNumber: normalizedPhone,
+      status: "pending",
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
+
+    // 6. Store Pending Payment Record via Firebase Admin SDK
+    const adminFirestore = getAdminDb();
+    if (!adminFirestore) {
+      console.error("[SUBSCRIPTION INITIATE] Firebase Admin DB instance is unavailable.");
+      return res.status(500).json({
+        error: "Internal Server Error: Database service unavailable",
+        code: "DATABASE_UNAVAILABLE"
+      });
+    }
+
+    try {
+      await adminFirestore.collection("subscription_pending_payments").doc(paymentId).set(pendingRecord);
+      console.log(`📝 [SUBSCRIPTION INITIATE] Stored pending payment record ${paymentId} for user ${uid} (${planId} - ${billingCycle} - KES ${amount})`);
+    } catch (dbErr) {
+      console.error(`[SUBSCRIPTION INITIATE] Failed to save pending payment ${paymentId}:`, dbErr);
+      return res.status(500).json({
+        error: "Internal Server Error: Failed to record pending payment",
+        code: "PENDING_PAYMENT_WRITE_FAILED"
+      });
+    }
+
+    // 7. Initiate M-PESA STK Push via existing Daraja gateway infrastructure
+    // Format alphanumeric reference up to 12 chars (Safaricom requirement)
+    const accountReference = `SUB${planId.toUpperCase().slice(0, 3)}${paymentId.slice(-5)}`;
+    const transactionDesc = `Sub ${planId.slice(0, 10)}`;
+
+    let stkResult;
+    try {
+      stkResult = await initiateSTKPush({
+        phoneNumber: normalizedPhone,
+        amount,
+        accountReference,
+        transactionDesc
+      });
+    } catch (stkErr: any) {
+      console.error("[SUBSCRIPTION INITIATE] Error during initiateSTKPush invocation:", stkErr);
+      stkResult = {
+        success: false,
+        message: stkErr?.message || "M-PESA STK Push gateway communication error"
+      };
+    }
+
+    // 8. Handle STK Push Result & Update Pending Record
+    if (stkResult.success && stkResult.checkoutRequestID) {
+      const checkoutRequestId = stkResult.checkoutRequestID;
+      const merchantRequestId = stkResult.rawResponse?.MerchantRequestID || undefined;
+
+      try {
+        await adminFirestore.collection("subscription_pending_payments").doc(paymentId).update({
+          checkoutRequestId,
+          ...(merchantRequestId ? { merchantRequestId } : {}),
+          status: "stk_sent",
+          updatedAt: new Date().toISOString()
+        });
+        console.log(`🚀 [SUBSCRIPTION INITIATE] STK Push sent successfully for ${paymentId}. CheckoutRequestID: ${checkoutRequestId}`);
+      } catch (updateErr) {
+        console.warn(`[SUBSCRIPTION INITIATE] Could not update pending payment record ${paymentId} with CheckoutRequestID:`, updateErr);
+      }
+
+      return res.json({
+        success: true,
+        paymentId,
+        checkoutRequestId,
+        merchantRequestId,
+        planId,
+        billingCycle,
+        amount,
+        currency,
+        status: "stk_sent",
+        customerMessage: stkResult.message || "STK Push sent to your phone. Please enter your M-PESA PIN to complete payment."
+      });
+    } else {
+      // STK Push failed at Safaricom / Gateway level
+      try {
+        await adminFirestore.collection("subscription_pending_payments").doc(paymentId).update({
+          status: "stk_failed",
+          failureReason: stkResult.message || "Safaricom rejected the STK Push request",
+          updatedAt: new Date().toISOString()
+        });
+      } catch (updateErr) {
+        console.warn(`[SUBSCRIPTION INITIATE] Failed to update failed status on pending record ${paymentId}:`, updateErr);
+      }
+
+      return res.status(400).json({
+        success: false,
+        paymentId,
+        error: "Failed to initiate M-PESA STK Push",
+        message: stkResult.message || "Safaricom rejected the STK Push request. Please verify your phone number and try again.",
+        code: "STK_PUSH_FAILED"
+      });
+    }
+  } catch (err: any) {
+    console.error("[SUBSCRIPTION INITIATE ERROR] Unexpected error:", err);
+    return res.status(500).json({
+      error: "Internal Server Error: Failed to initiate subscription payment",
+      code: "INTERNAL_ERROR"
+    });
+  }
+});
+
+
 // Simple Baseline: Get list of all fundraisers
 app.get("/fundraisers", async (req, res) => {
   await loadFundraisers();
@@ -606,11 +841,39 @@ app.get("/fundraisers", async (req, res) => {
 });
 
 // Simple Baseline: Setup/Create a fundraiser project
-app.post("/fundraisers", async (req, res) => {
+app.post("/fundraisers", requireAuth, async (req, res) => {
+  const uid = req.user!.uid;
   const { name, targetAmount, description, category, treasurerPhone, paybillNumber, accountReference } = req.body;
   
   if (!name || !targetAmount) {
-    return res.status(400).json({ error: "Missing required fields: name, targetAmount" });
+    return res.status(400).json({ error: "Missing required fields: name, targetAmount", code: "MISSING_REQUIRED_FIELDS" });
+  }
+
+  // Authoritative plan campaign limit check
+  const sub = await getAuthoritativeSubscription(uid);
+  if (sub.entitlements.maxActiveCampaigns !== Infinity) {
+    let activeCampaignCount = 0;
+    const adminDb = getAdminDb();
+    if (adminDb) {
+      try {
+        const snap = await adminDb.collection("fundraisers").where("createdBy", "==", uid).get();
+        activeCampaignCount = snap.docs.filter(d => d.data().status !== "Archived" && d.data().status !== "Completed").length;
+      } catch (e) {
+        activeCampaignCount = projects.filter(p => p.createdBy === uid && p.status !== "Archived" && p.status !== "Completed").length;
+      }
+    } else {
+      activeCampaignCount = projects.filter(p => p.createdBy === uid && p.status !== "Archived" && p.status !== "Completed").length;
+    }
+
+    if (activeCampaignCount >= sub.entitlements.maxActiveCampaigns) {
+      return res.status(403).json({
+        error: `Your current ${sub.planId.toUpperCase()} plan allows a maximum of ${sub.entitlements.maxActiveCampaigns} active campaign(s). Please upgrade to Standard for unlimited campaigns.`,
+        code: "PLAN_LIMIT_REACHED",
+        requiredPlan: "standard",
+        currentActiveCount: activeCampaignCount,
+        maxAllowed: sub.entitlements.maxActiveCampaigns
+      });
+    }
   }
 
   const newProjId = `fundraiser-${Date.now()}`;
@@ -625,6 +888,8 @@ app.post("/fundraisers", async (req, res) => {
     paybillNumber: paybillNumber || "225588",
     accountReference: accountReference || name.substring(0, 7).toUpperCase().replace(/\s/g, ""),
     whatsappGroupName: `${name.trim()} Group`,
+    createdBy: uid,
+    status: "Active",
     createdAt: new Date().toISOString()
   };
 
@@ -633,19 +898,23 @@ app.post("/fundraisers", async (req, res) => {
   if (useFirebase && db) {
     try {
       await setDoc(doc(db, "fundraisers", newProjId), {
-        name: newProj.name,
-        targetAmount: newProj.targetAmount,
-        currentAmount: newProj.currentAmount,
-        description: newProj.description,
-        category: newProj.category,
-        treasurerPhone: newProj.treasurerPhone,
-        paybill: newProj.paybill,
-        accountReference: newProj.accountReference,
-        whatsappGroupName: newProj.whatsappGroupName,
+        ...newProj,
         createdAt: new Date()
       });
     } catch (err) {
       console.error("Firestore error writing new fundraiser:", err);
+    }
+  } else {
+    const adminDb = getAdminDb();
+    if (adminDb) {
+      try {
+        await adminDb.collection("fundraisers").doc(newProjId).set({
+          ...newProj,
+          createdAt: new Date()
+        });
+      } catch (err) {
+        console.error("Admin DB error writing new fundraiser:", err);
+      }
     }
   }
 
@@ -779,10 +1048,38 @@ app.get("/api/projects", async (req, res) => {
 });
 
 // Create New Project
-app.post("/api/projects", async (req, res) => {
+app.post("/api/projects", requireAuth, async (req, res) => {
+  const uid = req.user!.uid;
   const { name, targetAmount, description, category, treasurerPhone, paybillNumber, accountReference, whatsappGroupName } = req.body;
   if (!name || !targetAmount) {
-    return res.status(400).json({ error: "Name and targetAmount are required." });
+    return res.status(400).json({ error: "Name and targetAmount are required.", code: "MISSING_REQUIRED_FIELDS" });
+  }
+
+  // Authoritative plan campaign limit check
+  const sub = await getAuthoritativeSubscription(uid);
+  if (sub.entitlements.maxActiveCampaigns !== Infinity) {
+    let activeCampaignCount = 0;
+    const adminDb = getAdminDb();
+    if (adminDb) {
+      try {
+        const snap = await adminDb.collection("fundraisers").where("createdBy", "==", uid).get();
+        activeCampaignCount = snap.docs.filter(d => d.data().status !== "Archived" && d.data().status !== "Completed").length;
+      } catch (e) {
+        activeCampaignCount = projects.filter(p => p.createdBy === uid && p.status !== "Archived" && p.status !== "Completed").length;
+      }
+    } else {
+      activeCampaignCount = projects.filter(p => p.createdBy === uid && p.status !== "Archived" && p.status !== "Completed").length;
+    }
+
+    if (activeCampaignCount >= sub.entitlements.maxActiveCampaigns) {
+      return res.status(403).json({
+        error: `Your current ${sub.planId.toUpperCase()} plan allows a maximum of ${sub.entitlements.maxActiveCampaigns} active campaign(s). Please upgrade to Standard for unlimited campaigns.`,
+        code: "PLAN_LIMIT_REACHED",
+        requiredPlan: "standard",
+        currentActiveCount: activeCampaignCount,
+        maxAllowed: sub.entitlements.maxActiveCampaigns
+      });
+    }
   }
 
   const newProjId = `fundraiser-${Date.now()}`;
@@ -794,16 +1091,36 @@ app.post("/api/projects", async (req, res) => {
     category: category || "General/Harambee",
     treasurerPhone: treasurerPhone || "",
     paybill: paybillNumber || "225588",
+    paybillNumber: paybillNumber || "225588",
     accountReference: accountReference || name.substring(0, 7).toUpperCase().replace(/\s/g, ""),
     whatsappGroupName: whatsappGroupName || `${name} Info`,
+    createdBy: uid,
+    status: "Active",
     createdAt: new Date().toISOString()
   };
 
+  projects.push({ id: newProjId, ...newProj });
+
   if (useFirebase && db) {
     try {
-      await setDoc(doc(db, "fundraisers", newProjId), newProj);
+      await setDoc(doc(db, "fundraisers", newProjId), {
+        ...newProj,
+        createdAt: new Date()
+      });
     } catch (err) {
       console.error("Firestore error writing new fundraiser:", err);
+    }
+  } else {
+    const adminDb = getAdminDb();
+    if (adminDb) {
+      try {
+        await adminDb.collection("fundraisers").doc(newProjId).set({
+          ...newProj,
+          createdAt: new Date()
+        });
+      } catch (err) {
+        console.error("Admin DB error writing new fundraiser:", err);
+      }
     }
   }
 
@@ -1349,7 +1666,7 @@ app.post("/api/mpesa/stkpush", validateSTKRequest, rateLimitSTKPush, async (req,
 app.post("/api/mpesa/callback", mpesaWebhookAuthMiddleware, mpesaWebhookController);
 
 // AI summarize text
-app.post("/api/ai/summarize", async (req, res) => {
+app.post("/api/ai/summarize", requireAuth, requirePlan("standard"), async (req, res) => {
   const { projectId } = req.body;
   if (!projectId) {
     return res.status(400).json({ error: "Missing projectId" });
@@ -1365,7 +1682,7 @@ app.post("/api/ai/summarize", async (req, res) => {
 });
 
 // POST /api/ai/documents/categorize - Gemini Auto-Categorization for uploaded records
-app.post("/api/ai/documents/categorize", async (req, res) => {
+app.post("/api/ai/documents/categorize", requireAuth, requirePlan("standard"), async (req, res) => {
   const { fileName, fileSize } = req.body;
   if (!fileName) {
     return res.status(400).json({ error: "Missing fileName parameter" });
@@ -1500,7 +1817,7 @@ The schema must be:
 });
 
 // POST /api/ai/documents/assistant - Document QA and summary assistant
-app.post("/api/ai/documents/assistant", async (req, res) => {
+app.post("/api/ai/documents/assistant", requireAuth, requirePlan("standard"), async (req, res) => {
   const { question, documents } = req.body;
   if (!question) {
     return res.status(400).json({ error: "Missing question parameter" });
@@ -1563,7 +1880,7 @@ Provide a highly professional, visually beautiful response utilizing markdown ta
 });
 
 // POST /api/ai/campaign-analysis
-app.post("/api/ai/campaign-analysis", async (req, res) => {
+app.post("/api/ai/campaign-analysis", requireAuth, requirePlan("standard"), async (req, res) => {
   const { projectId } = req.body;
   if (!projectId) {
     return res.status(400).json({ error: "Missing projectId" });
@@ -1806,7 +2123,7 @@ Do not add markdown formatting inside the JSON keys. Output valid JSON only.`;
 });
 
 // POST /api/ai/coach - Interactive fundraising coach chat assistant
-app.post("/api/ai/coach", async (req, res) => {
+app.post("/api/ai/coach", requireAuth, requirePlan("standard"), async (req, res) => {
   const { projectId, question } = req.body;
   if (!projectId || !question) {
     return res.status(400).json({ error: "Missing parameters" });
@@ -1902,7 +2219,7 @@ Format your output using clean markdown (bolding, lists, bullet points) for maxi
 });
 
 // POST to write a summary automatically onto the whatsapp group
-app.post("/api/whatsapp/post-summary", async (req, res) => {
+app.post("/api/whatsapp/post-summary", requireAuth, requirePlan("standard"), async (req, res) => {
   const { projectId, summaryText } = req.body;
   if (!projectId || !summaryText) {
     return res.status(400).json({ error: "Missing parameters" });
@@ -1935,7 +2252,7 @@ app.post("/api/whatsapp/post-summary", async (req, res) => {
 
 
 // POST /api/ai/generate-comm
-app.post("/api/ai/generate-comm", async (req, res) => {
+app.post("/api/ai/generate-comm", requireAuth, requirePlan("standard"), async (req, res) => {
   const { projectId, tone = "Warm", audience = "Everyone", purpose = "Thank You", length = "Medium", language = "English" } = req.body;
   
   const proj = projects.find(p => p.id === projectId) || projects[0];
@@ -2014,7 +2331,7 @@ Instructions:
 });
 
 // POST /api/ai/refine-comm - Treasurer AI Assist for Compose Quick Message
-app.post("/api/ai/refine-comm", async (req, res) => {
+app.post("/api/ai/refine-comm", requireAuth, requirePlan("standard"), async (req, res) => {
   const { messageText, action = "Improve", recipientName = "", campaignName = "" } = req.body;
 
   if (!messageText || !messageText.trim()) {

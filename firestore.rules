@@ -11,253 +11,280 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    // =========================================================================
+    // 1. TARGETED SUBSCRIPTION & FINANCIAL INFRASTRUCTURE HARDENING
+    // =========================================================================
+
+    // Subscriptions - Read: Owner only, Write: Server-only (Firebase Admin SDK)
+    match /subscriptions/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false;
+    }
+
+    // Subscription Transactions - Read: Owner only, Write: Server-only (Firebase Admin SDK)
+    match /subscription_transactions/{transactionId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow write: if false;
+    }
+
+    // Subscription Pending Payments - Read: Owner only, Write: Server-only (Firebase Admin SDK)
+    match /subscription_pending_payments/{paymentId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow write: if false;
+    }
+
+    // M-PESA Inbound Webhook Events - Strictly internal/server-only
+    match /mpesa_events/{eventId} {
+      allow read: if false;
+      allow write: if false;
+    }
+
+    // M-PESA Pending Payments (Campaign STK Push) - Strictly internal/server-only
+    match /mpesa_pending_payments/{paymentId} {
+      allow read: if false;
+      allow write: if false;
+    }
+
+    // Idempotency Distributed Locks - Strictly internal/server-only
+    match /idempotency_keys/{keyId} {
+      allow read: if false;
+      allow write: if false;
+    }
+
+    // Dead Letter Queue - Strictly internal/server-only
+    match /dead_letter_queue/{queueId} {
+      allow read: if false;
+      allow write: if false;
+    }
+
+    // Double-Entry Financial Ledger - Read: Authenticated users, Write: Server-only (Firebase Admin SDK)
+    match /financial_ledger/{ledgerId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // =========================================================================
+    // 2. USER & ORGANIZATION COLLECTIONS
+    // =========================================================================
+
     // User accounts collection
     match /users/{userId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId);
     }
 
     // Custom user profiles collection
     match /userProfiles/{userId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId);
     }
 
-    // Organizations collection
+    // Organizations collection & team subcollections
     match /organizations/{organizationId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
       
       match /members/{memberId} {
-        allow read: if true;
-        allow write: if true;
+        allow read: if isSignedIn();
+        allow write: if isSignedIn();
       }
       match /roles/{roleId} {
-        allow read: if true;
-        allow write: if true;
+        allow read: if isSignedIn();
+        allow write: if isSignedIn();
       }
       match /auditLogs/{logId} {
-        allow read: if true;
-        allow write: if true;
+        allow read: if isSignedIn();
+        allow write: if isSignedIn();
       }
       match /activity/{activityId} {
-        allow read: if true;
-        allow write: if true;
+        allow read: if isSignedIn();
+        allow write: if isSignedIn();
       }
       match /notifications/{notifId} {
-        allow read: if true;
-        allow write: if true;
+        allow read: if isSignedIn();
+        allow write: if isSignedIn();
       }
     }
 
-    // Payment accounts collection
+    // Connected Lipa Na M-PESA payment accounts
     match /paymentAccounts/{accountId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
     
-    // Fundraisers collection
+    // =========================================================================
+    // 3. CAMPAIGN & FUNDRAISER COLLECTIONS
+    // =========================================================================
+
+    // Public Fundraisers - Publicly visible for public drives
     match /fundraisers/{fundraiserId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isSignedIn();
     }
     
     // Donations collection
     match /donations/{donationId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isSignedIn();
     }
 
-    // Contributions collection
+    // Contributions collection (Processed ledger attribution)
     match /contributions/{contributionId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if false;
     }
     
     // WhatsApp simulated group history messages
     match /whatsappMessages/{messageId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isSignedIn();
     }
 
     // WhatsApp confirmations
     match /whatsappConfirmations/{confirmationId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
 
-    // Donors collection
+    // Persistent M-PESA Donors collection
     match /donors/{phoneNumber} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
 
-    // Rate limit logs
+    // Rate limit security logs
     match /rate_limit_logs/{logId} {
-      allow read, write: if true;
+      allow read: if false;
+      allow write: if false;
     }
 
-    // Financial ledger
-    match /financial_ledger/{ledgerId} {
-      allow read: if true;
-      allow write: if true;
-    }
-
-    // Mpesa pending payments
-    match /mpesa_pending_payments/{paymentId} {
-      allow read: if true;
-      allow write: if true;
-    }
-
-    // Mpesa events
-    match /mpesa_events/{eventId} {
-      allow read: if true;
-      allow write: if true;
-    }
-
-    // Idempotency keys
-    match /idempotency_keys/{keyId} {
-      allow read, write: if true;
-    }
-
-    // Dead letter queue
-    match /dead_letter_queue/{queueId} {
-      allow read: if true;
-      allow write: if true;
-    }
-
-    // Activity logs
+    // Campaign Activity logs
     match /activityLogs/{logId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
 
     // Notifications
     match /notifications/{notificationId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
 
-    // Pledges collection
+    // Financial pledges
     match /pledges/{pledgeId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
 
     // Campaign lifecycle center collections
     match /campaignTasks/{taskId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
     match /campaignTimeline/{eventId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
     match /campaignAssets/{assetId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
     match /campaignCalendar/{eventId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
     match /campaignArchive/{recordId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
 
     // Analytics collections
     match /analyticsEvents/{eventId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
     match /analyticsStats/{statsId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
 
     // Autopilot AI & Event Bus collections
     match /eventBus/{eventId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
 
     match /eventQueue/{eventId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
 
     match /processedEvents/{eventId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
 
     match /automationExecutions/{executionId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
 
     match /systemLogs/{logId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
 
     match /recognitions/{recognitionId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
 
     match /campaignSnapshots/{snapshotId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
 
     // Communications Automation Center
     match /messageTemplates/{templateId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
 
     match /automationFlows/{flowId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
 
     match /deliveryLogs/{logId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
 
     match /broadcasts/{broadcastId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
 
     // Supporter Relationship Center
     match /supporterProfiles/{profileId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
 
     match /communicationHistory/{historyId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
 
     // Document Vault
     match /documents/{documentId} {
-      allow read: if true;
-      allow write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
 
     match /auditDocuments/{documentId} {
-      allow read: if true;
-      allow write: if true;
-    }
-
-    // Fallback catch-all for any other top-level collection or nested paths in development/demo
-    match /{document=**} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
   }
 }

@@ -16,11 +16,13 @@ import {
 } from "firebase/firestore";
 import { initializeApp as initializeAdminApp, getApps as getAdminApps } from "firebase-admin/app";
 import { getFirestore as getAdminFirestore } from "firebase-admin/firestore";
+import { getAuth as getAdminAuthInstance, Auth as AdminAuth } from "firebase-admin/auth";
 import fs from "fs";
 import path from "path";
 
 let db: any = null;
 let adminDb: any = null;
+let adminAuth: AdminAuth | null = null;
 
 try {
   const configPath = path.join(process.cwd(), "firebase-applet-config.json");
@@ -39,7 +41,8 @@ try {
       });
     }
     adminDb = getAdminFirestore(firebaseConfig.firestoreDatabaseId);
-    console.log(`🛡️ Firebase Admin SDK Instantiated with databaseId: ${firebaseConfig.firestoreDatabaseId}. Strict ledger bypass ready.`);
+    adminAuth = getAdminAuthInstance();
+    console.log(`🛡️ Firebase Admin SDK Instantiated with databaseId: ${firebaseConfig.firestoreDatabaseId}. Strict ledger bypass and Auth verification ready.`);
   }
 } catch (err) {
   console.warn("⚠️ Database Instance lazy initialization skipped/failed:", err);
@@ -47,6 +50,10 @@ try {
 
 export function getDb() {
   return db;
+}
+
+export function getAdminAuth(): AdminAuth | null {
+  return adminAuth;
 }
 
 export function setDb(customDb: any) {

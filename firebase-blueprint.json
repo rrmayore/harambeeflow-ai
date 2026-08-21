@@ -192,6 +192,102 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "email", "createdAt"]
+    },
+    "Subscription": {
+      "title": "Subscription",
+      "description": "Platform subscription record for an organizer or organization",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "planId": { "type": "string" },
+        "status": { "type": "string" },
+        "billingCycle": { "type": "string" },
+        "amount": { "type": "number" },
+        "currency": { "type": "string" },
+        "currentPeriodStart": { "type": "string", "format": "date-time" },
+        "currentPeriodEnd": { "type": "string", "format": "date-time" },
+        "autoRenew": { "type": "boolean" },
+        "mpesaReceiptNumber": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "userId",
+        "planId",
+        "status",
+        "billingCycle",
+        "amount",
+        "currency",
+        "currentPeriodStart",
+        "currentPeriodEnd",
+        "autoRenew",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "SubscriptionTransaction": {
+      "title": "SubscriptionTransaction",
+      "description": "Historical log of a platform subscription payment attempt",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "subscriptionId": { "type": "string" },
+        "userId": { "type": "string" },
+        "amount": { "type": "number" },
+        "currency": { "type": "string" },
+        "mpesaReceiptNumber": { "type": "string" },
+        "checkoutRequestId": { "type": "string" },
+        "merchantRequestId": { "type": "string" },
+        "status": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "planId": { "type": "string" },
+        "billingCycle": { "type": "string" }
+      },
+      "required": [
+        "id",
+        "subscriptionId",
+        "userId",
+        "amount",
+        "currency",
+        "status",
+        "timestamp",
+        "planId",
+        "billingCycle"
+      ]
+    },
+    "SubscriptionPendingPayment": {
+      "title": "SubscriptionPendingPayment",
+      "description": "In-flight M-PESA subscription payment attempt awaiting callback verification",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "planId": { "type": "string" },
+        "billingCycle": { "type": "string" },
+        "amount": { "type": "number" },
+        "currency": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "checkoutRequestId": { "type": "string" },
+        "merchantRequestId": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "userId",
+        "planId",
+        "billingCycle",
+        "amount",
+        "currency",
+        "phoneNumber",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
     }
   },
   "firestore": {
@@ -210,6 +306,18 @@
     "/userProfiles/{userId}": {
       "schema": "UserProfile",
       "description": "The custom user profiles collection"
+    },
+    "/subscriptions/{userId}": {
+      "schema": "Subscription",
+      "description": "The subscriptions collection holding active plan details per user"
+    },
+    "/subscription_transactions/{transactionId}": {
+      "schema": "SubscriptionTransaction",
+      "description": "Log of subscription payment attempts"
+    },
+    "/subscription_pending_payments/{paymentId}": {
+      "schema": "SubscriptionPendingPayment",
+      "description": "In-flight M-PESA STK push payments for subscriptions"
     },
     "/fundraisers/{fundraiserId}": {
       "schema": "Fundraiser",

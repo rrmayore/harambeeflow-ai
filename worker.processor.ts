@@ -70,6 +70,26 @@ export async function executeBackgroundEventWorker(eventId: string): Promise<voi
       isTransactionSuccessful = stk.ResultCode === 0;
       statusDesc = stk.ResultDesc || "";
 
+      // 1. SUBSCRIPTION CALLBACK DISCRIMINATOR
+      // Check if this CheckoutRequestID belongs to a pending PLATFORM SUBSCRIPTION
+      if (adminDb && transactionKey) {
+        try {
+          const subQuery = await adminDb.collection("subscription_pending_payments")
+            .where("checkoutRequestId", "==", transactionKey)
+            .get();
+          
+          if (!subQuery.empty) {
+            const subPendingDoc = subQuery.docs[0];
+            const subPendingData = subPendingDoc.data();
+            console.log(`[WORKER] Intercepted PLATFORM SUBSCRIPTION callback for payment ${subPendingDoc.id} (User: ${subPendingData?.userId}, Plan: ${subPendingData?.planId})`);
+            await processSubscriptionCallback(eventId, event, subPendingDoc, subPendingData, stk);
+            return; // STRICT DETACH: NEVER fall through to campaign donation processing
+          }
+        } catch (subErr: any) {
+          console.error(`[WORKER] Error checking subscription_pending_payments for ${transactionKey}:`, subErr);
+        }
+      }
+
       if (isTransactionSuccessful) {
         const meta = stk.CallbackMetadata?.Item || [];
         const amtItem = meta.find((i: any) => i.Name === "Amount");
@@ -379,5 +399,198 @@ async function registerDlqQuarantine(eventId: string, origEvent: any, finalReaso
     console.log(`[DLQ LOG SUCCESS] Quarantined event ${eventId} safely stored.`);
   } catch (dlqErr: any) {
     console.error(`[DLQ DOUBLE FAULT] Failed to write event ${eventId} to dead-letter-collection:`, dlqErr.message);
+  }
+}
+
+/**
+ * High-Security Platform Subscription Callback Processor
+ * Verifies M-PESA callbacks for platform subscriptions and activates subscriber accounts atomically.
+ */
+async function processSubscriptionCallback(
+  eventId: string,
+  event: any,
+  subPendingDoc: any,
+  subPendingData: any,
+  stk: any
+): Promise<void> {
+  const adminDb = getAdminDb();
+  if (!adminDb) {
+    throw new Error("[SUBSCRIPTION WORKER] Admin DB unavailable");
+  }
+
+  const isTransactionSuccessful = stk.ResultCode === 0;
+  const statusDesc = stk.ResultDesc || "";
+  const paymentId = subPendingDoc.id;
+  const checkoutRequestId = stk.CheckoutRequestID;
+  const now = new Date();
+  const nowStr = now.toISOString();
+
+  // 1. Transaction Failed / User Cancelled on Phone
+  if (!isTransactionSuccessful) {
+    console.log(`[SUBSCRIPTION WORKER] Subscription payment ${paymentId} failed/cancelled: ${statusDesc} (ResultCode: ${stk.ResultCode})`);
+    try {
+      await adminDb.collection("subscription_pending_payments").doc(paymentId).update({
+        status: "failed",
+        resultCode: stk.ResultCode,
+        failureReason: statusDesc || "M-PESA transaction rejected or cancelled on user mobile device",
+        updatedAt: nowStr
+      });
+    } catch (err: any) {
+      console.error(`[SUBSCRIPTION WORKER] Failed to update failed status for ${paymentId}:`, err);
+    }
+    await markEventStatusInDb(eventId, "completed");
+    return;
+  }
+
+  // 2. Extract Metadata Items
+  const meta = stk.CallbackMetadata?.Item || [];
+  const amtItem = meta.find((i: any) => i.Name === "Amount");
+  const codeItem = meta.find((i: any) => i.Name === "MpesaReceiptNumber");
+  const numItem = meta.find((i: any) => i.Name === "PhoneNumber");
+
+  const amountReceived = amtItem ? Number(amtItem.Value) : 0;
+  const receiptCode = codeItem ? String(codeItem.Value).toUpperCase().trim() : "";
+  const phone = numItem ? String(numItem.Value).trim() : subPendingData.phoneNumber;
+
+  if (!receiptCode || amountReceived <= 0) {
+    console.error(`[SUBSCRIPTION WORKER ERROR] Missing receipt (${receiptCode}) or non-positive amount (${amountReceived}) for ${paymentId}`);
+    try {
+      await adminDb.collection("subscription_pending_payments").doc(paymentId).update({
+        status: "malformed_callback_failed",
+        failureReason: "Callback payload missing valid receipt code or positive amount",
+        updatedAt: nowStr
+      });
+    } catch (err) {}
+    await markEventStatusInDb(eventId, "completed");
+    return;
+  }
+
+  // 3. Strict Server Amount Verification (EXACT MATCH REQUIRED)
+  if (amountReceived !== Number(subPendingData.amount)) {
+    console.error(`[SUBSCRIPTION SECURITY ALERT] Amount mismatch for ${paymentId}: Expected KES ${subPendingData.amount}, but received KES ${amountReceived}`);
+    try {
+      await adminDb.collection("subscription_pending_payments").doc(paymentId).update({
+        status: "amount_mismatch_failed",
+        receivedAmount: amountReceived,
+        failureReason: `Amount mismatch: Expected KES ${subPendingData.amount}, but received KES ${amountReceived}`,
+        updatedAt: nowStr
+      });
+    } catch (err) {}
+    await markEventStatusInDb(eventId, "completed");
+    return;
+  }
+
+  // 4. Idempotency Check: Avoid double-activation or re-extending periods
+  if (subPendingData.status === "completed") {
+    console.log(`[SUBSCRIPTION WORKER IDEMPOTENT] Payment ${paymentId} is already completed. Acknowledging duplicate callback.`);
+    await markEventStatusInDb(eventId, "completed");
+    return;
+  }
+
+  // 5. Global Idempotency Lock on Receipt
+  const receiptLockKey = `SUB_RCPT_${receiptCode}`;
+  const isLockSuccessful = await acquireIdempotencyLock(receiptLockKey, {
+    type: "SUBSCRIPTION_CALLBACK",
+    eventId,
+    receiptCode,
+    paymentId,
+    timestamp: Date.now()
+  });
+
+  if (!isLockSuccessful) {
+    console.warn(`[SUBSCRIPTION WORKER] Duplicate or concurrent processing for receipt ${receiptCode}. Skipping.`);
+    await markEventStatusInDb(eventId, "completed");
+    return;
+  }
+
+  // 6. Duplicate Receipt Check across Subscription Transactions
+  try {
+    const existingTxSnap = await adminDb.collection("subscription_transactions")
+      .where("mpesaReceiptNumber", "==", receiptCode)
+      .get();
+    
+    if (!existingTxSnap.empty) {
+      console.warn(`[SUBSCRIPTION WORKER] Duplicate receipt ${receiptCode} already recorded in subscription_transactions.`);
+      await releaseOrSuccessIdempotency(receiptLockKey, true);
+      await markEventStatusInDb(eventId, "completed");
+      return;
+    }
+  } catch (err: any) {
+    console.error(`[SUBSCRIPTION WORKER] Error verifying duplicate receipt ${receiptCode}:`, err);
+  }
+
+  // 7. Calculate Subscription Period Dates
+  // Monthly = 30 days (30 * 24 * 60 * 60 * 1000 ms)
+  // Annual = 365 days (365 * 24 * 60 * 60 * 1000 ms)
+  const isAnnual = subPendingData.billingCycle === "annual";
+  const durationMs = isAnnual ? 365 * 24 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000;
+  const currentPeriodStart = nowStr;
+  const currentPeriodEnd = new Date(now.getTime() + durationMs).toISOString();
+  const uid = subPendingData.userId;
+
+  // 8. Atomic / Multi-Document Activation
+  const transactionId = `sub_tx_${Date.now()}_${receiptCode.toLowerCase()}`;
+
+  try {
+    // Preserve initial subscription creation date if already existing
+    let existingCreatedAt: string | null = null;
+    const subDocRef = adminDb.collection("subscriptions").doc(uid);
+    const subDocSnap = await subDocRef.get();
+    if (subDocSnap.exists) {
+      const existingData = subDocSnap.data();
+      existingCreatedAt = existingData?.createdAt || null;
+    }
+
+    const subscriptionDoc = {
+      id: uid,
+      userId: uid,
+      planId: subPendingData.planId,
+      status: "active",
+      billingCycle: subPendingData.billingCycle,
+      amount: subPendingData.amount,
+      currency: "KES",
+      currentPeriodStart,
+      currentPeriodEnd,
+      autoRenew: false,
+      mpesaReceiptNumber: receiptCode,
+      phoneNumber: subPendingData.phoneNumber || phone,
+      createdAt: existingCreatedAt || nowStr,
+      updatedAt: nowStr
+    };
+
+    const transactionDoc = {
+      id: transactionId,
+      subscriptionId: uid,
+      userId: uid,
+      amount: subPendingData.amount,
+      currency: "KES",
+      mpesaReceiptNumber: receiptCode,
+      checkoutRequestId: checkoutRequestId || subPendingData.checkoutRequestId || "",
+      merchantRequestId: stk.MerchantRequestID || subPendingData.merchantRequestId || "",
+      status: "completed",
+      timestamp: nowStr,
+      planId: subPendingData.planId,
+      billingCycle: subPendingData.billingCycle
+    };
+
+    // Perform database writes
+    await subDocRef.set(subscriptionDoc);
+    await adminDb.collection("subscription_transactions").doc(transactionId).set(transactionDoc);
+    await adminDb.collection("subscription_pending_payments").doc(paymentId).update({
+      status: "completed",
+      mpesaReceiptNumber: receiptCode,
+      merchantRequestId: stk.MerchantRequestID || subPendingData.merchantRequestId || "",
+      updatedAt: nowStr
+    });
+
+    console.log(`🎉 [SUBSCRIPTION ACTIVATED] User ${uid} activated on ${subPendingData.planId} (${subPendingData.billingCycle}) until ${currentPeriodEnd}. M-PESA Receipt: ${receiptCode}`);
+
+    await releaseOrSuccessIdempotency(receiptLockKey, true);
+    await markEventStatusInDb(eventId, "completed");
+
+  } catch (err: any) {
+    console.error(`[SUBSCRIPTION WORKER ERROR] Failed during atomic activation for ${uid}:`, err);
+    await releaseOrSuccessIdempotency(receiptLockKey, false);
+    throw err;
   }
 }

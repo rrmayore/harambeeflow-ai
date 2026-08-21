@@ -212,4 +212,49 @@ export interface WhatsAppConfirmation {
   messageText?: string;
 }
 
+// ==========================================
+// SUBSCRIPTION & BILLING DATA MODEL
+// ==========================================
+
+export type SubscriptionPlanId = "community" | "standard" | "professional";
+
+export type SubscriptionStatus = "free" | "trial" | "active" | "past_due" | "expired" | "cancelled";
+
+export type BillingCycle = "monthly" | "annual";
+
+export type SubscriptionTransactionStatus = "pending" | "completed" | "failed" | "cancelled";
+
+export interface Subscription {
+  id: string;
+  userId: string;
+  planId: SubscriptionPlanId;
+  status: SubscriptionStatus;
+  billingCycle: BillingCycle;
+  amount: number;
+  currency: string;
+  currentPeriodStart: string;
+  currentPeriodEnd: string;
+  autoRenew: boolean;
+  mpesaReceiptNumber?: string;
+  phoneNumber?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SubscriptionTransaction {
+  id: string;
+  subscriptionId: string;
+  userId: string;
+  amount: number;
+  currency: string;
+  mpesaReceiptNumber?: string;
+  checkoutRequestId?: string;
+  merchantRequestId?: string;
+  status: SubscriptionTransactionStatus;
+  timestamp: string;
+  planId: SubscriptionPlanId;
+  billingCycle: BillingCycle;
+}
+
+
 
